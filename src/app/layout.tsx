@@ -55,7 +55,7 @@ export default function RootLayout({
       <body className="app-bg min-h-full antialiased">
         <AppProvider>
           <PWARegister />
-          <div className="mx-auto min-h-full max-w-lg overflow-x-hidden">
+          <div className="app-frame mx-auto min-h-full w-full max-w-lg">
             <NavBar />
             <AppShell>{children}</AppShell>
           </div>

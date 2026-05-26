@@ -2,21 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 const tabs = [
   { href: "/parent", label: "홈", emoji: "🏠", match: ["/parent"] },
   { href: "/passbook", label: "행복숲", emoji: "📒", match: ["/passbook"] },
   { href: "/parent/growth", label: "성장", emoji: "🌳", match: ["/parent/growth"] },
   { href: "/parent/child", label: "우리아이", emoji: "💚", match: ["/parent/child"] },
-  { href: "/parent/diary", label: "알림장", emoji: "📝", match: ["/parent/diary"] },
 ];
 
 export function ParentBottomNav() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-50" aria-label="하단 메뉴">
-      <div className="bottom-nav-inner bottom-nav-inner-5">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const nav = (
+    <nav className="bottom-nav" aria-label="하단 메뉴">
+      <div className="bottom-nav-inner bottom-nav-inner-4">
         {tabs.map((tab) => {
           const active = tab.match.some((m) =>
             m === "/parent" ? pathname === "/parent" : pathname.startsWith(m),
@@ -25,7 +31,7 @@ export function ParentBottomNav() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`bottom-nav-item bottom-nav-item-5 tap-scale ${active ? "active" : ""}`}
+              className={`bottom-nav-item bottom-nav-item-4 tap-scale ${active ? "active" : ""}`}
               aria-current={active ? "page" : undefined}
             >
               <span className="bottom-nav-icon" aria-hidden>
@@ -39,4 +45,7 @@ export function ParentBottomNav() {
       </div>
     </nav>
   );
+
+  if (!mounted) return null;
+  return createPortal(nav, document.body);
 }

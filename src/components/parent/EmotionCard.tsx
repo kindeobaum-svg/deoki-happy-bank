@@ -24,8 +24,8 @@ export function EmotionCard({
     >
       <span className="forest-action-emoji float-gentle">{emoji}</span>
       <div className="min-w-0 flex-1">
-        <p className="font-title text-base text-[var(--forest-deep)]">{title}</p>
-        <p className="mt-0.5 text-sm leading-relaxed text-[var(--ink-soft)]">{desc}</p>
+        <p className="font-title text-base text-[var(--forest-deep)] mobile-card-text">{title}</p>
+        <p className="mt-0.5 text-sm leading-relaxed text-[var(--ink-soft)] mobile-card-text">{desc}</p>
       </div>
       {badge ? (
         <span className="forest-action-badge">{badge}</span>
