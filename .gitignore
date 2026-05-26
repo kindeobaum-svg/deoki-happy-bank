@@ -37,6 +37,8 @@ yarn-error.log*
 # database
 /prisma/dev.db
 /prisma/dev.db-journal
+# demo seed DB for Vercel (optional — remove line below to ignore)
+!prisma/demo.db
 
 # vercel
 .vercel
