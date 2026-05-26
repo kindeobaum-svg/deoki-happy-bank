@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PARENT
+  TEACHER
+  CHILD
+  DIRECTOR
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  childId      String?
+  child        Child?   @relation(fields: [childId], references: [id])
+  createdAt    DateTime @default(now())
+  pushSubs     PushSubscription[]
+}
+
+model Child {
+  id            String        @id @default(cuid())
+  name          String
+  className     String
+  accountNumber String        @unique
+  points        Int           @default(0)
+  totalSaved    Int           @default(0)
+  avatar        String
+  users        User[]
+  saveRecords  SaveRecord[]
+  dailyReports DailyReport[]
+  attendances  Attendance[]
+  praiseRecords PraiseRecord[]
+}
+
+model SaveRecord {
+  id        String   @id @default(cuid())
+  childId   String
+  child     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  amount    Int
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  author    String
+  createdAt DateTime @default(now())
+}
+
+model DailyReport {
+  id      String @id @default(cuid())
+  childId String
+  child   Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  date    String
+  mood    String
+  meal    String
+  nap     String
+  note    String
+
+  @@unique([childId, date])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, endpoint])
+}
+
+model Attendance {
+  id      String           @id @default(cuid())
+  childId String
+  child   Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  date    String
+  status  AttendanceStatus
+  note    String?
+
+  @@unique([childId, date])
+}
+
+model PraiseRecord {
+  id        String   @id @default(cuid())
+  childId   String
+  child     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  message   String
+  emoji     String   @default("⭐")
+  author    String
+  date      String
+  createdAt DateTime @default(now())
+}
