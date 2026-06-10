@@ -11,6 +11,15 @@ from . import auth
 from .database import connect, initialize, seed_demo_data
 
 
+BANK_REWARD_PER_COMPLETED_MISSION = 1000
+GROWTH_STAGES = (
+    (0, "씨앗"),
+    (5000, "새싹"),
+    (15000, "튼튼한 나무"),
+    (30000, "행복 열매"),
+)
+
+
 def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     return {key: row[key] for key in row.keys()}
 
@@ -110,6 +119,91 @@ class HappyBankService:
             query_params,
         ).fetchall()
         return [_row_to_dict(row) for row in rows]
+
+    def dashboard_summary(
+        self,
+        user_id: int,
+        target_date: date | str | None = None,
+    ) -> dict[str, Any]:
+        target_date = target_date or date.today()
+        return {
+            "mission": self.mission_summary(user_id, target_date),
+            "bank": self.bank_summary(user_id),
+            "growth": self.growth_summary(user_id),
+            "child": self.child_summary(user_id),
+        }
+
+    def mission_summary(
+        self,
+        user_id: int,
+        target_date: date | str | None = None,
+    ) -> dict[str, Any]:
+        target_date = target_date or date.today()
+        missions = self.list_missions(user_id, target_date)
+        completed = sum(1 for mission in missions if mission["status"] == "completed")
+        pending = sum(1 for mission in missions if mission["status"] == "pending")
+        return {
+            "date": _date_to_string(target_date),
+            "total": len(missions),
+            "completed": completed,
+            "pending": pending,
+            "label": f"완료 {completed}개 · 남은 미션 {pending}개",
+        }
+
+    def bank_summary(self, user_id: int) -> dict[str, Any]:
+        total_saved = self._completed_mission_count(user_id) * BANK_REWARD_PER_COMPLETED_MISSION
+        total_spent = 0
+        return {
+            "current_balance": total_saved - total_spent,
+            "total_saved": total_saved,
+            "total_spent": total_spent,
+            "reward_per_mission": BANK_REWARD_PER_COMPLETED_MISSION,
+        }
+
+    def growth_summary(self, user_id: int) -> dict[str, Any]:
+        bank = self.bank_summary(user_id)
+        stage = _growth_stage(bank["total_saved"])
+        return {
+            "current_stage": stage,
+            "total_saved": bank["total_saved"],
+            "next_goal": _next_growth_goal(bank["total_saved"]),
+        }
+
+    def child_summary(self, user_id: int) -> dict[str, Any]:
+        children = self.list_children(user_id)
+        if not children:
+            return {
+                "children_count": 0,
+                "name": "등록된 아이 없음",
+                "class_name": "-",
+                "recent_activity": "최근 활동이 없습니다.",
+            }
+
+        primary_child = children[0]
+        recent_activity = self.connection.execute(
+            """
+            SELECT title, status, due_date
+            FROM mission_instances
+            WHERE child_id = ?
+            ORDER BY due_date DESC, id DESC
+            LIMIT 1
+            """,
+            (primary_child["id"],),
+        ).fetchone()
+
+        if recent_activity is None:
+            activity_text = "아직 기록된 활동이 없습니다."
+        else:
+            state = "완료" if recent_activity["status"] == "completed" else "진행중"
+            activity_text = f"{recent_activity['title']} · {state}"
+
+        return {
+            "children_count": len(children),
+            "id": primary_child["id"],
+            "name": primary_child["name"],
+            "class_name": primary_child["class_name"],
+            "recent_activity": activity_text,
+        }
 
     def complete_mission(
         self,
@@ -236,9 +330,42 @@ class HappyBankService:
 
         return self.connection.execute("SELECT id FROM children ORDER BY id").fetchall()
 
+    def _completed_mission_count(self, user_id: int) -> int:
+        predicate, params = auth.child_scope_sql(self.connection, user_id)
+        row = self.connection.execute(
+            f"""
+            SELECT COUNT(*) AS count
+            FROM mission_instances
+            JOIN children ON children.id = mission_instances.child_id
+            WHERE mission_instances.status = 'completed'
+            AND {predicate}
+            """,
+            params,
+        ).fetchone()
+        return int(row["count"])
+
 
 def _date_to_string(value: date | str) -> str:
     if isinstance(value, str):
         date.fromisoformat(value)
         return value
     return value.isoformat()
+
+
+def _growth_stage(total_saved: int) -> str:
+    stage = GROWTH_STAGES[0][1]
+    for required_saved, stage_name in GROWTH_STAGES:
+        if total_saved >= required_saved:
+            stage = stage_name
+    return stage
+
+
+def _next_growth_goal(total_saved: int) -> dict[str, Any] | None:
+    for required_saved, stage_name in GROWTH_STAGES:
+        if total_saved < required_saved:
+            return {
+                "stage": stage_name,
+                "required_saved": required_saved,
+                "remaining": required_saved - total_saved,
+            }
+    return None

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>덕이킨더바움 행복부자 통장</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="dashboard-view" class="view">
+        <p class="eyebrow">오늘의 행복 저금</p>
+        <h1>덕이킨더바움 행복부자 통장</h1>
+        <p id="user-label" class="user-label">불러오는 중...</p>
+
+        <nav class="card-grid" aria-label="주요 메뉴">
+          <a class="menu-card mission-card" href="#mission" aria-label="미션 상세 화면으로 이동">
+            <span class="card-icon" aria-hidden="true">🎯</span>
+            <span class="card-title">미션</span>
+            <span id="mission-summary" class="card-summary">오늘 미션 요약</span>
+          </a>
+
+          <a class="menu-card bank-card" href="#bank" aria-label="통장 상세 화면으로 이동">
+            <span class="card-icon" aria-hidden="true">💰</span>
+            <span class="card-title">통장</span>
+            <span id="bank-summary" class="card-summary">잔액과 적립 요약</span>
+          </a>
+
+          <a class="menu-card growth-card" href="#growth" aria-label="성장 상세 화면으로 이동">
+            <span class="card-icon" aria-hidden="true">🌱</span>
+            <span class="card-title">성장</span>
+            <span id="growth-summary" class="card-summary">성장단계 요약</span>
+          </a>
+
+          <a class="menu-card child-card" href="#child" aria-label="우리아이 상세 화면으로 이동">
+            <span class="card-icon" aria-hidden="true">👧</span>
+            <span class="card-title">우리아이</span>
+            <span id="child-summary" class="card-summary">아이 정보 요약</span>
+          </a>
+        </nav>
+      </section>
+
+      <section id="detail-view" class="view is-hidden" aria-live="polite">
+        <button id="back-button" class="back-button" type="button">← 첫 화면</button>
+        <div class="detail-panel">
+          <p id="detail-kicker" class="eyebrow"></p>
+          <h2 id="detail-title"></h2>
+          <div id="detail-content" class="detail-content"></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

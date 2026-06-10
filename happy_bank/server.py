@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import mimetypes
 from datetime import date, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from .auth import AuthorizationError, require_role
 from .scheduler import DailyMissionScheduler
 from .service import HappyBankService
+
+
+STATIC_DIR = Path(__file__).with_name("static")
 
 
 class HappyBankHandler(BaseHTTPRequestHandler):
@@ -22,6 +27,9 @@ class HappyBankHandler(BaseHTTPRequestHandler):
         try:
             parsed = urlparse(self.path)
             query = parse_qs(parsed.query)
+            if parsed.path in {"/", "/index.html", "/styles.css", "/app.js"}:
+                self._send_static_file(parsed.path)
+                return
             if parsed.path == "/health":
                 self._send_json({"ok": True})
                 return
@@ -44,6 +52,19 @@ class HappyBankHandler(BaseHTTPRequestHandler):
                 self._send_json(
                     {"missions": self.service.list_missions(user_id, due_date=due_date)}
                 )
+                return
+            if parsed.path == "/api/dashboard":
+                due_date = query.get("date", [None])[0]
+                self._send_json(self.service.dashboard_summary(user_id, due_date))
+                return
+            if parsed.path == "/api/bank":
+                self._send_json(self.service.bank_summary(user_id))
+                return
+            if parsed.path == "/api/growth":
+                self._send_json(self.service.growth_summary(user_id))
+                return
+            if parsed.path == "/api/child-summary":
+                self._send_json(self.service.child_summary(user_id))
                 return
 
             self._send_error(HTTPStatus.NOT_FOUND, "Unknown endpoint")
@@ -94,6 +115,25 @@ class HappyBankHandler(BaseHTTPRequestHandler):
 
     def _send_error(self, status: HTTPStatus, message: str) -> None:
         self._send_json({"error": message}, status=status)
+
+    def _send_static_file(self, request_path: str) -> None:
+        file_name = "index.html" if request_path in {"/", "/index.html"} else request_path[1:]
+        file_path = STATIC_DIR / file_name
+        if not file_path.exists():
+            self._send_error(HTTPStatus.NOT_FOUND, "Static asset not found")
+            return
+
+        payload = file_path.read_bytes()
+        content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+        if content_type.startswith("text/") or content_type == "application/javascript":
+            content_type = f"{content_type}; charset=utf-8"
+
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
 
 
 def run_server(
