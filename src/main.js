@@ -8,7 +8,6 @@ import {
   createMissionTemplate,
   getChildAccountBalance,
   getClass,
-  getDashboardStats,
   getDefaultChildId,
   getUser,
   getVisibleChildren,
@@ -207,13 +206,17 @@ function renderShell(user) {
         <button class="ghost-button" type="button" data-logout>전환</button>
       </header>
 
-      <section class="permission-card ${user.role}">
-        <div>
-          <span class="role-badge">${ROLE_LABELS[user.role]}</span>
-          <h2>${escapeHtml(getRoleHeadline(user))}</h2>
-          <p>${escapeHtml(getRoleDescription(user, visibleChildren.length))}</p>
-        </div>
-      </section>
+      ${
+        session.tab === "home"
+          ? ""
+          : `<section class="permission-card ${user.role}">
+              <div>
+                <span class="role-badge">${ROLE_LABELS[user.role]}</span>
+                <h2>${escapeHtml(getRoleHeadline(user))}</h2>
+                <p>${escapeHtml(getRoleDescription(user, visibleChildren.length))}</p>
+              </div>
+            </section>`
+      }
 
       ${toastMessage ? `<div class="toast" role="status">${escapeHtml(toastMessage)}</div>` : ""}
 
@@ -284,77 +287,119 @@ function renderActiveTab(user) {
 }
 
 function renderHome(user) {
-  const stats = getDashboardStats(state, user);
-  const children = getVisibleChildren(state, user);
-  const missions = getVisibleDailyMissions(state, user).slice(0, 4);
+  const accountSummary = getVisibleAccountSummary(state, user, session.selectedChildId);
+  const growthItems = getVisibleGrowthProgress(state, user, session.selectedChildId);
+  const visibleMissions = getVisibleDailyMissions(state, user).filter(
+    (mission) => session.selectedChildId === "all" || mission.childId === session.selectedChildId
+  );
+  const missions = visibleMissions.slice(0, 4);
+  const completedMissions = visibleMissions.filter((mission) => mission.completed).length;
 
   return `
-    <section class="stats-grid">
-      <article class="stat-card">
-        <span>조회 아이</span>
-        <strong>${stats.childCount}명</strong>
-      </article>
-      <article class="stat-card">
-        <span>행복 잔액</span>
-        <strong>${formatMoney(stats.totalBalance)}</strong>
-      </article>
-      <article class="stat-card">
-        <span>오늘 미션</span>
-        <strong>${stats.completedMissionCount}/${stats.missionCount}</strong>
-      </article>
-      <article class="stat-card">
-        <span>오늘 적립</span>
-        <strong>${formatMoney(stats.todayDeposit)}</strong>
-      </article>
-    </section>
-
-    ${renderRoleHomeMessage(user)}
-
-    <section class="card-section">
-      <div class="section-heading">
-        <h2>아이별 행복 요약</h2>
-        <button class="text-button" type="button" data-tab="bank">통장 보기</button>
+    <section class="home-dashboard">
+      <div class="home-title-row">
+        <div>
+          <p class="eyebrow">오늘 한눈 요약</p>
+          <h2>행복부자 통장</h2>
+        </div>
+        ${renderHomeChildFilter(user)}
       </div>
-      <div class="child-list">
-        ${children.map((child) => renderChildSummary(child)).join("")}
-      </div>
-    </section>
 
-    <section class="card-section">
-      <div class="section-heading">
-        <h2>오늘 미션</h2>
-        <button class="text-button" type="button" data-tab="missions">전체 보기</button>
+      <article class="home-balance-card">
+        <span>현재 잔액</span>
+        <strong>${formatWon(accountSummary.currentBalance)}</strong>
+      </article>
+
+      <div class="home-money-grid">
+        <article>
+          <span>총 적립</span>
+          <strong class="deposit">+${formatWon(accountSummary.totalDeposit)}</strong>
+        </article>
+        <article>
+          <span>총 지출</span>
+          <strong class="expense">-${formatWon(accountSummary.totalExpense)}</strong>
+        </article>
       </div>
-      ${missions.length ? missions.map((mission) => renderMissionCard(user, mission)).join("") : renderEmpty("오늘 생성된 미션이 없습니다.")}
+
+      ${renderHomeGrowthSummary(growthItems)}
+
+      <article class="home-mission-card">
+        <div class="home-card-heading">
+          <div>
+            <span>오늘의 미션</span>
+            <strong>${completedMissions}/${visibleMissions.length} 완료</strong>
+          </div>
+          <button class="text-button" type="button" data-tab="missions">전체</button>
+        </div>
+        <div class="home-mission-list">
+          ${missions.length
+            ? missions.map((mission) => renderHomeMissionRow(user, mission)).join("")
+            : renderEmpty("오늘 생성된 미션이 없습니다.")}
+        </div>
+      </article>
     </section>
   `;
 }
 
-function renderRoleHomeMessage(user) {
-  if (user.role === ROLES.DIRECTOR) {
-    return `
-      <section class="notice-card">
-        <strong>원장용 화면</strong>
-        <p>모든 반의 행복통장, 행복숲 성장, 미션 수행률을 통합 조회합니다.</p>
-      </section>
-    `;
+function renderHomeChildFilter(user) {
+  const children = getVisibleChildren(state, user);
+
+  if (children.length <= 1) {
+    return "";
   }
 
-  if (user.role === ROLES.TEACHER) {
-    return `
-      <section class="notice-card">
-        <strong>교사용 화면</strong>
-        <p>담당 반 아이만 표시됩니다. 미션을 만들 때 매일 반복 여부를 선택할 수 있습니다.</p>
-      </section>
-      ${renderMissionComposer(user)}
-    `;
-  }
+  return renderChildFilter(user, "조회 대상");
+}
+
+function renderHomeGrowthSummary(growthItems) {
+  return `
+    <article class="home-growth-card">
+      <div class="home-card-heading">
+        <div>
+          <span>현재 성장단계</span>
+          <strong>${growthItems.length === 1 ? escapeHtml(growthItems[0].progress.currentStage.name) : `${growthItems.length}명 성장 현황`}</strong>
+        </div>
+        <button class="text-button" type="button" data-tab="growth">성장</button>
+      </div>
+      <div class="home-growth-list">
+        ${growthItems.length
+          ? growthItems.map(({ child, progress }) => renderHomeGrowthRow(child, progress)).join("")
+          : renderEmpty("조회 가능한 성장 단계가 없습니다.")}
+      </div>
+    </article>
+  `;
+}
+
+function renderHomeGrowthRow(child, progress) {
+  const nextText = progress.nextStage
+    ? `다음 단계까지 ${formatWon(progress.requiredToNext)}`
+    : "모든 단계 달성";
 
   return `
-    <section class="notice-card secure">
-      <strong>학부모용 화면</strong>
-      <p>내 자녀의 행복통장, 성장기록, 미션 수행내역만 조회합니다.</p>
-    </section>
+    <div class="home-growth-row">
+      <div>
+        <strong>${escapeHtml(child.name)}</strong>
+        <span>${escapeHtml(progress.currentStage.name)}</span>
+      </div>
+      <p>${nextText}</p>
+    </div>
+  `;
+}
+
+function renderHomeMissionRow(user, mission) {
+  const completeButton =
+    user.role === ROLES.TEACHER && !mission.completed
+      ? `<button class="small-button" type="button" data-complete-mission="${mission.id}">완료</button>`
+      : "";
+
+  return `
+    <div class="home-mission-row ${mission.completed ? "done" : ""}">
+      <div>
+        <strong>${escapeHtml(mission.template.title)}</strong>
+        <span>${escapeHtml(mission.child.name)} · +${formatWon(mission.template.point)}</span>
+      </div>
+      ${completeButton || `<span class="status-pill ${mission.completed ? "success" : ""}">${mission.completed ? "완료" : "진행중"}</span>`}
+    </div>
   `;
 }
 
