@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from datetime import date, datetime
+from functools import wraps
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, TypeVar
 
 from . import auth
 from .database import connect, initialize, seed_demo_data
@@ -24,23 +26,40 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     return {key: row[key] for key in row.keys()}
 
 
+T = TypeVar("T")
+
+
+def _synchronized(method: Callable[..., T]) -> Callable[..., T]:
+    @wraps(method)
+    def wrapper(self: "HappyBankService", *args: Any, **kwargs: Any) -> T:
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
+
+
 class HappyBankService:
     """Coordinates Happy Bank mission data and permissions."""
 
     def __init__(self, database_path: str | Path = "happy_bank.sqlite3") -> None:
         self.database_path = database_path
+        self._lock = threading.RLock()
         self.connection = connect(database_path)
         initialize(self.connection)
 
+    @_synchronized
     def close(self) -> None:
         self.connection.close()
 
+    @_synchronized
     def seed_demo_data(self) -> None:
         seed_demo_data(self.connection)
 
+    @_synchronized
     def current_user(self, user_id: int) -> dict[str, Any]:
         return _row_to_dict(auth.get_user(self.connection, user_id))
 
+    @_synchronized
     def list_classes(self, user_id: int) -> list[dict[str, Any]]:
         predicate, params = auth.class_scope_sql(self.connection, user_id)
         rows = self.connection.execute(
@@ -54,6 +73,7 @@ class HappyBankService:
         ).fetchall()
         return [_row_to_dict(row) for row in rows]
 
+    @_synchronized
     def list_children(
         self,
         user_id: int,
@@ -83,6 +103,7 @@ class HappyBankService:
         ).fetchall()
         return [_row_to_dict(row) for row in rows]
 
+    @_synchronized
     def list_missions(
         self,
         user_id: int,
@@ -120,6 +141,7 @@ class HappyBankService:
         ).fetchall()
         return [_row_to_dict(row) for row in rows]
 
+    @_synchronized
     def dashboard_summary(
         self,
         user_id: int,
@@ -133,6 +155,7 @@ class HappyBankService:
             "child": self.child_summary(user_id),
         }
 
+    @_synchronized
     def mission_summary(
         self,
         user_id: int,
@@ -150,6 +173,7 @@ class HappyBankService:
             "label": f"완료 {completed}개 · 남은 미션 {pending}개",
         }
 
+    @_synchronized
     def bank_summary(self, user_id: int) -> dict[str, Any]:
         total_saved = self._completed_mission_count(user_id) * BANK_REWARD_PER_COMPLETED_MISSION
         total_spent = 0
@@ -160,6 +184,7 @@ class HappyBankService:
             "reward_per_mission": BANK_REWARD_PER_COMPLETED_MISSION,
         }
 
+    @_synchronized
     def growth_summary(self, user_id: int) -> dict[str, Any]:
         bank = self.bank_summary(user_id)
         stage = _growth_stage(bank["total_saved"])
@@ -169,6 +194,7 @@ class HappyBankService:
             "next_goal": _next_growth_goal(bank["total_saved"]),
         }
 
+    @_synchronized
     def child_summary(self, user_id: int) -> dict[str, Any]:
         children = self.list_children(user_id)
         if not children:
@@ -205,6 +231,7 @@ class HappyBankService:
             "recent_activity": activity_text,
         }
 
+    @_synchronized
     def complete_mission(
         self,
         user_id: int,
@@ -240,6 +267,7 @@ class HappyBankService:
             ).fetchone()
         )
 
+    @_synchronized
     def create_daily_missions(self, target_date: date | str) -> int:
         """Create one pending mission per active recurring template and child.
 
@@ -281,6 +309,7 @@ class HappyBankService:
         self.connection.commit()
         return created
 
+    @_synchronized
     def run_daily_rollover(
         self,
         now: datetime | None = None,

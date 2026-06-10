@@ -12,7 +12,7 @@ ROLES = ("principal", "teacher", "parent")
 def connect(database_path: str | Path) -> sqlite3.Connection:
     """Create a SQLite connection with row dictionaries and FK checks enabled."""
 
-    connection = sqlite3.connect(str(database_path))
+    connection = sqlite3.connect(str(database_path), check_same_thread=False)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
