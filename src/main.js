@@ -6,6 +6,7 @@ import {
   completeMission,
   createInitialData,
   createMissionTemplate,
+  getChildAccountBalance,
   getClass,
   getDashboardStats,
   getDefaultChildId,
@@ -17,7 +18,9 @@ import {
   getVisibleGrowthProgress,
   getVisibleGrowthRecords,
   getVisibleMissionHistory,
+  getVisibleAccountSummary,
   getVisibleTransactions,
+  normalizeBankAccounts,
   normalizeDailyMissions,
   toDateKey
 } from "./state.js";
@@ -32,7 +35,7 @@ const tabs = [
   { id: "missions", label: "미션", icon: "✅" }
 ];
 
-let state = normalizeDailyMissions(loadState(), new Date());
+let state = normalizeBankAccounts(normalizeDailyMissions(loadState(), new Date()));
 let session = loadSession();
 let toastMessage = "";
 
@@ -92,6 +95,10 @@ function escapeHtml(value) {
 
 function formatMoney(value) {
   return `${Number(value).toLocaleString("ko-KR")} 행복`;
+}
+
+function formatWon(value) {
+  return `${Number(value).toLocaleString("ko-KR")}원`;
 }
 
 function getCurrentUser() {
@@ -354,6 +361,7 @@ function renderRoleHomeMessage(user) {
 function renderChildSummary(child) {
   const classroom = getClass(state, child.classId);
   const percent = Math.min(100, Math.round((child.forest.seeds / child.forest.nextLevelSeeds) * 100));
+  const balance = getChildAccountBalance(state, child);
 
   return `
     <article class="child-card">
@@ -363,7 +371,7 @@ function renderChildSummary(child) {
           <strong>${escapeHtml(child.name)}</strong>
           <span>${escapeHtml(classroom?.name ?? "")}</span>
         </div>
-        <p>${escapeHtml(child.forest.treeName)} Lv.${child.forest.level} · ${formatMoney(child.balance)}</p>
+        <p>${escapeHtml(child.forest.treeName)} Lv.${child.forest.level} · ${formatMoney(balance)}</p>
         <div class="progress-bar" aria-label="행복숲 성장률 ${percent}%">
           <span style="width: ${percent}%"></span>
         </div>
@@ -397,31 +405,52 @@ function renderChildFilter(user, label = "아이 선택") {
 
 function renderBank(user) {
   const transactions = getVisibleTransactions(state, user, session.selectedChildId);
-  const visibleChildren = getVisibleChildren(state, user);
-  const totalBalance = visibleChildren
-    .filter((child) => session.selectedChildId === "all" || child.id === session.selectedChildId)
-    .reduce((sum, child) => sum + child.balance, 0);
+  const accountSummary = getVisibleAccountSummary(state, user, session.selectedChildId);
 
   return `
-    <section class="screen-heading">
-      <div>
-        <p class="eyebrow">행복부자 통장</p>
-        <h2>${formatMoney(totalBalance)}</h2>
+    <section class="bank-hero">
+      <div class="bank-hero-top">
+        <div>
+          <p class="eyebrow">행복부자 통장</p>
+          <span>현재 잔액</span>
+          <strong>${formatWon(accountSummary.currentBalance)}</strong>
+        </div>
+        ${renderChildFilter(user)}
       </div>
-      ${renderChildFilter(user)}
+
+      <div class="bank-summary-grid">
+        <article>
+          <span>총 적립금액</span>
+          <strong class="deposit">+${formatWon(accountSummary.totalDeposit)}</strong>
+        </article>
+        <article>
+          <span>총 지출금액</span>
+          <strong class="expense">-${formatWon(accountSummary.totalExpense)}</strong>
+        </article>
+        <article>
+          <span>현재 잔액</span>
+          <strong>${formatWon(accountSummary.currentBalance)}</strong>
+        </article>
+      </div>
     </section>
 
     <section class="card-section">
+      <div class="section-heading">
+        <h2>거래내역</h2>
+        <span class="mini-badge">${accountSummary.transactionCount}건</span>
+      </div>
       ${transactions.length
         ? transactions
             .map(
               (transaction) => `
-              <article class="timeline-card">
+              <article class="timeline-card transaction-card ${transaction.direction}">
                 <div>
                   <strong>${escapeHtml(transaction.title)}</strong>
                   <p>${escapeHtml(transaction.child.name)} · ${escapeHtml(transaction.category)} · ${transaction.date}</p>
                 </div>
-                <span class="amount">+${formatMoney(transaction.amount)}</span>
+                <span class="amount ${transaction.direction}">
+                  ${transaction.direction === "deposit" ? "입금(+" : "지출(-"}${formatWon(transaction.absoluteAmount)})
+                </span>
               </article>
             `
             )

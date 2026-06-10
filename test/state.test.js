@@ -7,6 +7,7 @@ import {
   createMissionTemplate,
   getGrowthProgress,
   getUser,
+  getVisibleAccountSummary,
   getVisibleChildren,
   getVisibleDailyMissions,
   getVisibleGrowthProgress,
@@ -153,7 +154,7 @@ describe("growth stages", () => {
     const adjusted = {
       ...data,
       children: data.children.map((child) =>
-        child.id === "child-minjun" ? { ...child, balance: 14900 } : child
+        child.id === "child-minjun" ? { ...child, balance: 14900, openingBalance: 15100 } : child
       )
     };
     const teacher = getUser(adjusted, "teacher-sun");
@@ -173,5 +174,45 @@ describe("growth stages", () => {
       growthItem.progress.stages.find((stage) => stage.id === "happy-tree").achieved,
       true
     );
+  });
+});
+
+describe("bank account summary", () => {
+  it("shows deposits, expenses, and current balance from visible transactions", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const summary = getVisibleAccountSummary(data, parent, "child-minjun");
+
+    assert.equal(summary.totalDeposit, 800);
+    assert.equal(summary.totalExpense, 1000);
+    assert.equal(summary.currentBalance, 12800);
+    assert.equal(summary.transactionCount, 3);
+  });
+
+  it("automatically recalculates the current balance when an expense is added", () => {
+    const data = createInitialData("2026-06-09");
+    const withExpense = {
+      ...data,
+      transactions: [
+        {
+          id: "tx-extra-expense",
+          childId: "child-minjun",
+          date: "2026-06-09",
+          amount: -500,
+          title: "행복상점 간식 교환",
+          category: "지출"
+        },
+        ...data.transactions
+      ]
+    };
+    const summary = getVisibleAccountSummary(
+      withExpense,
+      getUser(withExpense, "parent-minjun"),
+      "child-minjun"
+    );
+
+    assert.equal(summary.totalDeposit, 800);
+    assert.equal(summary.totalExpense, 1500);
+    assert.equal(summary.currentBalance, 12300);
   });
 });

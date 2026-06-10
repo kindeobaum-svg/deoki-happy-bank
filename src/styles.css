@@ -73,6 +73,7 @@ select:focus-visible {
 }
 
 .brand-card,
+.bank-hero,
 .permission-card,
 .notice-card,
 .mission-composer,
@@ -347,6 +348,86 @@ select:focus-visible {
   background: #eef2ff;
 }
 
+.bank-hero {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  color: #fff;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.24), transparent 12rem),
+    linear-gradient(135deg, #f58220 0%, #f3ad31 100%);
+}
+
+.bank-hero .eyebrow,
+.bank-hero .filter-label {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.bank-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.bank-hero-top span {
+  display: block;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.84);
+  font-weight: 800;
+}
+
+.bank-hero-top strong {
+  display: block;
+  margin-top: 4px;
+  font-size: clamp(38px, 11vw, 54px);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.bank-hero select {
+  border-color: rgba(255, 255, 255, 0.44);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.bank-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bank-summary-grid article {
+  min-height: 82px;
+  padding: 13px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.bank-summary-grid span {
+  display: block;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bank-summary-grid strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 950;
+  word-break: keep-all;
+}
+
+.bank-summary-grid .deposit {
+  color: #eaffe9;
+}
+
+.bank-summary-grid .expense {
+  color: #fff0f0;
+}
+
 .section-heading,
 .screen-heading {
   display: flex;
@@ -482,6 +563,14 @@ input {
   color: var(--green);
   font-weight: 900;
   white-space: nowrap;
+}
+
+.amount.expense {
+  color: var(--red);
+}
+
+.transaction-card.expense {
+  background: #fff8f8;
 }
 
 .forest-card {
@@ -778,10 +867,12 @@ input {
   }
 
   .stats-grid,
+  .bank-summary-grid,
   .form-row {
     grid-template-columns: 1fr;
   }
 
+  .bank-hero-top,
   .timeline-card,
   .mission-card,
   .screen-heading,

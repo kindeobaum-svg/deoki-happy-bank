@@ -174,6 +174,14 @@ export function createInitialData(today = toDateKey()) {
         category: "예절"
       },
       {
+        id: "tx-6",
+        childId: "child-minjun",
+        date: "2026-06-08",
+        amount: -1000,
+        title: "행복상점 연필 구입",
+        category: "지출"
+      },
+      {
         id: "tx-3",
         childId: "child-harin",
         date: today,
@@ -292,7 +300,7 @@ export function createInitialData(today = toDateKey()) {
     lastMissionDate: null
   };
 
-  return normalizeDailyMissions(base, today);
+  return normalizeDailyMissions(normalizeBankAccounts(base), today);
 }
 
 export function getUser(data, userId) {
@@ -329,6 +337,40 @@ export function canViewChild(user, child) {
 
 export function getVisibleChildren(data, user) {
   return data.children.filter((child) => canViewChild(user, child));
+}
+
+function getChildTransactionTotal(data, childId) {
+  return data.transactions
+    .filter((transaction) => transaction.childId === childId)
+    .reduce((sum, transaction) => sum + Number(transaction.amount ?? 0), 0);
+}
+
+export function normalizeBankAccounts(data) {
+  return {
+    ...data,
+    children: data.children.map((child) => {
+      if (Number.isFinite(Number(child.openingBalance))) {
+        return child;
+      }
+
+      return {
+        ...child,
+        openingBalance: Number(child.balance ?? 0) - getChildTransactionTotal(data, child.id)
+      };
+    })
+  };
+}
+
+export function getChildAccountBalance(data, child) {
+  if (!child) {
+    return 0;
+  }
+
+  const openingBalance = Number.isFinite(Number(child.openingBalance))
+    ? Number(child.openingBalance)
+    : Number(child.balance ?? 0) - getChildTransactionTotal(data, child.id);
+
+  return openingBalance + getChildTransactionTotal(data, child.id);
 }
 
 export function getVisibleClasses(data, user) {
@@ -582,12 +624,45 @@ export function getVisibleTransactions(data, user, childId = "all") {
   return data.transactions
     .filter((transaction) => visibleChildIds.has(transaction.childId))
     .filter((transaction) => childId === "all" || transaction.childId === childId)
-    .map((transaction) => ({
-      ...transaction,
-      child: getChild(data, transaction.childId)
-    }))
+    .map((transaction) => decorateTransaction(data, transaction))
     .filter((transaction) => transaction.child)
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function decorateTransaction(data, transaction) {
+  const amount = Number(transaction.amount ?? 0);
+
+  return {
+    ...transaction,
+    amount,
+    child: getChild(data, transaction.childId),
+    direction: amount < 0 ? "expense" : "deposit",
+    absoluteAmount: Math.abs(amount)
+  };
+}
+
+export function getVisibleAccountSummary(data, user, childId = "all") {
+  const visibleChildren = getVisibleChildren(data, user).filter(
+    (child) => childId === "all" || child.id === childId
+  );
+  const visibleChildIds = new Set(visibleChildren.map((child) => child.id));
+  const transactions = data.transactions
+    .filter((transaction) => visibleChildIds.has(transaction.childId))
+    .map((transaction) => decorateTransaction(data, transaction));
+
+  return {
+    totalDeposit: transactions
+      .filter((transaction) => transaction.amount > 0)
+      .reduce((sum, transaction) => sum + transaction.amount, 0),
+    totalExpense: transactions
+      .filter((transaction) => transaction.amount < 0)
+      .reduce((sum, transaction) => sum + transaction.absoluteAmount, 0),
+    currentBalance: visibleChildren.reduce(
+      (sum, child) => sum + getChildAccountBalance(data, child),
+      0
+    ),
+    transactionCount: transactions.length
+  };
 }
 
 export function getVisibleGrowthRecords(data, user, childId = "all") {
@@ -639,7 +714,10 @@ export function getVisibleGrowthProgress(data, user, childId = "all") {
     .filter((child) => childId === "all" || child.id === childId)
     .map((child) => ({
       child,
-      progress: getGrowthProgress(child)
+      progress: getGrowthProgress({
+        ...child,
+        balance: getChildAccountBalance(data, child)
+      })
     }));
 }
 
@@ -661,9 +739,15 @@ export function getDashboardStats(data, user, date = new Date()) {
   const visibleChildren = getVisibleChildren(data, user);
   const visibleChildIds = new Set(visibleChildren.map((child) => child.id));
   const missions = getVisibleDailyMissions(data, user, date);
-  const totalBalance = visibleChildren.reduce((sum, child) => sum + child.balance, 0);
+  const totalBalance = visibleChildren.reduce(
+    (sum, child) => sum + getChildAccountBalance(data, child),
+    0
+  );
   const todayTransactions = data.transactions.filter(
-    (transaction) => transaction.date === toDateKey(date) && visibleChildIds.has(transaction.childId)
+    (transaction) =>
+      transaction.date === toDateKey(date) &&
+      visibleChildIds.has(transaction.childId) &&
+      Number(transaction.amount) > 0
   );
 
   return {
