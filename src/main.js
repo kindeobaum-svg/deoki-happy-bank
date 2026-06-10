@@ -14,6 +14,7 @@ import {
   getVisibleClasses,
   getVisibleDailyMissions,
   getVisibleForestMoments,
+  getVisibleGrowthProgress,
   getVisibleGrowthRecords,
   getVisibleMissionHistory,
   getVisibleTransactions,
@@ -487,6 +488,7 @@ function renderForestCard(child) {
 }
 
 function renderGrowth(user) {
+  const growthItems = getVisibleGrowthProgress(state, user, session.selectedChildId);
   const records = getVisibleGrowthRecords(state, user, session.selectedChildId);
 
   return `
@@ -498,7 +500,16 @@ function renderGrowth(user) {
       ${renderChildFilter(user)}
     </section>
 
+    <section class="growth-stage-list">
+      ${growthItems.length
+        ? growthItems.map(({ child, progress }) => renderGrowthProgressCard(child, progress)).join("")
+        : renderEmpty("조회 가능한 성장 단계가 없습니다.")}
+    </section>
+
     <section class="card-section">
+      <div class="section-heading">
+        <h2>성장기록</h2>
+      </div>
       ${records.length
         ? records
             .map(
@@ -520,6 +531,51 @@ function renderGrowth(user) {
             .join("")
         : renderEmpty("조회 가능한 성장기록이 없습니다.")}
     </section>
+  `;
+}
+
+function renderGrowthProgressCard(child, progress) {
+  const nextText = progress.nextStage
+    ? `${escapeHtml(progress.nextStage.name)}까지 ${formatMoney(progress.requiredToNext)} 필요`
+    : "모든 성장 단계를 달성했어요";
+
+  return `
+    <article class="growth-stage-card">
+      <div class="growth-stage-top">
+        <div>
+          <p class="eyebrow">${escapeHtml(child.name)} 성장 단계</p>
+          <h3>${escapeHtml(progress.currentStage.name)}</h3>
+          <p>현재 잔액 ${formatMoney(progress.balance)} · ${nextText}</p>
+        </div>
+        <span class="stage-count">${progress.completedStageCount}/${progress.totalStageCount}</span>
+      </div>
+      <div class="progress-bar large" aria-label="다음 성장 단계 진행률 ${progress.progressPercent}%">
+        <span style="width: ${progress.progressPercent}%"></span>
+      </div>
+      <div class="stage-list">
+        ${progress.stages.map((stage) => renderGrowthStageRow(child, stage)).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function renderGrowthStageRow(child, stage) {
+  return `
+    <div class="stage-row ${stage.achieved ? "achieved" : ""}">
+      <div class="stage-marker" aria-hidden="true">${stage.achieved ? "✓" : ""}</div>
+      <div class="stage-copy">
+        <strong>${escapeHtml(stage.name)}</strong>
+        <p>${formatMoney(stage.threshold)} 이상 · ${escapeHtml(stage.description)}</p>
+      </div>
+      <button
+        class="stage-button"
+        type="button"
+        data-growth-stage="${stage.id}"
+        data-growth-child="${child.id}"
+      >
+        ${stage.achieved ? "달성 확인" : `${formatMoney(stage.remaining)} 필요`}
+      </button>
+    </div>
   `;
 }
 
@@ -681,6 +737,32 @@ app.addEventListener("click", (event) => {
       setToast(error.message);
       render();
     }
+    return;
+  }
+
+  const growthStageButton = event.target.closest("[data-growth-stage]");
+  if (growthStageButton) {
+    const growthItem = getVisibleGrowthProgress(
+      state,
+      getCurrentUser(),
+      growthStageButton.dataset.growthChild
+    )[0];
+    const stage = growthItem?.progress.stages.find(
+      (item) => item.id === growthStageButton.dataset.growthStage
+    );
+
+    if (!growthItem || !stage) {
+      setToast("조회 권한이 없는 성장 단계입니다.");
+      render();
+      return;
+    }
+
+    setToast(
+      stage.achieved
+        ? `${growthItem.child.name} 어린이는 ${stage.name}를 자동 달성했습니다.`
+        : `${growthItem.child.name} 어린이는 ${stage.name}까지 ${formatMoney(stage.remaining)} 더 필요합니다.`
+    );
+    render();
   }
 });
 

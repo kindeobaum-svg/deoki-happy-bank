@@ -5,9 +5,11 @@ import {
   completeMission,
   createInitialData,
   createMissionTemplate,
+  getGrowthProgress,
   getUser,
   getVisibleChildren,
   getVisibleDailyMissions,
+  getVisibleGrowthProgress,
   getVisibleGrowthRecords,
   getVisibleMissionHistory,
   getVisibleTransactions,
@@ -124,5 +126,52 @@ describe("daily missions", () => {
 
     assert.equal(today.filter((mission) => mission.templateId === template.id).length, 2);
     assert.equal(tomorrow.filter((mission) => mission.templateId === template.id).length, 0);
+  });
+});
+
+describe("growth stages", () => {
+  it("shows the current stage and next required amount from balance", () => {
+    const progress = getGrowthProgress({ balance: 12800 });
+
+    assert.equal(progress.currentStage.id, "young-tree");
+    assert.equal(progress.nextStage.id, "happy-tree");
+    assert.equal(progress.requiredToNext, 2200);
+    assert.equal(progress.stages.find((stage) => stage.id === "sprout").achieved, true);
+    assert.equal(progress.stages.find((stage) => stage.id === "happy-tree").achieved, false);
+  });
+
+  it("automatically marks stages achieved when the balance meets the threshold", () => {
+    const progress = getGrowthProgress({ balance: 20000 });
+
+    assert.equal(progress.currentStage.id, "forest-keeper");
+    assert.equal(progress.stages.find((stage) => stage.id === "forest-keeper").achieved, true);
+    assert.equal(progress.stages.find((stage) => stage.id === "happy-rich").remaining, 10000);
+  });
+
+  it("updates achieved stages after a mission changes the balance", () => {
+    const data = createInitialData("2026-06-09");
+    const adjusted = {
+      ...data,
+      children: data.children.map((child) =>
+        child.id === "child-minjun" ? { ...child, balance: 14900 } : child
+      )
+    };
+    const teacher = getUser(adjusted, "teacher-sun");
+    const mission = getVisibleDailyMissions(adjusted, teacher, "2026-06-09").find(
+      (item) => item.childId === "child-minjun" && item.template.point === 300
+    );
+    const completed = completeMission(adjusted, teacher, mission.id, "2026-06-09");
+    const growthItem = getVisibleGrowthProgress(
+      completed,
+      getUser(completed, "parent-minjun"),
+      "child-minjun"
+    )[0];
+
+    assert.equal(growthItem.progress.balance, 15200);
+    assert.equal(growthItem.progress.currentStage.id, "happy-tree");
+    assert.equal(
+      growthItem.progress.stages.find((stage) => stage.id === "happy-tree").achieved,
+      true
+    );
   });
 });

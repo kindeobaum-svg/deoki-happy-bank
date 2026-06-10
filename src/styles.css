@@ -81,6 +81,7 @@ select:focus-visible {
 .child-card,
 .timeline-card,
 .growth-card,
+.growth-stage-card,
 .forest-card,
 .mission-card,
 .empty-card {
@@ -496,6 +497,7 @@ input {
 }
 
 .growth-meta,
+.growth-stage-top,
 .mission-title {
   display: flex;
   align-items: center;
@@ -511,6 +513,111 @@ input {
 
 .growth-card h3 {
   margin: 10px 0 0;
+}
+
+.growth-stage-list {
+  display: grid;
+  gap: 12px;
+}
+
+.growth-stage-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+.growth-stage-top {
+  align-items: flex-start;
+}
+
+.growth-stage-top h3 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.growth-stage-top p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.stage-count {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-width: 54px;
+  min-height: 54px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  color: #fff;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--green), #9ad95f);
+}
+
+.stage-list {
+  display: grid;
+  gap: 10px;
+}
+
+.stage-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fffaf2;
+}
+
+.stage-row.achieved {
+  border-color: #ccefd8;
+  background: #f4fbf6;
+}
+
+.stage-marker {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--muted);
+  font-weight: 900;
+  background: #f1e2cf;
+}
+
+.stage-row.achieved .stage-marker {
+  color: #fff;
+  background: var(--green);
+}
+
+.stage-copy {
+  min-width: 0;
+}
+
+.stage-copy p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.stage-button {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  color: #8a5a14;
+  font-size: 12px;
+  font-weight: 900;
+  background: #fff2cf;
+  white-space: nowrap;
+}
+
+.stage-row.achieved .stage-button {
+  color: #197146;
+  background: #dff7e8;
 }
 
 .tag-row {
@@ -677,12 +784,21 @@ input {
 
   .timeline-card,
   .mission-card,
-  .screen-heading {
+  .screen-heading,
+  .growth-stage-top {
     flex-direction: column;
     align-items: stretch;
   }
 
   .mission-actions {
     justify-items: stretch;
+  }
+
+  .stage-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .stage-button {
+    grid-column: 1 / -1;
   }
 }

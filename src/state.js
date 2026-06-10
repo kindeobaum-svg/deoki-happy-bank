@@ -13,6 +13,45 @@ export const ROLE_LABELS = {
 export const STORAGE_KEY = "deoki-happy-bank-state-v1";
 export const SESSION_KEY = "deoki-happy-bank-session-v1";
 
+export const GROWTH_STAGES = [
+  {
+    id: "seed",
+    name: "씨앗 단계",
+    threshold: 0,
+    description: "행복부자 여정을 시작했어요."
+  },
+  {
+    id: "sprout",
+    name: "새싹 단계",
+    threshold: 5000,
+    description: "좋은 습관이 새싹처럼 올라와요."
+  },
+  {
+    id: "young-tree",
+    name: "어린나무 단계",
+    threshold: 10000,
+    description: "스스로 해내는 힘이 자라고 있어요."
+  },
+  {
+    id: "happy-tree",
+    name: "행복나무 단계",
+    threshold: 15000,
+    description: "따뜻한 마음이 단단한 나무가 되었어요."
+  },
+  {
+    id: "forest-keeper",
+    name: "숲지킴이 단계",
+    threshold: 20000,
+    description: "친구와 교실의 행복을 함께 지켜요."
+  },
+  {
+    id: "happy-rich",
+    name: "행복부자 단계",
+    threshold: 30000,
+    description: "행복을 나누는 멋진 부자가 되었어요."
+  }
+];
+
 export function toDateKey(value = new Date()) {
   if (typeof value === "string") {
     return value.slice(0, 10);
@@ -563,6 +602,45 @@ export function getVisibleGrowthRecords(data, user, childId = "all") {
     }))
     .filter((record) => record.child)
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function getGrowthProgress(child) {
+  const balance = Math.max(0, Number(child?.balance ?? 0));
+  const stages = GROWTH_STAGES.map((stage) => ({
+    ...stage,
+    achieved: balance >= stage.threshold,
+    remaining: Math.max(0, stage.threshold - balance)
+  }));
+  const achievedStages = stages.filter((stage) => stage.achieved);
+  const currentStage = achievedStages.at(-1) ?? stages[0];
+  const nextStage = stages.find((stage) => !stage.achieved) ?? null;
+  const previousThreshold = currentStage?.threshold ?? 0;
+  const nextThreshold = nextStage?.threshold ?? previousThreshold;
+  const requiredToNext = nextStage ? nextStage.threshold - balance : 0;
+  const range = Math.max(1, nextThreshold - previousThreshold);
+  const progressPercent = nextStage
+    ? Math.min(100, Math.max(0, Math.round(((balance - previousThreshold) / range) * 100)))
+    : 100;
+
+  return {
+    balance,
+    stages,
+    currentStage,
+    nextStage,
+    requiredToNext,
+    progressPercent,
+    completedStageCount: achievedStages.length,
+    totalStageCount: stages.length
+  };
+}
+
+export function getVisibleGrowthProgress(data, user, childId = "all") {
+  return getVisibleChildren(data, user)
+    .filter((child) => childId === "all" || child.id === childId)
+    .map((child) => ({
+      child,
+      progress: getGrowthProgress(child)
+    }));
 }
 
 export function getVisibleForestMoments(data, user, childId = "all") {
