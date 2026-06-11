@@ -51,6 +51,7 @@ let state = normalizeBankAccounts(
 let session = loadSession();
 let toastMessage = "";
 
+applyPreviewLoginFromUrl();
 saveState(state);
 
 function loadState() {
@@ -78,6 +79,35 @@ function loadSession() {
     console.warn("세션을 불러오지 못해 초기화합니다.", error);
     return { userId: null, tab: "home", selectedChildId: "all", detailScreen: null };
   }
+}
+
+function applyPreviewLoginFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const login = params.get("login");
+
+  if (!login) {
+    return;
+  }
+
+  const previewUserId =
+    {
+      director: "director-1",
+      principal: "director-1",
+      teacher: "teacher-sun"
+    }[login] ?? login;
+  const user = getUser(state, previewUserId);
+
+  if (!user) {
+    return;
+  }
+
+  session = {
+    userId: user.id,
+    tab: "home",
+    selectedChildId: user.role === ROLES.PARENT ? getDefaultChildId(state, user) : "all",
+    detailScreen: null
+  };
+  saveSession(session);
 }
 
 function saveState(nextState = state) {
