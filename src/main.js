@@ -646,6 +646,7 @@ function renderChildDetail(user, childId) {
 function renderMissionChecklist(user, childId = "all") {
   const normalizedChildId = childId ?? session.selectedChildId;
   const checklist = getVisibleChecklistMissions(state, user, normalizedChildId);
+  const moneySummary = getChecklistMoneySummary(user, normalizedChildId);
   const visibleChildren = getVisibleChildren(state, user).filter(
     (child) => normalizedChildId === "all" || child.id === normalizedChildId
   );
@@ -661,6 +662,20 @@ function renderMissionChecklist(user, childId = "all") {
         <button class="ghost-button" type="button" data-back-home>← 홈</button>
         <h2>미션 체크리스트</h2>
       </div>
+      <section class="checklist-money-summary">
+        <article>
+          <span>현재 잔액</span>
+          <strong>${formatWon(moneySummary.currentBalance)}</strong>
+        </article>
+        <article>
+          <span>오늘 적립금</span>
+          <strong>+${formatWon(moneySummary.todayDeposit)}</strong>
+        </article>
+        <article>
+          <span>이번 달 적립금</span>
+          <strong>+${formatWon(moneySummary.monthDeposit)}</strong>
+        </article>
+      </section>
       <article class="checklist-hero">
         <div>
           <p class="eyebrow">오늘의 미션</p>
@@ -677,6 +692,23 @@ function renderMissionChecklist(user, childId = "all") {
       </div>
     </section>
   `;
+}
+
+function getChecklistMoneySummary(user, childId) {
+  const transactions = getVisibleTransactions(state, user, childId);
+  const todayKey = toDateKey();
+  const monthKey = todayKey.slice(0, 7);
+  const deposits = transactions.filter((transaction) => transaction.amount > 0);
+
+  return {
+    currentBalance: getVisibleAccountSummary(state, user, childId).currentBalance,
+    todayDeposit: deposits
+      .filter((transaction) => transaction.date === todayKey)
+      .reduce((sum, transaction) => sum + transaction.amount, 0),
+    monthDeposit: deposits
+      .filter((transaction) => transaction.date.slice(0, 7) === monthKey)
+      .reduce((sum, transaction) => sum + transaction.amount, 0)
+  };
 }
 
 function renderCustomMissionForm(user, selectedChildId) {
@@ -817,9 +849,11 @@ function renderChecklistItem(user, mission) {
       <span class="checklist-copy">
         <strong>
           ${escapeHtml(mission.template.title)} +${formatWon(mission.template.point)}
-          <em class="mission-source ${source.className}">${source.label}</em>
         </strong>
-        <small>${mission.completed ? "완료" : "체크"}</small>
+        <small>
+          <em class="mission-source ${source.className}">${source.label}</em>
+          ${mission.completed ? "완료" : "체크"}
+        </small>
       </span>
     </label>
   `;

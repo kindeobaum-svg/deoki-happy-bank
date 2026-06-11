@@ -697,6 +697,52 @@ select:focus-visible {
   background: rgba(255, 255, 255, 0.94);
 }
 
+.checklist-money-summary {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 8px;
+}
+
+.checklist-money-summary article {
+  min-height: 104px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.checklist-money-summary article:first-child {
+  color: #fff;
+  background: linear-gradient(135deg, #f58220 0%, #f3ad31 100%);
+}
+
+.checklist-money-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.checklist-money-summary article:first-child span {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.checklist-money-summary strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--green);
+  font-size: clamp(20px, 6vw, 30px);
+  font-weight: 950;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.checklist-money-summary article:first-child strong {
+  color: #fff;
+  font-size: clamp(26px, 8vw, 40px);
+}
+
 .checklist-groups {
   display: grid;
   gap: 12px;
@@ -739,11 +785,11 @@ select:focus-visible {
 .checklist-item {
   position: relative;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 13px;
   align-items: center;
-  min-height: 62px;
-  padding: 12px;
+  min-height: 68px;
+  padding: 13px;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: #fffaf2;
@@ -763,8 +809,8 @@ select:focus-visible {
 
 .checkmark {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   place-items: center;
   border: 2px solid #e0ccb4;
   border-radius: 12px;
@@ -791,7 +837,8 @@ select:focus-visible {
 }
 
 .checklist-copy strong {
-  font-size: 17px;
+  font-size: 18px;
+  letter-spacing: -0.02em;
 }
 
 .checklist-copy strong .mission-source {
@@ -821,8 +868,11 @@ select:focus-visible {
 }
 
 .checklist-copy small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--green);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -1468,6 +1518,7 @@ input {
   .stats-grid,
   .home-money-grid,
   .detail-summary-grid,
+  .checklist-money-summary,
   .target-child-grid,
   .bank-summary-grid,
   .form-row {
