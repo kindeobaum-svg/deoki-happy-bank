@@ -78,6 +78,15 @@ function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function makeInviteCode(childName = "CHILD") {
+  const romanized = String(childName)
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 8)
+    .toUpperCase();
+  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `DK-${romanized || "CHILD"}-${suffix}`;
+}
+
 export function createInitialData(today = toDateKey()) {
   const base = {
     classes: [
@@ -340,6 +349,105 @@ export function getClass(data, classId) {
 
 export function getChild(data, childId) {
   return data.children.find((child) => child.id === childId) ?? null;
+}
+
+export function normalizeParentInviteCodes(data) {
+  const inviteCodes = Array.isArray(data.inviteCodes) ? data.inviteCodes : [];
+  const invitedChildIds = new Set(inviteCodes.map((invite) => invite.childId));
+  const generatedInvites = data.children
+    .filter((child) => !invitedChildIds.has(child.id))
+    .map((child) => ({
+      code: makeInviteCode(child.name),
+      childId: child.id,
+      label: `${child.name} 학부모 초대코드`,
+      active: true,
+      createdAt: toDateKey()
+    }));
+
+  if (!generatedInvites.length && Array.isArray(data.inviteCodes)) {
+    return data;
+  }
+
+  return {
+    ...data,
+    inviteCodes: [...inviteCodes, ...generatedInvites]
+  };
+}
+
+export function createParentInviteCode(data, user, childId) {
+  if (!user || user.role !== ROLES.DIRECTOR) {
+    throw new Error("원장만 초대코드를 생성할 수 있습니다.");
+  }
+
+  const child = getChild(data, childId);
+  if (!child) {
+    throw new Error("초대코드를 생성할 아이를 찾을 수 없습니다.");
+  }
+
+  const invite = {
+    code: makeInviteCode(child.name),
+    childId: child.id,
+    label: `${child.name} 학부모 초대코드`,
+    active: true,
+    createdAt: toDateKey()
+  };
+
+  return {
+    ...data,
+    inviteCodes: [invite, ...(data.inviteCodes ?? [])]
+  };
+}
+
+export function registerChild(data, user, childInput = {}) {
+  if (!user || user.role !== ROLES.DIRECTOR) {
+    throw new Error("원장만 아이를 등록할 수 있습니다.");
+  }
+
+  const name = String(childInput.name ?? "").trim();
+  if (!name) {
+    throw new Error("아이 이름을 입력해주세요.");
+  }
+
+  const classId = String(childInput.classId ?? "").trim();
+  if (!data.classes.some((classroom) => classroom.id === classId)) {
+    throw new Error("등록할 반을 선택해주세요.");
+  }
+
+  const balance = Number(childInput.balance ?? 0);
+  if (!Number.isFinite(balance) || balance < 0) {
+    throw new Error("초기 잔액은 0원 이상 숫자로 입력해주세요.");
+  }
+
+  const child = {
+    id: makeId("child"),
+    name,
+    classId,
+    birthMonth: String(childInput.birthMonth ?? "").trim(),
+    parentUserIds: [],
+    balance,
+    openingBalance: balance,
+    forest: {
+      treeName: `${name}의 행복나무`,
+      level: 1,
+      seeds: 0,
+      nextLevelSeeds: 10
+    }
+  };
+  const invite = {
+    code: makeInviteCode(name),
+    childId: child.id,
+    label: `${name} 학부모 초대코드`,
+    active: true,
+    createdAt: toDateKey()
+  };
+
+  return normalizeDailyMissions(
+    normalizeStandardMissionTemplates({
+      ...data,
+      children: [...data.children, child],
+      inviteCodes: [invite, ...(data.inviteCodes ?? [])]
+    })
+  );
 }
 
 export function signInParentWithInviteCode(data, inviteInput = {}) {

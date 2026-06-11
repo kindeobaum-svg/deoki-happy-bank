@@ -6,6 +6,7 @@ import {
   createChecklistMission,
   createInitialData,
   createMissionTemplate,
+  createParentInviteCode,
   getGrowthProgress,
   getUser,
   getVisibleAccountSummary,
@@ -17,6 +18,8 @@ import {
   getVisibleMissionHistory,
   getVisibleTransactions,
   normalizeDailyMissions,
+  normalizeParentInviteCodes,
+  registerChild,
   recordExpense,
   signInParentWithInviteCode
 } from "../src/state.js";
@@ -112,6 +115,43 @@ describe("invite code login", () => {
         }),
       /유효하지 않은/
     );
+  });
+
+  it("lets the director create a parent invite code for any child", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const updated = createParentInviteCode(data, director, "child-doyun");
+    const invite = updated.inviteCodes[0];
+
+    assert.equal(invite.childId, "child-doyun");
+    assert.match(invite.code, /^DK-/);
+  });
+
+  it("registers a child and automatically creates an invite code", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const updated = registerChild(data, director, {
+      name: "한지우",
+      classId: "sun",
+      birthMonth: "2020.10",
+      balance: 1000
+    });
+    const child = updated.children.find((item) => item.name === "한지우");
+    const invite = updated.inviteCodes.find((item) => item.childId === child.id);
+
+    assert.ok(child);
+    assert.ok(invite);
+    assert.match(invite.code, /^DK-/);
+  });
+
+  it("normalizes missing invite codes for existing children", () => {
+    const data = {
+      ...createInitialData("2026-06-09"),
+      inviteCodes: []
+    };
+    const updated = normalizeParentInviteCodes(data);
+
+    assert.equal(updated.inviteCodes.length, data.children.length);
   });
 });
 

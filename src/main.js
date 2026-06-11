@@ -7,6 +7,7 @@ import {
   createChecklistMission,
   createInitialData,
   createMissionTemplate,
+  createParentInviteCode,
   getChildAccountBalance,
   getClass,
   getVisibleChecklistMissions,
@@ -23,7 +24,9 @@ import {
   getVisibleTransactions,
   normalizeBankAccounts,
   normalizeDailyMissions,
+  normalizeParentInviteCodes,
   normalizeStandardMissionTemplates,
+  registerChild,
   recordExpense,
   signInParentWithInviteCode,
   toDateKey
@@ -40,7 +43,10 @@ const tabs = [
 ];
 
 let state = normalizeBankAccounts(
-  normalizeDailyMissions(normalizeStandardMissionTemplates(loadState(), new Date()), new Date())
+  normalizeDailyMissions(
+    normalizeStandardMissionTemplates(normalizeParentInviteCodes(loadState()), new Date()),
+    new Date()
+  )
 );
 let session = loadSession();
 let toastMessage = "";
@@ -333,7 +339,10 @@ function renderHome(user) {
           <p class="eyebrow">오늘 한눈 요약</p>
           <h2>행복부자 통장</h2>
         </div>
-        ${renderHomeChildFilter(user)}
+        <div class="home-title-actions">
+          ${user.role === ROLES.DIRECTOR ? `<button class="text-button" type="button" data-open-detail="invites">초대코드</button>` : ""}
+          ${renderHomeChildFilter(user)}
+        </div>
       </div>
 
       <button class="home-balance-card" type="button" data-open-detail="bank">
@@ -427,7 +436,108 @@ function renderHomeDetail(user, detailScreen) {
     return renderDetailPanel("성장 상세", renderGrowth(user));
   }
 
+  if (detailScreen.type === "invites") {
+    return renderDirectorInviteManager(user);
+  }
+
   return renderDetailPanel("통장 상세", renderBank(user));
+}
+
+function renderDirectorInviteManager(user) {
+  if (user.role !== ROLES.DIRECTOR) {
+    return renderDetailPanel("초대코드 관리", renderEmpty("원장만 초대코드를 관리할 수 있습니다."));
+  }
+
+  const invites = state.inviteCodes ?? [];
+
+  return `
+    <section class="detail-screen">
+      <div class="detail-header">
+        <button class="ghost-button" type="button" data-back-home>← 홈</button>
+        <h2>학부모 초대코드</h2>
+      </div>
+      <section class="director-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">아이 등록</p>
+            <h2>등록 시 초대코드 자동 생성</h2>
+          </div>
+        </div>
+        <form id="child-register-form">
+          <div class="form-row">
+            <label>
+              아이 이름
+              <input name="name" type="text" placeholder="예: 홍길동" required maxlength="20" />
+            </label>
+            <label>
+              반
+              <select name="classId" required>
+                ${state.classes
+                  .map((classroom) => `<option value="${classroom.id}">${escapeHtml(classroom.name)}</option>`)
+                  .join("")}
+              </select>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>
+              생년월
+              <input name="birthMonth" type="text" placeholder="예: 2020.03" maxlength="10" />
+            </label>
+            <label>
+              초기 잔액
+              <input name="balance" type="number" min="0" step="100" value="0" />
+            </label>
+          </div>
+          <button class="primary-button" type="submit">아이 등록 + 초대코드 생성</button>
+        </form>
+      </section>
+      <section class="director-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">초대코드 생성</p>
+            <h2>기존 아이 초대코드 추가 발급</h2>
+          </div>
+        </div>
+        <form id="invite-code-form">
+          <label>
+            아이 선택
+            <select name="childId">
+              ${state.children
+                .map((child) => `<option value="${child.id}">${escapeHtml(child.name)}</option>`)
+                .join("")}
+            </select>
+          </label>
+          <button class="primary-button" type="submit">초대코드 생성</button>
+        </form>
+      </section>
+      <section class="card-section compact">
+        <div class="section-heading">
+          <h2>초대코드 목록</h2>
+          <span class="mini-badge">${invites.length}개</span>
+        </div>
+        ${invites.length
+          ? invites.map((invite) => renderInviteCodeRow(invite)).join("")
+          : renderEmpty("생성된 초대코드가 없습니다.")}
+      </section>
+    </section>
+  `;
+}
+
+function renderInviteCodeRow(invite) {
+  const child = getVisibleChildren(state, getCurrentUser()).find((item) => item.id === invite.childId);
+  const claimedUser = invite.claimedBy ? getUser(state, invite.claimedBy) : null;
+
+  return `
+    <article class="invite-code-row">
+      <div>
+        <strong>${escapeHtml(invite.code)}</strong>
+        <p>${escapeHtml(child?.name ?? "알 수 없는 아이")} · ${invite.active ? "사용 가능" : "비활성"}</p>
+      </div>
+      <span class="status-pill ${claimedUser ? "success" : ""}">
+        ${claimedUser ? "가입됨" : "대기"}
+      </span>
+    </article>
+  `;
 }
 
 function renderDetailPanel(title, content) {
@@ -1286,7 +1396,14 @@ app.addEventListener("change", (event) => {
 
 app.addEventListener("submit", (event) => {
   if (
-    !["parent-invite-form", "mission-form", "custom-mission-form", "expense-form"].includes(
+    ![
+      "parent-invite-form",
+      "mission-form",
+      "custom-mission-form",
+      "expense-form",
+      "child-register-form",
+      "invite-code-form"
+    ].includes(
       event.target.id
     )
   ) {
@@ -1328,6 +1445,29 @@ app.addEventListener("submit", (event) => {
       setToast("오늘 미션이 생성되었습니다. 반복 미션은 매일 0시에 다시 생성됩니다.");
       session.tab = "missions";
       session.detailScreen = null;
+    }
+
+    if (event.target.id === "child-register-form") {
+      state = registerChild(state, getCurrentUser(), {
+        name: formData.get("name"),
+        classId: formData.get("classId"),
+        birthMonth: formData.get("birthMonth"),
+        balance: formData.get("balance")
+      });
+      setToast("아이 등록과 학부모 초대코드 생성이 완료되었습니다.");
+      session.detailScreen = {
+        type: "invites",
+        childId: null
+      };
+    }
+
+    if (event.target.id === "invite-code-form") {
+      state = createParentInviteCode(state, getCurrentUser(), formData.get("childId"));
+      setToast("학부모 초대코드가 생성되었습니다.");
+      session.detailScreen = {
+        type: "invites",
+        childId: null
+      };
     }
 
     if (event.target.id === "custom-mission-form") {
