@@ -336,6 +336,34 @@ describe("daily missions", () => {
       ROLES.TEACHER
     );
   });
+
+  it("lets teachers and directors view parent-created missions within their visibility", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const withParentMission = createChecklistMission(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "물 아껴쓰기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const teacher = getUser(withParentMission, "teacher-sun");
+    const director = getUser(withParentMission, "director-1");
+
+    assert.ok(
+      getVisibleChecklistMissions(withParentMission, teacher, "child-minjun", "2026-06-09").some(
+        (mission) => mission.template.title === "물 아껴쓰기"
+      )
+    );
+    assert.ok(
+      getVisibleChecklistMissions(withParentMission, director, "child-minjun", "2026-06-09").some(
+        (mission) => mission.template.title === "물 아껴쓰기"
+      )
+    );
+  });
 });
 
 describe("growth stages", () => {

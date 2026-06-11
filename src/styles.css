@@ -1341,6 +1341,33 @@ input {
   gap: 12px;
 }
 
+.mission-add-details {
+  display: grid;
+  gap: 12px;
+}
+
+.mission-add-details summary {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 950;
+  list-style: none;
+  background: var(--primary);
+  cursor: pointer;
+}
+
+.mission-add-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.mission-add-details[open] summary {
+  margin-bottom: 12px;
+}
+
 .mission-target-box {
   display: grid;
   gap: 10px;

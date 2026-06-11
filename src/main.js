@@ -720,19 +720,40 @@ function renderCustomMissionForm(user, selectedChildId) {
     return "";
   }
 
+  if (user.role === ROLES.PARENT) {
+    return `
+      <details class="custom-mission-card mission-add-details">
+        <summary>+ 미션 추가</summary>
+        <form id="custom-mission-form">
+          ${renderParentMissionTarget(children)}
+          <label>
+            미션명
+            <input name="title" type="text" placeholder="예: 책읽기" required maxlength="40" />
+          </label>
+          <label>
+            적립 금액
+            <input name="point" type="number" min="1" step="100" value="500" required />
+          </label>
+          <button class="primary-button" type="submit">저장</button>
+        </form>
+        <p class="helper-text">예: 동생도와주기 +500원, 책읽기 +500원, 물 아껴쓰기 +500원</p>
+      </details>
+    `;
+  }
+
   return `
     <section class="custom-mission-card">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">${user.role === ROLES.TEACHER ? "교사 미션 배정" : "가정 맞춤 미션"}</p>
+          <p class="eyebrow">교사 미션 배정</p>
           <h2>+ 미션 추가</h2>
         </div>
       </div>
       <form id="custom-mission-form">
-        ${user.role === ROLES.TEACHER ? renderTeacherMissionTargets(children) : renderParentMissionTarget(children)}
+        ${renderTeacherMissionTargets(children)}
         <label>
           미션명
-          <input name="title" type="text" placeholder="${user.role === ROLES.TEACHER ? "예: 견학시 질서 지키기" : "예: 책읽기"}" required maxlength="40" />
+          <input name="title" type="text" placeholder="예: 견학시 질서 지키기" required maxlength="40" />
         </label>
         <label>
           적립 금액
@@ -741,9 +762,7 @@ function renderCustomMissionForm(user, selectedChildId) {
         <button class="primary-button" type="submit">+ 미션 추가</button>
       </form>
       <p class="helper-text">
-        ${user.role === ROLES.TEACHER
-          ? "예: 견학시 질서 지키기 +500원, 숲체험시 협력하기 +500원, 발표하기 +500원"
-          : "예: 동생 도와주기 +500원, 책읽기 +500원, 물건 아껴쓰기 +500원"}
+        예: 견학시 질서 지키기 +500원, 숲체험시 협력하기 +500원, 발표하기 +500원
       </p>
     </section>
   `;
