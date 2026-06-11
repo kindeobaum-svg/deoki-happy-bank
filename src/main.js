@@ -25,6 +25,7 @@ import {
   normalizeDailyMissions,
   normalizeStandardMissionTemplates,
   recordExpense,
+  signInParentWithInviteCode,
   toDateKey
 } from "./state.js";
 
@@ -157,8 +158,7 @@ function render() {
 function renderLogin() {
   const roleGroups = [
     { role: ROLES.DIRECTOR, title: "원장용 화면" },
-    { role: ROLES.TEACHER, title: "교사용 화면" },
-    { role: ROLES.PARENT, title: "학부모용 화면" }
+    { role: ROLES.TEACHER, title: "교사용 화면" }
   ];
 
   return `
@@ -195,6 +195,23 @@ function renderLogin() {
         `
         )
         .join("")}
+
+      <div class="login-group invite-login-card">
+        <h2>학부모용 초대코드 로그인</h2>
+        <p>원에서 받은 초대코드로 가입하면 자기 자녀 기록만 볼 수 있습니다.</p>
+        <form id="parent-invite-form">
+          <label>
+            학부모 이름
+            <input name="parentName" type="text" placeholder="예: 김민준 학부모" maxlength="30" />
+          </label>
+          <label>
+            초대코드
+            <input name="inviteCode" type="text" placeholder="예: DK-MINJUN-2026" required />
+          </label>
+          <button class="primary-button" type="submit">학부모 로그인 / 가입</button>
+        </form>
+        <small>테스트 코드: DK-MINJUN-2026, DK-SEOA-2026, DK-HARIN-2026</small>
+      </div>
     </section>
   `;
 }
@@ -1268,7 +1285,11 @@ app.addEventListener("change", (event) => {
 });
 
 app.addEventListener("submit", (event) => {
-  if (!["mission-form", "custom-mission-form", "expense-form"].includes(event.target.id)) {
+  if (
+    !["parent-invite-form", "mission-form", "custom-mission-form", "expense-form"].includes(
+      event.target.id
+    )
+  ) {
     return;
   }
 
@@ -1276,6 +1297,25 @@ app.addEventListener("submit", (event) => {
   const formData = new FormData(event.target);
 
   try {
+    if (event.target.id === "parent-invite-form") {
+      const result = signInParentWithInviteCode(state, {
+        parentName: formData.get("parentName"),
+        inviteCode: formData.get("inviteCode")
+      });
+      state = result.data;
+      session = {
+        userId: result.user.id,
+        tab: "home",
+        selectedChildId: getDefaultChildId(state, result.user),
+        detailScreen: null
+      };
+      saveState();
+      saveSession();
+      setToast(result.isNewUser ? "초대코드 가입이 완료되었습니다." : "학부모로 로그인했습니다.");
+      render();
+      return;
+    }
+
     if (event.target.id === "mission-form") {
       const [targetType, targetId] = String(formData.get("target")).split(":");
       state = createMissionTemplate(state, getCurrentUser(), {

@@ -17,7 +17,8 @@ import {
   getVisibleMissionHistory,
   getVisibleTransactions,
   normalizeDailyMissions,
-  recordExpense
+  recordExpense,
+  signInParentWithInviteCode
 } from "../src/state.js";
 
 describe("role based access", () => {
@@ -66,6 +67,51 @@ describe("role based access", () => {
     assert.ok(getVisibleGrowthRecords(data, parent).every((item) => item.childId === "child-minjun"));
     assert.ok(getVisibleDailyMissions(data, parent).every((item) => item.childId === "child-minjun"));
     assert.ok(getVisibleMissionHistory(data, parent).every((item) => item.childId === "child-minjun"));
+  });
+});
+
+describe("invite code login", () => {
+  it("signs an existing parent in with an invite code", () => {
+    const data = createInitialData("2026-06-09");
+    const result = signInParentWithInviteCode(data, {
+      inviteCode: "dk-minjun-2026",
+      parentName: "테스트 학부모"
+    });
+
+    assert.equal(result.user.id, "parent-minjun");
+    assert.equal(result.isNewUser, false);
+    assert.deepEqual(
+      getVisibleChildren(result.data, result.user).map((child) => child.id),
+      ["child-minjun"]
+    );
+  });
+
+  it("creates a parent account for an unclaimed invite code", () => {
+    const data = createInitialData("2026-06-09");
+    const result = signInParentWithInviteCode(data, {
+      inviteCode: "DK-HARIN-2026",
+      parentName: "이하린 보호자"
+    });
+
+    assert.equal(result.isNewUser, true);
+    assert.equal(result.user.role, ROLES.PARENT);
+    assert.deepEqual(result.user.childIds, ["child-harin"]);
+    assert.deepEqual(
+      getVisibleChildren(result.data, result.user).map((child) => child.id),
+      ["child-harin"]
+    );
+  });
+
+  it("rejects an invalid parent invite code", () => {
+    const data = createInitialData("2026-06-09");
+
+    assert.throws(
+      () =>
+        signInParentWithInviteCode(data, {
+          inviteCode: "WRONG-CODE"
+        }),
+      /유효하지 않은/
+    );
   });
 });
 

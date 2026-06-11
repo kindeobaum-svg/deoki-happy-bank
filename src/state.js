@@ -125,6 +125,26 @@ export function createInitialData(today = toDateKey()) {
         description: "박서아 어린이의 기록만 조회합니다."
       }
     ],
+    inviteCodes: [
+      {
+        code: "DK-MINJUN-2026",
+        childId: "child-minjun",
+        label: "김민준 학부모 초대코드",
+        active: true
+      },
+      {
+        code: "DK-SEOA-2026",
+        childId: "child-seoa",
+        label: "박서아 학부모 초대코드",
+        active: true
+      },
+      {
+        code: "DK-HARIN-2026",
+        childId: "child-harin",
+        label: "이하린 학부모 초대코드",
+        active: true
+      }
+    ],
     children: [
       {
         id: "child-minjun",
@@ -320,6 +340,70 @@ export function getClass(data, classId) {
 
 export function getChild(data, childId) {
   return data.children.find((child) => child.id === childId) ?? null;
+}
+
+export function signInParentWithInviteCode(data, inviteInput = {}) {
+  const code = String(inviteInput.inviteCode ?? "")
+    .trim()
+    .toUpperCase();
+  const invite = data.inviteCodes?.find((item) => item.active && item.code.toUpperCase() === code);
+
+  if (!invite) {
+    throw new Error("유효하지 않은 초대코드입니다.");
+  }
+
+  const child = getChild(data, invite.childId);
+  if (!child) {
+    throw new Error("초대코드에 연결된 아이를 찾을 수 없습니다.");
+  }
+
+  const existingParent = data.users.find(
+    (user) => user.role === ROLES.PARENT && Array.isArray(user.childIds) && user.childIds.includes(child.id)
+  );
+
+  if (existingParent) {
+    return {
+      data,
+      user: existingParent,
+      isNewUser: false
+    };
+  }
+
+  const parentName = String(inviteInput.parentName ?? "").trim() || `${child.name} 학부모`;
+  const user = {
+    id: makeId("parent"),
+    role: ROLES.PARENT,
+    name: parentName,
+    childIds: [child.id],
+    inviteCode: invite.code,
+    title: "학부모용",
+    description: `${child.name} 어린이의 기록만 조회합니다.`
+  };
+
+  return {
+    data: {
+      ...data,
+      users: [...data.users, user],
+      children: data.children.map((item) =>
+        item.id === child.id
+          ? {
+              ...item,
+              parentUserIds: [...new Set([...(item.parentUserIds ?? []), user.id])]
+            }
+          : item
+      ),
+      inviteCodes: data.inviteCodes.map((item) =>
+        item.code === invite.code
+          ? {
+              ...item,
+              claimedBy: user.id
+            }
+          : item
+      )
+    },
+    user,
+    isNewUser: true
+  };
 }
 
 export function canViewChild(user, child) {
