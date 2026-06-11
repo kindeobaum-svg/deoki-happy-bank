@@ -734,6 +734,7 @@ function renderCustomMissionForm(user, selectedChildId) {
             적립 금액
             <input name="point" type="number" min="1" step="100" value="500" required />
           </label>
+          ${renderMissionRepeatOptions()}
           <button class="primary-button" type="submit">저장</button>
         </form>
         <p class="helper-text">예: 동생도와주기 +500원, 책읽기 +500원, 물 아껴쓰기 +500원</p>
@@ -759,12 +760,29 @@ function renderCustomMissionForm(user, selectedChildId) {
           적립 금액
           <input name="point" type="number" min="1" step="100" value="500" required />
         </label>
+        ${renderMissionRepeatOptions()}
         <button class="primary-button" type="submit">+ 미션 추가</button>
       </form>
       <p class="helper-text">
         예: 견학시 질서 지키기 +500원, 숲체험시 협력하기 +500원, 발표하기 +500원
       </p>
     </section>
+  `;
+}
+
+function renderMissionRepeatOptions() {
+  return `
+    <fieldset class="mission-repeat-box">
+      <legend>반복 여부</legend>
+      <label class="check-label target-check">
+        <input name="repeatType" type="radio" value="once" />
+        하루만 하기
+      </label>
+      <label class="check-label target-check">
+        <input name="repeatType" type="radio" value="daily" checked />
+        매일 반복
+      </label>
+    </fieldset>
   `;
 }
 
@@ -1535,7 +1553,8 @@ app.addEventListener("submit", (event) => {
       state = createChecklistMission(state, getCurrentUser(), {
         childIds: selectedChildIds,
         title: formData.get("title"),
-        point: formData.get("point")
+        point: formData.get("point"),
+        repeatDaily: formData.get("repeatType") !== "once"
       });
       setToast("맞춤 미션이 오늘 체크리스트에 추가되었습니다.");
       session.selectedChildId = selectedChildIds.length === 1 ? selectedChildIds[0] : "all";

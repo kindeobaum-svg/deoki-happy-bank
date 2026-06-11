@@ -768,6 +768,7 @@ export function createChecklistMission(data, user, missionInput, date = new Date
   }
 
   const createdAt = toDateKey(date);
+  const repeatDaily = missionInput.repeatDaily !== false && missionInput.repeatDaily !== "false";
   const templates = children.map((child) => ({
     id: makeId("mission-template"),
     title,
@@ -777,7 +778,7 @@ export function createChecklistMission(data, user, missionInput, date = new Date
     createdBy: user.id,
     creatorRole: user.role,
     createdAt,
-    repeatDaily: true,
+    repeatDaily,
     active: true,
     checklist: true
   }));

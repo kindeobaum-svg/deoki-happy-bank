@@ -1368,7 +1368,8 @@ input {
   margin-bottom: 12px;
 }
 
-.mission-target-box {
+.mission-target-box,
+.mission-repeat-box {
   display: grid;
   gap: 10px;
   margin: 0;
@@ -1378,7 +1379,8 @@ input {
   background: #fffaf2;
 }
 
-.mission-target-box legend {
+.mission-target-box legend,
+.mission-repeat-box legend {
   padding: 0 6px;
   color: var(--muted);
   font-size: 13px;

@@ -257,6 +257,61 @@ describe("daily missions", () => {
     assert.equal(summary.currentBalance, 13300);
   });
 
+  it("does not regenerate one-day checklist missions after completion", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const withOneDayMission = createChecklistMission(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "동생도와주기",
+        point: 500,
+        repeatDaily: false
+      },
+      "2026-06-09"
+    );
+    const mission = getVisibleChecklistMissions(
+      withOneDayMission,
+      parent,
+      "child-minjun",
+      "2026-06-09"
+    ).find((item) => item.template.title === "동생도와주기");
+    const completed = completeMission(withOneDayMission, parent, mission.id, "2026-06-09");
+    const tomorrow = normalizeDailyMissions(completed, "2026-06-10");
+
+    assert.equal(
+      getVisibleChecklistMissions(tomorrow, parent, "child-minjun", "2026-06-10").some(
+        (item) => item.template.title === "동생도와주기"
+      ),
+      false
+    );
+  });
+
+  it("regenerates daily checklist missions on the next day", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const withDailyMission = createChecklistMission(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "책읽기",
+        point: 500,
+        repeatDaily: true
+      },
+      "2026-06-09"
+    );
+    const tomorrow = normalizeDailyMissions(withDailyMission, "2026-06-10");
+
+    assert.equal(
+      getVisibleChecklistMissions(tomorrow, parent, "child-minjun", "2026-06-10").some(
+        (item) => item.template.title === "책읽기" && item.completed === false
+      ),
+      true
+    );
+  });
+
   it("prevents a parent from adding a mission for another child", () => {
     const data = createInitialData("2026-06-09");
     const parent = getUser(data, "parent-minjun");
