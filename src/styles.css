@@ -73,14 +73,21 @@ select:focus-visible {
 }
 
 .brand-card,
+.bank-hero,
+.home-balance-card,
+.home-growth-card,
+.home-mission-card,
 .permission-card,
 .notice-card,
 .mission-composer,
+.custom-mission-card,
+.expense-card,
 .card-section,
 .stat-card,
 .child-card,
 .timeline-card,
 .growth-card,
+.growth-stage-card,
 .forest-card,
 .mission-card,
 .empty-card {
@@ -180,6 +187,34 @@ select:focus-visible {
   line-height: 1.4;
 }
 
+.invite-login-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.invite-login-card p,
+.invite-login-card small {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.invite-login-card form {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0 10px;
+}
+
+.invite-login-card label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .role-badge,
 .mini-badge,
 .status-pill,
@@ -225,7 +260,11 @@ select:focus-visible {
 .ghost-button,
 .text-button,
 .small-button,
-.primary-button {
+.primary-button,
+.home-balance-card,
+.home-money-grid button,
+.home-mission-card,
+.mission-checklist-entry {
   min-height: 44px;
   border: 0;
   border-radius: 999px;
@@ -307,6 +346,565 @@ select:focus-visible {
   gap: 16px;
 }
 
+.home-dashboard {
+  display: grid;
+  gap: 12px;
+}
+
+.home-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-title-actions {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.home-title-row h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.home-balance-card {
+  width: 100%;
+  border-radius: 24px;
+  padding: 24px 22px;
+  color: #fff;
+  text-align: left;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.32), transparent 11rem),
+    linear-gradient(135deg, #f58220 0%, #f3ad31 100%);
+}
+
+.home-balance-card span,
+.home-money-grid span,
+.home-card-heading span {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.home-balance-card span {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.home-balance-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(40px, 12vw, 58px);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.home-money-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-money-grid button {
+  width: 100%;
+  min-height: 86px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  color: inherit;
+  text-align: left;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.home-money-grid span,
+.home-card-heading span {
+  color: var(--muted);
+}
+
+.home-money-grid strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.home-money-grid .deposit {
+  color: var(--green);
+}
+
+.home-money-grid .expense {
+  color: var(--red);
+}
+
+.home-growth-card,
+.home-mission-card {
+  display: grid;
+  width: 100%;
+  gap: 12px;
+  padding: 18px;
+  color: inherit;
+  text-align: left;
+  box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.home-growth-card.flat,
+.home-mission-card.flat {
+  box-shadow: none;
+}
+
+.home-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.home-card-heading strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 20px;
+}
+
+.home-card-heading small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.home-growth-list,
+.home-mission-list {
+  display: grid;
+  gap: 8px;
+}
+
+.home-growth-row,
+.home-mission-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 18px;
+  background: #fffaf2;
+}
+
+.home-growth-row {
+  width: 100%;
+  border: 0;
+  color: inherit;
+  text-align: left;
+}
+
+.home-growth-row div,
+.home-mission-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.home-growth-row strong,
+.home-mission-row strong {
+  font-size: 15px;
+}
+
+.home-growth-row span,
+.home-mission-row span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.home-growth-row p {
+  margin: 0;
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.home-mission-row.done {
+  background: #f4fbf6;
+}
+
+.home-chevron {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 900;
+  background: #fff0cf;
+}
+
+.detail-screen {
+  display: grid;
+  gap: 14px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.child-detail-hero,
+.checklist-hero,
+.director-card,
+.mission-checklist-entry {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.child-detail-hero {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+}
+
+.director-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.director-card form {
+  display: grid;
+  gap: 12px;
+}
+
+.director-card label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.invite-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fffaf2;
+}
+
+.invite-code-row strong {
+  display: block;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+.invite-code-row p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.avatar.big {
+  flex-basis: 62px;
+  width: 62px;
+  height: 62px;
+  border-radius: 24px;
+  font-size: 26px;
+}
+
+.child-detail-hero h3 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.child-detail-hero p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.detail-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.detail-summary-grid article {
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.detail-summary-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.detail-summary-grid strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.card-section.compact {
+  padding: 16px;
+  box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.checklist-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--green), #7bcf86);
+}
+
+.checklist-hero .eyebrow,
+.checklist-hero p,
+.checklist-hero .filter-label {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.checklist-hero h3 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.filter-label.light select {
+  border-color: rgba(255, 255, 255, 0.44);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.checklist-money-summary {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 8px;
+}
+
+.checklist-money-summary article {
+  min-height: 104px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.checklist-money-summary article:first-child {
+  color: #fff;
+  background: linear-gradient(135deg, #f58220 0%, #f3ad31 100%);
+}
+
+.checklist-money-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.checklist-money-summary article:first-child span {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.checklist-money-summary strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--green);
+  font-size: clamp(20px, 6vw, 30px);
+  font-weight: 950;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.checklist-money-summary article:first-child strong {
+  color: #fff;
+  font-size: clamp(26px, 8vw, 40px);
+}
+
+.checklist-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.checklist-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.checklist-child-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.checklist-child-heading strong {
+  display: block;
+  font-size: 18px;
+}
+
+.checklist-child-heading span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.checklist-items {
+  display: grid;
+  gap: 9px;
+}
+
+.checklist-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 13px;
+  align-items: center;
+  min-height: 68px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fffaf2;
+}
+
+.checklist-item.done {
+  border-color: #ccefd8;
+  background: #f4fbf6;
+}
+
+.checklist-item input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.checkmark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 2px solid #e0ccb4;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.checklist-item input:checked + .checkmark {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.checklist-item input:checked + .checkmark::after {
+  content: "✓";
+  color: #fff;
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.checklist-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.checklist-copy strong {
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.checklist-copy strong .mission-source {
+  display: inline-flex;
+  margin-left: 6px;
+  padding: 5px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  vertical-align: middle;
+}
+
+.mission-source.standard {
+  color: #8a5a14;
+  background: #fff2cf;
+}
+
+.mission-source.teacher {
+  color: #0f6b46;
+  background: #dff7e8;
+}
+
+.mission-source.parent {
+  color: #3852c5;
+  background: #eef2ff;
+}
+
+.checklist-copy small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.mission-checklist-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 20px;
+  color: inherit;
+  text-align: left;
+}
+
+.mission-checklist-entry span:not(.home-chevron) {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.mission-checklist-entry strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 22px;
+}
+
+.mission-checklist-entry p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -334,6 +932,8 @@ select:focus-visible {
 
 .notice-card,
 .mission-composer,
+.custom-mission-card,
+.expense-card,
 .card-section {
   padding: 18px;
 }
@@ -344,6 +944,86 @@ select:focus-visible {
 
 .notice-card.secure {
   background: #eef2ff;
+}
+
+.bank-hero {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  color: #fff;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.24), transparent 12rem),
+    linear-gradient(135deg, #f58220 0%, #f3ad31 100%);
+}
+
+.bank-hero .eyebrow,
+.bank-hero .filter-label {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.bank-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.bank-hero-top span {
+  display: block;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.84);
+  font-weight: 800;
+}
+
+.bank-hero-top strong {
+  display: block;
+  margin-top: 4px;
+  font-size: clamp(38px, 11vw, 54px);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.bank-hero select {
+  border-color: rgba(255, 255, 255, 0.44);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.bank-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bank-summary-grid article {
+  min-height: 82px;
+  padding: 13px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.bank-summary-grid span {
+  display: block;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bank-summary-grid strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 950;
+  word-break: keep-all;
+}
+
+.bank-summary-grid .deposit {
+  color: #eaffe9;
+}
+
+.bank-summary-grid .expense {
+  color: #fff0f0;
 }
 
 .section-heading,
@@ -483,6 +1163,14 @@ input {
   white-space: nowrap;
 }
 
+.amount.expense {
+  color: var(--red);
+}
+
+.transaction-card.expense {
+  background: #fff8f8;
+}
+
 .forest-card {
   padding: 18px;
   text-align: center;
@@ -496,6 +1184,7 @@ input {
 }
 
 .growth-meta,
+.growth-stage-top,
 .mission-title {
   display: flex;
   align-items: center;
@@ -511,6 +1200,111 @@ input {
 
 .growth-card h3 {
   margin: 10px 0 0;
+}
+
+.growth-stage-list {
+  display: grid;
+  gap: 12px;
+}
+
+.growth-stage-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+.growth-stage-top {
+  align-items: flex-start;
+}
+
+.growth-stage-top h3 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.growth-stage-top p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.stage-count {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-width: 54px;
+  min-height: 54px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  color: #fff;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--green), #9ad95f);
+}
+
+.stage-list {
+  display: grid;
+  gap: 10px;
+}
+
+.stage-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fffaf2;
+}
+
+.stage-row.achieved {
+  border-color: #ccefd8;
+  background: #f4fbf6;
+}
+
+.stage-marker {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--muted);
+  font-weight: 900;
+  background: #f1e2cf;
+}
+
+.stage-row.achieved .stage-marker {
+  color: #fff;
+  background: var(--green);
+}
+
+.stage-copy {
+  min-width: 0;
+}
+
+.stage-copy p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.stage-button {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  color: #8a5a14;
+  font-size: 12px;
+  font-weight: 900;
+  background: #fff2cf;
+  white-space: nowrap;
+}
+
+.stage-row.achieved .stage-button {
+  color: #197146;
+  background: #dff7e8;
 }
 
 .tag-row {
@@ -531,12 +1325,92 @@ input {
   gap: 12px;
 }
 
-.mission-composer label {
+.mission-composer label,
+.custom-mission-card label,
+.expense-card label {
   display: grid;
   gap: 7px;
   color: var(--muted);
   font-size: 13px;
   font-weight: 800;
+}
+
+.custom-mission-card form,
+.expense-card form {
+  display: grid;
+  gap: 12px;
+}
+
+.mission-add-details {
+  display: grid;
+  gap: 12px;
+}
+
+.mission-add-details summary {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 950;
+  list-style: none;
+  background: var(--primary);
+  cursor: pointer;
+}
+
+.mission-add-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.mission-add-details[open] summary {
+  margin-bottom: 12px;
+}
+
+.mission-target-box,
+.mission-repeat-box {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fffaf2;
+}
+
+.mission-target-box legend,
+.mission-repeat-box legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.target-child-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.target-check {
+  color: var(--text) !important;
+  font-size: 14px !important;
+}
+
+.expense-card {
+  background: #fff8f8;
+}
+
+.expense-button {
+  background: var(--red);
+}
+
+.helper-text {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .form-row {
@@ -671,18 +1545,40 @@ input {
   }
 
   .stats-grid,
+  .home-money-grid,
+  .detail-summary-grid,
+  .checklist-money-summary,
+  .target-child-grid,
+  .bank-summary-grid,
   .form-row {
     grid-template-columns: 1fr;
   }
 
+  .home-title-row,
+  .home-title-actions,
+  .home-card-heading,
+  .home-growth-row,
+  .home-mission-row,
+  .checklist-hero,
+  .mission-checklist-entry,
+  .bank-hero-top,
   .timeline-card,
   .mission-card,
-  .screen-heading {
+  .screen-heading,
+  .growth-stage-top {
     flex-direction: column;
     align-items: stretch;
   }
 
   .mission-actions {
     justify-items: stretch;
+  }
+
+  .stage-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .stage-button {
+    grid-column: 1 / -1;
   }
 }

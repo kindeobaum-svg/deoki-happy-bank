@@ -13,6 +13,52 @@ export const ROLE_LABELS = {
 export const STORAGE_KEY = "deoki-happy-bank-state-v1";
 export const SESSION_KEY = "deoki-happy-bank-session-v1";
 
+export const STANDARD_MISSIONS = [
+  { key: "greeting", title: "인사하기", point: 500 },
+  { key: "cleanup", title: "정리정돈", point: 500 },
+  { key: "brush-teeth", title: "양치하기", point: 500 },
+  { key: "help-friend", title: "친구 돕기", point: 500 }
+];
+
+export const GROWTH_STAGES = [
+  {
+    id: "seed",
+    name: "씨앗 단계",
+    threshold: 0,
+    description: "행복부자 여정을 시작했어요."
+  },
+  {
+    id: "sprout",
+    name: "새싹 단계",
+    threshold: 5000,
+    description: "좋은 습관이 새싹처럼 올라와요."
+  },
+  {
+    id: "young-tree",
+    name: "어린나무 단계",
+    threshold: 10000,
+    description: "스스로 해내는 힘이 자라고 있어요."
+  },
+  {
+    id: "happy-tree",
+    name: "행복나무 단계",
+    threshold: 15000,
+    description: "따뜻한 마음이 단단한 나무가 되었어요."
+  },
+  {
+    id: "forest-keeper",
+    name: "숲지킴이 단계",
+    threshold: 20000,
+    description: "친구와 교실의 행복을 함께 지켜요."
+  },
+  {
+    id: "happy-rich",
+    name: "행복부자 단계",
+    threshold: 30000,
+    description: "행복을 나누는 멋진 부자가 되었어요."
+  }
+];
+
 export function toDateKey(value = new Date()) {
   if (typeof value === "string") {
     return value.slice(0, 10);
@@ -30,6 +76,15 @@ function makeId(prefix) {
   }
 
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function makeInviteCode(childName = "CHILD") {
+  const romanized = String(childName)
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 8)
+    .toUpperCase();
+  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `DK-${romanized || "CHILD"}-${suffix}`;
 }
 
 export function createInitialData(today = toDateKey()) {
@@ -77,6 +132,26 @@ export function createInitialData(today = toDateKey()) {
         childIds: ["child-seoa"],
         title: "학부모용",
         description: "박서아 어린이의 기록만 조회합니다."
+      }
+    ],
+    inviteCodes: [
+      {
+        code: "DK-MINJUN-2026",
+        childId: "child-minjun",
+        label: "김민준 학부모 초대코드",
+        active: true
+      },
+      {
+        code: "DK-SEOA-2026",
+        childId: "child-seoa",
+        label: "박서아 학부모 초대코드",
+        active: true
+      },
+      {
+        code: "DK-HARIN-2026",
+        childId: "child-harin",
+        label: "이하린 학부모 초대코드",
+        active: true
       }
     ],
     children: [
@@ -133,6 +208,14 @@ export function createInitialData(today = toDateKey()) {
         amount: 300,
         title: "아침 인사 먼저 하기",
         category: "예절"
+      },
+      {
+        id: "tx-6",
+        childId: "child-minjun",
+        date: "2026-06-08",
+        amount: -1000,
+        title: "행복상점 연필 구입",
+        category: "지출"
       },
       {
         id: "tx-3",
@@ -253,7 +336,7 @@ export function createInitialData(today = toDateKey()) {
     lastMissionDate: null
   };
 
-  return normalizeDailyMissions(base, today);
+  return normalizeDailyMissions(normalizeStandardMissionTemplates(normalizeBankAccounts(base), today), today);
 }
 
 export function getUser(data, userId) {
@@ -266,6 +349,169 @@ export function getClass(data, classId) {
 
 export function getChild(data, childId) {
   return data.children.find((child) => child.id === childId) ?? null;
+}
+
+export function normalizeParentInviteCodes(data) {
+  const inviteCodes = Array.isArray(data.inviteCodes) ? data.inviteCodes : [];
+  const invitedChildIds = new Set(inviteCodes.map((invite) => invite.childId));
+  const generatedInvites = data.children
+    .filter((child) => !invitedChildIds.has(child.id))
+    .map((child) => ({
+      code: makeInviteCode(child.name),
+      childId: child.id,
+      label: `${child.name} 학부모 초대코드`,
+      active: true,
+      createdAt: toDateKey()
+    }));
+
+  if (!generatedInvites.length && Array.isArray(data.inviteCodes)) {
+    return data;
+  }
+
+  return {
+    ...data,
+    inviteCodes: [...inviteCodes, ...generatedInvites]
+  };
+}
+
+export function createParentInviteCode(data, user, childId) {
+  if (!user || user.role !== ROLES.DIRECTOR) {
+    throw new Error("원장만 초대코드를 생성할 수 있습니다.");
+  }
+
+  const child = getChild(data, childId);
+  if (!child) {
+    throw new Error("초대코드를 생성할 아이를 찾을 수 없습니다.");
+  }
+
+  const invite = {
+    code: makeInviteCode(child.name),
+    childId: child.id,
+    label: `${child.name} 학부모 초대코드`,
+    active: true,
+    createdAt: toDateKey()
+  };
+
+  return {
+    ...data,
+    inviteCodes: [invite, ...(data.inviteCodes ?? [])]
+  };
+}
+
+export function registerChild(data, user, childInput = {}) {
+  if (!user || user.role !== ROLES.DIRECTOR) {
+    throw new Error("원장만 아이를 등록할 수 있습니다.");
+  }
+
+  const name = String(childInput.name ?? "").trim();
+  if (!name) {
+    throw new Error("아이 이름을 입력해주세요.");
+  }
+
+  const classId = String(childInput.classId ?? "").trim();
+  if (!data.classes.some((classroom) => classroom.id === classId)) {
+    throw new Error("등록할 반을 선택해주세요.");
+  }
+
+  const balance = Number(childInput.balance ?? 0);
+  if (!Number.isFinite(balance) || balance < 0) {
+    throw new Error("초기 잔액은 0원 이상 숫자로 입력해주세요.");
+  }
+
+  const child = {
+    id: makeId("child"),
+    name,
+    classId,
+    birthMonth: String(childInput.birthMonth ?? "").trim(),
+    parentUserIds: [],
+    balance,
+    openingBalance: balance,
+    forest: {
+      treeName: `${name}의 행복나무`,
+      level: 1,
+      seeds: 0,
+      nextLevelSeeds: 10
+    }
+  };
+  const invite = {
+    code: makeInviteCode(name),
+    childId: child.id,
+    label: `${name} 학부모 초대코드`,
+    active: true,
+    createdAt: toDateKey()
+  };
+
+  return normalizeDailyMissions(
+    normalizeStandardMissionTemplates({
+      ...data,
+      children: [...data.children, child],
+      inviteCodes: [invite, ...(data.inviteCodes ?? [])]
+    })
+  );
+}
+
+export function signInParentWithInviteCode(data, inviteInput = {}) {
+  const code = String(inviteInput.inviteCode ?? "")
+    .trim()
+    .toUpperCase();
+  const invite = data.inviteCodes?.find((item) => item.active && item.code.toUpperCase() === code);
+
+  if (!invite) {
+    throw new Error("유효하지 않은 초대코드입니다.");
+  }
+
+  const child = getChild(data, invite.childId);
+  if (!child) {
+    throw new Error("초대코드에 연결된 아이를 찾을 수 없습니다.");
+  }
+
+  const existingParent = data.users.find(
+    (user) => user.role === ROLES.PARENT && Array.isArray(user.childIds) && user.childIds.includes(child.id)
+  );
+
+  if (existingParent) {
+    return {
+      data,
+      user: existingParent,
+      isNewUser: false
+    };
+  }
+
+  const parentName = String(inviteInput.parentName ?? "").trim() || `${child.name} 학부모`;
+  const user = {
+    id: makeId("parent"),
+    role: ROLES.PARENT,
+    name: parentName,
+    childIds: [child.id],
+    inviteCode: invite.code,
+    title: "학부모용",
+    description: `${child.name} 어린이의 기록만 조회합니다.`
+  };
+
+  return {
+    data: {
+      ...data,
+      users: [...data.users, user],
+      children: data.children.map((item) =>
+        item.id === child.id
+          ? {
+              ...item,
+              parentUserIds: [...new Set([...(item.parentUserIds ?? []), user.id])]
+            }
+          : item
+      ),
+      inviteCodes: data.inviteCodes.map((item) =>
+        item.code === invite.code
+          ? {
+              ...item,
+              claimedBy: user.id
+            }
+          : item
+      )
+    },
+    user,
+    isNewUser: true
+  };
 }
 
 export function canViewChild(user, child) {
@@ -288,8 +534,58 @@ export function canViewChild(user, child) {
   return false;
 }
 
+export function canManageChild(user, child) {
+  if (!user || !child) {
+    return false;
+  }
+
+  if (user.role === ROLES.TEACHER) {
+    return child.classId === user.classId;
+  }
+
+  if (user.role === ROLES.PARENT) {
+    return Array.isArray(user.childIds) && user.childIds.includes(child.id);
+  }
+
+  return false;
+}
+
 export function getVisibleChildren(data, user) {
   return data.children.filter((child) => canViewChild(user, child));
+}
+
+function getChildTransactionTotal(data, childId) {
+  return data.transactions
+    .filter((transaction) => transaction.childId === childId)
+    .reduce((sum, transaction) => sum + Number(transaction.amount ?? 0), 0);
+}
+
+export function normalizeBankAccounts(data) {
+  return {
+    ...data,
+    children: data.children.map((child) => {
+      if (Number.isFinite(Number(child.openingBalance))) {
+        return child;
+      }
+
+      return {
+        ...child,
+        openingBalance: Number(child.balance ?? 0) - getChildTransactionTotal(data, child.id)
+      };
+    })
+  };
+}
+
+export function getChildAccountBalance(data, child) {
+  if (!child) {
+    return 0;
+  }
+
+  const openingBalance = Number.isFinite(Number(child.openingBalance))
+    ? Number(child.openingBalance)
+    : Number(child.balance ?? 0) - getChildTransactionTotal(data, child.id);
+
+  return openingBalance + getChildTransactionTotal(data, child.id);
 }
 
 export function getVisibleClasses(data, user) {
@@ -371,6 +667,46 @@ export function normalizeDailyMissions(data, date = new Date()) {
   };
 }
 
+export function normalizeStandardMissionTemplates(data, date = new Date()) {
+  const dateKey = toDateKey(date);
+  const existingKeys = new Set(
+    data.missionTemplates.map((template) => `${template.standardKey ?? ""}:${template.targetId}`)
+  );
+  const generatedTemplates = [];
+
+  for (const classroom of data.classes) {
+    for (const mission of STANDARD_MISSIONS) {
+      const key = `${mission.key}:${classroom.id}`;
+      if (existingKeys.has(key)) {
+        continue;
+      }
+
+      existingKeys.add(key);
+      generatedTemplates.push({
+        id: `standard-${classroom.id}-${mission.key}`,
+        title: mission.title,
+        point: mission.point,
+        targetType: "class",
+        targetId: classroom.id,
+        createdBy: classroom.teacherId,
+        createdAt: dateKey,
+        repeatDaily: true,
+        active: true,
+        standardKey: mission.key
+      });
+    }
+  }
+
+  if (!generatedTemplates.length) {
+    return data;
+  }
+
+  return {
+    ...data,
+    missionTemplates: [...generatedTemplates, ...data.missionTemplates]
+  };
+}
+
 export function createMissionTemplate(data, user, missionInput, date = new Date()) {
   if (!user || user.role !== ROLES.TEACHER) {
     throw new Error("교사만 미션을 생성할 수 있습니다.");
@@ -411,6 +747,51 @@ export function createMissionTemplate(data, user, missionInput, date = new Date(
   );
 }
 
+export function createChecklistMission(data, user, missionInput, date = new Date()) {
+  const childIds = Array.isArray(missionInput.childIds)
+    ? missionInput.childIds
+    : [missionInput.childId].filter(Boolean);
+  const children = childIds.map((childId) => getChild(data, childId)).filter(Boolean);
+
+  if (!children.length || children.some((child) => !canManageChild(user, child))) {
+    throw new Error("자기 아이 또는 담당 반 아이에게만 미션을 추가할 수 있습니다.");
+  }
+
+  const title = String(missionInput.title ?? "").trim();
+  if (!title) {
+    throw new Error("미션명을 입력해주세요.");
+  }
+
+  const point = Number(missionInput.point);
+  if (!Number.isFinite(point) || point <= 0) {
+    throw new Error("금액은 1원 이상 숫자로 입력해주세요.");
+  }
+
+  const createdAt = toDateKey(date);
+  const repeatDaily = missionInput.repeatDaily !== false && missionInput.repeatDaily !== "false";
+  const templates = children.map((child) => ({
+    id: makeId("mission-template"),
+    title,
+    point,
+    targetType: "child",
+    targetId: child.id,
+    createdBy: user.id,
+    creatorRole: user.role,
+    createdAt,
+    repeatDaily,
+    active: true,
+    checklist: true
+  }));
+
+  return normalizeDailyMissions(
+    {
+      ...data,
+      missionTemplates: [...templates, ...data.missionTemplates]
+    },
+    date
+  );
+}
+
 export function canCreateMissionForTarget(data, user, targetType, targetId) {
   if (!user || user.role !== ROLES.TEACHER) {
     return false;
@@ -441,6 +822,27 @@ export function getVisibleDailyMissions(data, user, date = new Date()) {
         return Number(a.completed) - Number(b.completed);
       }
       return a.child.name.localeCompare(b.child.name, "ko");
+    });
+}
+
+export function getVisibleChecklistMissions(data, user, childId = "all", date = new Date()) {
+  const standardKeys = new Set(STANDARD_MISSIONS.map((mission) => mission.key));
+
+  return getVisibleDailyMissions(data, user, date)
+    .filter((mission) => standardKeys.has(mission.template.standardKey) || mission.template.checklist)
+    .filter((mission) => childId === "all" || mission.childId === childId)
+    .sort((a, b) => {
+      const rawAIndex = STANDARD_MISSIONS.findIndex((mission) => mission.key === a.template.standardKey);
+      const rawBIndex = STANDARD_MISSIONS.findIndex((mission) => mission.key === b.template.standardKey);
+      const aIndex = rawAIndex === -1 ? Number.MAX_SAFE_INTEGER : rawAIndex;
+      const bIndex = rawBIndex === -1 ? Number.MAX_SAFE_INTEGER : rawBIndex;
+      if (a.child.name !== b.child.name) {
+        return a.child.name.localeCompare(b.child.name, "ko");
+      }
+      if (aIndex !== bIndex) {
+        return aIndex - bIndex;
+      }
+      return a.template.title.localeCompare(b.template.title, "ko");
     });
 }
 
@@ -477,8 +879,8 @@ export function completeMission(data, user, missionId, date = new Date()) {
     throw new Error("미션을 찾을 수 없습니다.");
   }
 
-  if (!user || user.role !== ROLES.TEACHER || !canViewChild(user, child)) {
-    throw new Error("교사는 자기 반 아이의 미션만 완료 처리할 수 있습니다.");
+  if (!canManageChild(user, child)) {
+    throw new Error("자기 아이 또는 담당 반 아이의 미션만 완료 처리할 수 있습니다.");
   }
 
   if (mission.completed) {
@@ -537,18 +939,84 @@ export function completeMission(data, user, missionId, date = new Date()) {
   };
 }
 
+export function recordExpense(data, user, expenseInput, date = new Date()) {
+  const child = getChild(data, expenseInput.childId);
+
+  if (!canManageChild(user, child)) {
+    throw new Error("자기 아이 또는 담당 반 아이의 지출만 입력할 수 있습니다.");
+  }
+
+  const title = String(expenseInput.title ?? "").trim();
+  if (!title) {
+    throw new Error("지출 내용을 입력해주세요.");
+  }
+
+  const amount = Number(expenseInput.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("지출 금액은 1원 이상 숫자로 입력해주세요.");
+  }
+
+  return {
+    ...data,
+    transactions: [
+      {
+        id: makeId("tx-expense"),
+        childId: child.id,
+        date: toDateKey(date),
+        amount: -amount,
+        title,
+        category: "지출"
+      },
+      ...data.transactions
+    ]
+  };
+}
+
 export function getVisibleTransactions(data, user, childId = "all") {
   const visibleChildIds = new Set(getVisibleChildren(data, user).map((child) => child.id));
 
   return data.transactions
     .filter((transaction) => visibleChildIds.has(transaction.childId))
     .filter((transaction) => childId === "all" || transaction.childId === childId)
-    .map((transaction) => ({
-      ...transaction,
-      child: getChild(data, transaction.childId)
-    }))
+    .map((transaction) => decorateTransaction(data, transaction))
     .filter((transaction) => transaction.child)
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function decorateTransaction(data, transaction) {
+  const amount = Number(transaction.amount ?? 0);
+
+  return {
+    ...transaction,
+    amount,
+    child: getChild(data, transaction.childId),
+    direction: amount < 0 ? "expense" : "deposit",
+    absoluteAmount: Math.abs(amount)
+  };
+}
+
+export function getVisibleAccountSummary(data, user, childId = "all") {
+  const visibleChildren = getVisibleChildren(data, user).filter(
+    (child) => childId === "all" || child.id === childId
+  );
+  const visibleChildIds = new Set(visibleChildren.map((child) => child.id));
+  const transactions = data.transactions
+    .filter((transaction) => visibleChildIds.has(transaction.childId))
+    .map((transaction) => decorateTransaction(data, transaction));
+
+  return {
+    totalDeposit: transactions
+      .filter((transaction) => transaction.amount > 0)
+      .reduce((sum, transaction) => sum + transaction.amount, 0),
+    totalExpense: transactions
+      .filter((transaction) => transaction.amount < 0)
+      .reduce((sum, transaction) => sum + transaction.absoluteAmount, 0),
+    currentBalance: visibleChildren.reduce(
+      (sum, child) => sum + getChildAccountBalance(data, child),
+      0
+    ),
+    transactionCount: transactions.length
+  };
 }
 
 export function getVisibleGrowthRecords(data, user, childId = "all") {
@@ -563,6 +1031,48 @@ export function getVisibleGrowthRecords(data, user, childId = "all") {
     }))
     .filter((record) => record.child)
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function getGrowthProgress(child) {
+  const balance = Math.max(0, Number(child?.balance ?? 0));
+  const stages = GROWTH_STAGES.map((stage) => ({
+    ...stage,
+    achieved: balance >= stage.threshold,
+    remaining: Math.max(0, stage.threshold - balance)
+  }));
+  const achievedStages = stages.filter((stage) => stage.achieved);
+  const currentStage = achievedStages.at(-1) ?? stages[0];
+  const nextStage = stages.find((stage) => !stage.achieved) ?? null;
+  const previousThreshold = currentStage?.threshold ?? 0;
+  const nextThreshold = nextStage?.threshold ?? previousThreshold;
+  const requiredToNext = nextStage ? nextStage.threshold - balance : 0;
+  const range = Math.max(1, nextThreshold - previousThreshold);
+  const progressPercent = nextStage
+    ? Math.min(100, Math.max(0, Math.round(((balance - previousThreshold) / range) * 100)))
+    : 100;
+
+  return {
+    balance,
+    stages,
+    currentStage,
+    nextStage,
+    requiredToNext,
+    progressPercent,
+    completedStageCount: achievedStages.length,
+    totalStageCount: stages.length
+  };
+}
+
+export function getVisibleGrowthProgress(data, user, childId = "all") {
+  return getVisibleChildren(data, user)
+    .filter((child) => childId === "all" || child.id === childId)
+    .map((child) => ({
+      child,
+      progress: getGrowthProgress({
+        ...child,
+        balance: getChildAccountBalance(data, child)
+      })
+    }));
 }
 
 export function getVisibleForestMoments(data, user, childId = "all") {
@@ -583,9 +1093,15 @@ export function getDashboardStats(data, user, date = new Date()) {
   const visibleChildren = getVisibleChildren(data, user);
   const visibleChildIds = new Set(visibleChildren.map((child) => child.id));
   const missions = getVisibleDailyMissions(data, user, date);
-  const totalBalance = visibleChildren.reduce((sum, child) => sum + child.balance, 0);
+  const totalBalance = visibleChildren.reduce(
+    (sum, child) => sum + getChildAccountBalance(data, child),
+    0
+  );
   const todayTransactions = data.transactions.filter(
-    (transaction) => transaction.date === toDateKey(date) && visibleChildIds.has(transaction.childId)
+    (transaction) =>
+      transaction.date === toDateKey(date) &&
+      visibleChildIds.has(transaction.childId) &&
+      Number(transaction.amount) > 0
   );
 
   return {

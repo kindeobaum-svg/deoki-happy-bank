@@ -3,15 +3,25 @@ import { describe, it } from "node:test";
 import {
   ROLES,
   completeMission,
+  createChecklistMission,
   createInitialData,
   createMissionTemplate,
+  createParentInviteCode,
+  getGrowthProgress,
   getUser,
+  getVisibleAccountSummary,
+  getVisibleChecklistMissions,
   getVisibleChildren,
   getVisibleDailyMissions,
+  getVisibleGrowthProgress,
   getVisibleGrowthRecords,
   getVisibleMissionHistory,
   getVisibleTransactions,
-  normalizeDailyMissions
+  normalizeDailyMissions,
+  normalizeParentInviteCodes,
+  registerChild,
+  recordExpense,
+  signInParentWithInviteCode
 } from "../src/state.js";
 
 describe("role based access", () => {
@@ -60,6 +70,88 @@ describe("role based access", () => {
     assert.ok(getVisibleGrowthRecords(data, parent).every((item) => item.childId === "child-minjun"));
     assert.ok(getVisibleDailyMissions(data, parent).every((item) => item.childId === "child-minjun"));
     assert.ok(getVisibleMissionHistory(data, parent).every((item) => item.childId === "child-minjun"));
+  });
+});
+
+describe("invite code login", () => {
+  it("signs an existing parent in with an invite code", () => {
+    const data = createInitialData("2026-06-09");
+    const result = signInParentWithInviteCode(data, {
+      inviteCode: "dk-minjun-2026",
+      parentName: "테스트 학부모"
+    });
+
+    assert.equal(result.user.id, "parent-minjun");
+    assert.equal(result.isNewUser, false);
+    assert.deepEqual(
+      getVisibleChildren(result.data, result.user).map((child) => child.id),
+      ["child-minjun"]
+    );
+  });
+
+  it("creates a parent account for an unclaimed invite code", () => {
+    const data = createInitialData("2026-06-09");
+    const result = signInParentWithInviteCode(data, {
+      inviteCode: "DK-HARIN-2026",
+      parentName: "이하린 보호자"
+    });
+
+    assert.equal(result.isNewUser, true);
+    assert.equal(result.user.role, ROLES.PARENT);
+    assert.deepEqual(result.user.childIds, ["child-harin"]);
+    assert.deepEqual(
+      getVisibleChildren(result.data, result.user).map((child) => child.id),
+      ["child-harin"]
+    );
+  });
+
+  it("rejects an invalid parent invite code", () => {
+    const data = createInitialData("2026-06-09");
+
+    assert.throws(
+      () =>
+        signInParentWithInviteCode(data, {
+          inviteCode: "WRONG-CODE"
+        }),
+      /유효하지 않은/
+    );
+  });
+
+  it("lets the director create a parent invite code for any child", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const updated = createParentInviteCode(data, director, "child-doyun");
+    const invite = updated.inviteCodes[0];
+
+    assert.equal(invite.childId, "child-doyun");
+    assert.match(invite.code, /^DK-/);
+  });
+
+  it("registers a child and automatically creates an invite code", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const updated = registerChild(data, director, {
+      name: "한지우",
+      classId: "sun",
+      birthMonth: "2020.10",
+      balance: 1000
+    });
+    const child = updated.children.find((item) => item.name === "한지우");
+    const invite = updated.inviteCodes.find((item) => item.childId === child.id);
+
+    assert.ok(child);
+    assert.ok(invite);
+    assert.match(invite.code, /^DK-/);
+  });
+
+  it("normalizes missing invite codes for existing children", () => {
+    const data = {
+      ...createInitialData("2026-06-09"),
+      inviteCodes: []
+    };
+    const updated = normalizeParentInviteCodes(data);
+
+    assert.equal(updated.inviteCodes.length, data.children.length);
   });
 });
 
@@ -124,5 +216,315 @@ describe("daily missions", () => {
 
     assert.equal(today.filter((mission) => mission.templateId === template.id).length, 2);
     assert.equal(tomorrow.filter((mission) => mission.templateId === template.id).length, 0);
+  });
+
+  it("generates the standard checklist missions for each visible child", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const checklist = getVisibleChecklistMissions(data, teacher, "child-minjun", "2026-06-09");
+
+    assert.deepEqual(
+      checklist.map((mission) => mission.template.title),
+      ["인사하기", "정리정돈", "양치하기", "친구 돕기"]
+    );
+    assert.ok(checklist.every((mission) => mission.template.point === 500));
+  });
+
+  it("lets a parent add and complete a custom mission for their own child", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const withCustomMission = createChecklistMission(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "책읽기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const mission = getVisibleChecklistMissions(
+      withCustomMission,
+      parent,
+      "child-minjun",
+      "2026-06-09"
+    ).find((item) => item.template.title === "책읽기");
+    const completed = completeMission(withCustomMission, parent, mission.id, "2026-06-09");
+    const summary = getVisibleAccountSummary(completed, parent, "child-minjun");
+
+    assert.ok(mission);
+    assert.equal(mission.template.point, 500);
+    assert.equal(summary.currentBalance, 13300);
+  });
+
+  it("does not regenerate one-day checklist missions after completion", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const withOneDayMission = createChecklistMission(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "동생도와주기",
+        point: 500,
+        repeatDaily: false
+      },
+      "2026-06-09"
+    );
+    const mission = getVisibleChecklistMissions(
+      withOneDayMission,
+      parent,
+      "child-minjun",
+      "2026-06-09"
+    ).find((item) => item.template.title === "동생도와주기");
+    const completed = completeMission(withOneDayMission, parent, mission.id, "2026-06-09");
+    const tomorrow = normalizeDailyMissions(completed, "2026-06-10");
+
+    assert.equal(
+      getVisibleChecklistMissions(tomorrow, parent, "child-minjun", "2026-06-10").some(
+        (item) => item.template.title === "동생도와주기"
+      ),
+      false
+    );
+  });
+
+  it("regenerates daily checklist missions on the next day", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const withDailyMission = createChecklistMission(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "책읽기",
+        point: 500,
+        repeatDaily: true
+      },
+      "2026-06-09"
+    );
+    const tomorrow = normalizeDailyMissions(withDailyMission, "2026-06-10");
+
+    assert.equal(
+      getVisibleChecklistMissions(tomorrow, parent, "child-minjun", "2026-06-10").some(
+        (item) => item.template.title === "책읽기" && item.completed === false
+      ),
+      true
+    );
+  });
+
+  it("prevents a parent from adding a mission for another child", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+
+    assert.throws(
+      () =>
+        createChecklistMission(data, parent, {
+          childId: "child-seoa",
+          title: "다른 아이 미션",
+          point: 500
+        }),
+      /자기 아이/
+    );
+  });
+
+  it("lets a teacher assign a custom mission to selected children in their class", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const withTeacherMission = createChecklistMission(
+      data,
+      teacher,
+      {
+        childIds: ["child-minjun", "child-harin"],
+        title: "견학시 질서 지키기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const missions = getVisibleChecklistMissions(withTeacherMission, teacher, "all", "2026-06-09").filter(
+      (mission) => mission.template.title === "견학시 질서 지키기"
+    );
+
+    assert.deepEqual(
+      missions.map((mission) => mission.childId).sort(),
+      ["child-harin", "child-minjun"]
+    );
+    assert.ok(missions.every((mission) => mission.template.creatorRole === ROLES.TEACHER));
+  });
+
+  it("distinguishes parent-created missions from teacher-created missions", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const teacher = getUser(data, "teacher-sun");
+    const withParentMission = createChecklistMission(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "책읽기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const withTeacherMission = createChecklistMission(
+      withParentMission,
+      teacher,
+      {
+        childIds: ["child-minjun"],
+        title: "발표하기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const missions = getVisibleChecklistMissions(
+      withTeacherMission,
+      getUser(withTeacherMission, "parent-minjun"),
+      "child-minjun",
+      "2026-06-09"
+    );
+
+    assert.equal(
+      missions.find((mission) => mission.template.title === "책읽기").template.creatorRole,
+      ROLES.PARENT
+    );
+    assert.equal(
+      missions.find((mission) => mission.template.title === "발표하기").template.creatorRole,
+      ROLES.TEACHER
+    );
+  });
+
+  it("lets teachers and directors view parent-created missions within their visibility", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const withParentMission = createChecklistMission(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "물 아껴쓰기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const teacher = getUser(withParentMission, "teacher-sun");
+    const director = getUser(withParentMission, "director-1");
+
+    assert.ok(
+      getVisibleChecklistMissions(withParentMission, teacher, "child-minjun", "2026-06-09").some(
+        (mission) => mission.template.title === "물 아껴쓰기"
+      )
+    );
+    assert.ok(
+      getVisibleChecklistMissions(withParentMission, director, "child-minjun", "2026-06-09").some(
+        (mission) => mission.template.title === "물 아껴쓰기"
+      )
+    );
+  });
+});
+
+describe("growth stages", () => {
+  it("shows the current stage and next required amount from balance", () => {
+    const progress = getGrowthProgress({ balance: 12800 });
+
+    assert.equal(progress.currentStage.id, "young-tree");
+    assert.equal(progress.nextStage.id, "happy-tree");
+    assert.equal(progress.requiredToNext, 2200);
+    assert.equal(progress.stages.find((stage) => stage.id === "sprout").achieved, true);
+    assert.equal(progress.stages.find((stage) => stage.id === "happy-tree").achieved, false);
+  });
+
+  it("automatically marks stages achieved when the balance meets the threshold", () => {
+    const progress = getGrowthProgress({ balance: 20000 });
+
+    assert.equal(progress.currentStage.id, "forest-keeper");
+    assert.equal(progress.stages.find((stage) => stage.id === "forest-keeper").achieved, true);
+    assert.equal(progress.stages.find((stage) => stage.id === "happy-rich").remaining, 10000);
+  });
+
+  it("updates achieved stages after a mission changes the balance", () => {
+    const data = createInitialData("2026-06-09");
+    const adjusted = {
+      ...data,
+      children: data.children.map((child) =>
+        child.id === "child-minjun" ? { ...child, balance: 14900, openingBalance: 15100 } : child
+      )
+    };
+    const teacher = getUser(adjusted, "teacher-sun");
+    const mission = getVisibleDailyMissions(adjusted, teacher, "2026-06-09").find(
+      (item) => item.childId === "child-minjun" && item.template.point === 300
+    );
+    const completed = completeMission(adjusted, teacher, mission.id, "2026-06-09");
+    const growthItem = getVisibleGrowthProgress(
+      completed,
+      getUser(completed, "parent-minjun"),
+      "child-minjun"
+    )[0];
+
+    assert.equal(growthItem.progress.balance, 15200);
+    assert.equal(growthItem.progress.currentStage.id, "happy-tree");
+    assert.equal(
+      growthItem.progress.stages.find((stage) => stage.id === "happy-tree").achieved,
+      true
+    );
+  });
+});
+
+describe("bank account summary", () => {
+  it("shows deposits, expenses, and current balance from visible transactions", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const summary = getVisibleAccountSummary(data, parent, "child-minjun");
+
+    assert.equal(summary.totalDeposit, 800);
+    assert.equal(summary.totalExpense, 1000);
+    assert.equal(summary.currentBalance, 12800);
+    assert.equal(summary.transactionCount, 3);
+  });
+
+  it("automatically recalculates the current balance when an expense is added", () => {
+    const data = createInitialData("2026-06-09");
+    const withExpense = {
+      ...data,
+      transactions: [
+        {
+          id: "tx-extra-expense",
+          childId: "child-minjun",
+          date: "2026-06-09",
+          amount: -500,
+          title: "행복상점 간식 교환",
+          category: "지출"
+        },
+        ...data.transactions
+      ]
+    };
+    const summary = getVisibleAccountSummary(
+      withExpense,
+      getUser(withExpense, "parent-minjun"),
+      "child-minjun"
+    );
+
+    assert.equal(summary.totalDeposit, 800);
+    assert.equal(summary.totalExpense, 1500);
+    assert.equal(summary.currentBalance, 12300);
+  });
+
+  it("records an expense and subtracts it from the current balance", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const withExpense = recordExpense(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "행복상점 간식 교환",
+        amount: 700
+      },
+      "2026-06-09"
+    );
+    const summary = getVisibleAccountSummary(withExpense, parent, "child-minjun");
+    const transaction = getVisibleTransactions(withExpense, parent, "child-minjun")[0];
+
+    assert.equal(summary.totalExpense, 1700);
+    assert.equal(summary.currentBalance, 12100);
+    assert.equal(transaction.amount, -700);
   });
 });
