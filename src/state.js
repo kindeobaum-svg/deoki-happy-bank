@@ -14,11 +14,10 @@ export const STORAGE_KEY = "deoki-happy-bank-state-v1";
 export const SESSION_KEY = "deoki-happy-bank-session-v1";
 
 export const STANDARD_MISSIONS = [
-  { key: "dress", title: "스스로 옷 입기", point: 500 },
   { key: "greeting", title: "인사하기", point: 500 },
-  { key: "cleanup", title: "정리정돈하기", point: 500 },
-  { key: "help-friend", title: "친구 도와주기", point: 500 },
-  { key: "brush-teeth", title: "양치하기", point: 500 }
+  { key: "cleanup", title: "정리정돈", point: 500 },
+  { key: "brush-teeth", title: "양치하기", point: 500 },
+  { key: "help-friend", title: "친구 돕기", point: 500 }
 ];
 
 export const GROWTH_STAGES = [
@@ -343,6 +342,22 @@ export function canViewChild(user, child) {
   return false;
 }
 
+export function canManageChild(user, child) {
+  if (!user || !child) {
+    return false;
+  }
+
+  if (user.role === ROLES.TEACHER) {
+    return child.classId === user.classId;
+  }
+
+  if (user.role === ROLES.PARENT) {
+    return Array.isArray(user.childIds) && user.childIds.includes(child.id);
+  }
+
+  return false;
+}
+
 export function getVisibleChildren(data, user) {
   return data.children.filter((child) => canViewChild(user, child));
 }
@@ -540,6 +555,45 @@ export function createMissionTemplate(data, user, missionInput, date = new Date(
   );
 }
 
+export function createChecklistMission(data, user, missionInput, date = new Date()) {
+  const child = getChild(data, missionInput.childId);
+
+  if (!canManageChild(user, child)) {
+    throw new Error("자기 아이 또는 담당 반 아이에게만 미션을 추가할 수 있습니다.");
+  }
+
+  const title = String(missionInput.title ?? "").trim();
+  if (!title) {
+    throw new Error("미션명을 입력해주세요.");
+  }
+
+  const point = Number(missionInput.point);
+  if (!Number.isFinite(point) || point <= 0) {
+    throw new Error("금액은 1원 이상 숫자로 입력해주세요.");
+  }
+
+  const template = {
+    id: makeId("mission-template"),
+    title,
+    point,
+    targetType: "child",
+    targetId: child.id,
+    createdBy: user.id,
+    createdAt: toDateKey(date),
+    repeatDaily: true,
+    active: true,
+    checklist: true
+  };
+
+  return normalizeDailyMissions(
+    {
+      ...data,
+      missionTemplates: [template, ...data.missionTemplates]
+    },
+    date
+  );
+}
+
 export function canCreateMissionForTarget(data, user, targetType, targetId) {
   if (!user || user.role !== ROLES.TEACHER) {
     return false;
@@ -577,15 +631,20 @@ export function getVisibleChecklistMissions(data, user, childId = "all", date = 
   const standardKeys = new Set(STANDARD_MISSIONS.map((mission) => mission.key));
 
   return getVisibleDailyMissions(data, user, date)
-    .filter((mission) => standardKeys.has(mission.template.standardKey))
+    .filter((mission) => standardKeys.has(mission.template.standardKey) || mission.template.checklist)
     .filter((mission) => childId === "all" || mission.childId === childId)
     .sort((a, b) => {
-      const aIndex = STANDARD_MISSIONS.findIndex((mission) => mission.key === a.template.standardKey);
-      const bIndex = STANDARD_MISSIONS.findIndex((mission) => mission.key === b.template.standardKey);
+      const rawAIndex = STANDARD_MISSIONS.findIndex((mission) => mission.key === a.template.standardKey);
+      const rawBIndex = STANDARD_MISSIONS.findIndex((mission) => mission.key === b.template.standardKey);
+      const aIndex = rawAIndex === -1 ? Number.MAX_SAFE_INTEGER : rawAIndex;
+      const bIndex = rawBIndex === -1 ? Number.MAX_SAFE_INTEGER : rawBIndex;
       if (a.child.name !== b.child.name) {
         return a.child.name.localeCompare(b.child.name, "ko");
       }
-      return aIndex - bIndex;
+      if (aIndex !== bIndex) {
+        return aIndex - bIndex;
+      }
+      return a.template.title.localeCompare(b.template.title, "ko");
     });
 }
 
@@ -622,8 +681,8 @@ export function completeMission(data, user, missionId, date = new Date()) {
     throw new Error("미션을 찾을 수 없습니다.");
   }
 
-  if (!user || user.role !== ROLES.TEACHER || !canViewChild(user, child)) {
-    throw new Error("교사는 자기 반 아이의 미션만 완료 처리할 수 있습니다.");
+  if (!canManageChild(user, child)) {
+    throw new Error("자기 아이 또는 담당 반 아이의 미션만 완료 처리할 수 있습니다.");
   }
 
   if (mission.completed) {
@@ -679,6 +738,39 @@ export function completeMission(data, user, missionId, date = new Date()) {
           }
         : item
     )
+  };
+}
+
+export function recordExpense(data, user, expenseInput, date = new Date()) {
+  const child = getChild(data, expenseInput.childId);
+
+  if (!canManageChild(user, child)) {
+    throw new Error("자기 아이 또는 담당 반 아이의 지출만 입력할 수 있습니다.");
+  }
+
+  const title = String(expenseInput.title ?? "").trim();
+  if (!title) {
+    throw new Error("지출 내용을 입력해주세요.");
+  }
+
+  const amount = Number(expenseInput.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("지출 금액은 1원 이상 숫자로 입력해주세요.");
+  }
+
+  return {
+    ...data,
+    transactions: [
+      {
+        id: makeId("tx-expense"),
+        childId: child.id,
+        date: toDateKey(date),
+        amount: -amount,
+        title,
+        category: "지출"
+      },
+      ...data.transactions
+    ]
   };
 }
 

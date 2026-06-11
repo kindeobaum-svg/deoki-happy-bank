@@ -80,6 +80,8 @@ select:focus-visible {
 .permission-card,
 .notice-card,
 .mission-composer,
+.custom-mission-card,
+.expense-card,
 .card-section,
 .stat-card,
 .child-card,
@@ -432,6 +434,14 @@ select:focus-visible {
   font-size: 20px;
 }
 
+.home-card-heading small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .home-growth-list,
 .home-mission-list {
   display: grid;
@@ -768,6 +778,8 @@ select:focus-visible {
 
 .notice-card,
 .mission-composer,
+.custom-mission-card,
+.expense-card,
 .card-section {
   padding: 18px;
 }
@@ -1159,12 +1171,35 @@ input {
   gap: 12px;
 }
 
-.mission-composer label {
+.mission-composer label,
+.custom-mission-card label,
+.expense-card label {
   display: grid;
   gap: 7px;
   color: var(--muted);
   font-size: 13px;
   font-weight: 800;
+}
+
+.custom-mission-card form,
+.expense-card form {
+  display: grid;
+  gap: 12px;
+}
+
+.expense-card {
+  background: #fff8f8;
+}
+
+.expense-button {
+  background: var(--red);
+}
+
+.helper-text {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .form-row {

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   ROLES,
   completeMission,
+  createChecklistMission,
   createInitialData,
   createMissionTemplate,
   getGrowthProgress,
@@ -15,7 +16,8 @@ import {
   getVisibleGrowthRecords,
   getVisibleMissionHistory,
   getVisibleTransactions,
-  normalizeDailyMissions
+  normalizeDailyMissions,
+  recordExpense
 } from "../src/state.js";
 
 describe("role based access", () => {
@@ -137,9 +139,51 @@ describe("daily missions", () => {
 
     assert.deepEqual(
       checklist.map((mission) => mission.template.title),
-      ["스스로 옷 입기", "인사하기", "정리정돈하기", "친구 도와주기", "양치하기"]
+      ["인사하기", "정리정돈", "양치하기", "친구 돕기"]
     );
     assert.ok(checklist.every((mission) => mission.template.point === 500));
+  });
+
+  it("lets a parent add and complete a custom mission for their own child", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const withCustomMission = createChecklistMission(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "책읽기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const mission = getVisibleChecklistMissions(
+      withCustomMission,
+      parent,
+      "child-minjun",
+      "2026-06-09"
+    ).find((item) => item.template.title === "책읽기");
+    const completed = completeMission(withCustomMission, parent, mission.id, "2026-06-09");
+    const summary = getVisibleAccountSummary(completed, parent, "child-minjun");
+
+    assert.ok(mission);
+    assert.equal(mission.template.point, 500);
+    assert.equal(summary.currentBalance, 13300);
+  });
+
+  it("prevents a parent from adding a mission for another child", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+
+    assert.throws(
+      () =>
+        createChecklistMission(data, parent, {
+          childId: "child-seoa",
+          title: "다른 아이 미션",
+          point: 500
+        }),
+      /자기 아이/
+    );
   });
 });
 
@@ -227,5 +271,26 @@ describe("bank account summary", () => {
     assert.equal(summary.totalDeposit, 800);
     assert.equal(summary.totalExpense, 1500);
     assert.equal(summary.currentBalance, 12300);
+  });
+
+  it("records an expense and subtracts it from the current balance", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const withExpense = recordExpense(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "행복상점 간식 교환",
+        amount: 700
+      },
+      "2026-06-09"
+    );
+    const summary = getVisibleAccountSummary(withExpense, parent, "child-minjun");
+    const transaction = getVisibleTransactions(withExpense, parent, "child-minjun")[0];
+
+    assert.equal(summary.totalExpense, 1700);
+    assert.equal(summary.currentBalance, 12100);
+    assert.equal(transaction.amount, -700);
   });
 });
