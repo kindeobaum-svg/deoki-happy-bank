@@ -565,33 +565,64 @@ function renderCustomMissionForm(user, selectedChildId) {
     <section class="custom-mission-card">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">가정 맞춤 미션</p>
+          <p class="eyebrow">${user.role === ROLES.TEACHER ? "교사 미션 배정" : "가정 맞춤 미션"}</p>
           <h2>+ 미션 추가</h2>
         </div>
       </div>
       <form id="custom-mission-form">
-        <div class="form-row">
-          <label>
-            아이
-            <select name="childId">
-              ${children
-                .map((child) => `<option value="${child.id}">${escapeHtml(child.name)}</option>`)
-                .join("")}
-            </select>
-          </label>
-          <label>
-            적립 금액
-            <input name="point" type="number" min="1" step="100" value="500" required />
-          </label>
-        </div>
+        ${user.role === ROLES.TEACHER ? renderTeacherMissionTargets(children) : renderParentMissionTarget(children)}
         <label>
           미션명
-          <input name="title" type="text" placeholder="예: 책읽기" required maxlength="40" />
+          <input name="title" type="text" placeholder="${user.role === ROLES.TEACHER ? "예: 견학시 질서 지키기" : "예: 책읽기"}" required maxlength="40" />
+        </label>
+        <label>
+          적립 금액
+          <input name="point" type="number" min="1" step="100" value="500" required />
         </label>
         <button class="primary-button" type="submit">+ 미션 추가</button>
       </form>
-      <p class="helper-text">예: 동생 도와주기 +500원, 책읽기 +500원, 물건 아껴쓰기 +500원</p>
+      <p class="helper-text">
+        ${user.role === ROLES.TEACHER
+          ? "예: 견학시 질서 지키기 +500원, 숲체험시 협력하기 +500원, 발표하기 +500원"
+          : "예: 동생 도와주기 +500원, 책읽기 +500원, 물건 아껴쓰기 +500원"}
+      </p>
     </section>
+  `;
+}
+
+function renderTeacherMissionTargets(children) {
+  return `
+    <fieldset class="mission-target-box">
+      <legend>배정 대상</legend>
+      <label class="check-label target-check">
+        <input name="allClassChildren" type="checkbox" ${children.length ? "checked" : ""} />
+        반 전체
+      </label>
+      <div class="target-child-grid">
+        ${children
+          .map(
+            (child) => `
+            <input type="hidden" name="availableChildIds" value="${child.id}" />
+            <label class="check-label target-check">
+              <input name="childIds" type="checkbox" value="${child.id}" />
+              ${escapeHtml(child.name)}
+            </label>
+          `
+          )
+          .join("")}
+      </div>
+    </fieldset>
+  `;
+}
+
+function renderParentMissionTarget(children) {
+  return `
+    <label>
+      아이
+      <select name="childId">
+        ${children.map((child) => `<option value="${child.id}">${escapeHtml(child.name)}</option>`).join("")}
+      </select>
+    </label>
   `;
 }
 
@@ -645,6 +676,7 @@ function renderChecklistGroup(user, child, missions) {
 
 function renderChecklistItem(user, mission) {
   const canCheck = [ROLES.TEACHER, ROLES.PARENT].includes(user.role) && !mission.completed;
+  const source = getMissionSourceLabel(mission);
 
   return `
     <label class="checklist-item ${mission.completed ? "done" : ""}">
@@ -656,11 +688,30 @@ function renderChecklistItem(user, mission) {
       />
       <span class="checkmark" aria-hidden="true"></span>
       <span class="checklist-copy">
-        <strong>${escapeHtml(mission.template.title)} +${formatWon(mission.template.point)}</strong>
+        <strong>
+          ${escapeHtml(mission.template.title)} +${formatWon(mission.template.point)}
+          <em class="mission-source ${source.className}">${source.label}</em>
+        </strong>
         <small>${mission.completed ? "완료" : "체크"}</small>
       </span>
     </label>
   `;
+}
+
+function getMissionSourceLabel(mission) {
+  if (mission.template.standardKey) {
+    return { label: "기본", className: "standard" };
+  }
+
+  if (mission.template.creatorRole === ROLES.PARENT) {
+    return { label: "학부모", className: "parent" };
+  }
+
+  if (mission.template.creatorRole === ROLES.TEACHER) {
+    return { label: "교사", className: "teacher" };
+  }
+
+  return { label: "미션", className: "standard" };
 }
 
 function renderChildSummary(child) {
@@ -1240,16 +1291,24 @@ app.addEventListener("submit", (event) => {
     }
 
     if (event.target.id === "custom-mission-form") {
+      const currentUser = getCurrentUser();
+      const selectedChildIds =
+        currentUser.role === ROLES.TEACHER
+          ? formData.has("allClassChildren")
+            ? formData.getAll("availableChildIds")
+            : formData.getAll("childIds")
+          : [formData.get("childId")];
+
       state = createChecklistMission(state, getCurrentUser(), {
-        childId: formData.get("childId"),
+        childIds: selectedChildIds,
         title: formData.get("title"),
         point: formData.get("point")
       });
       setToast("맞춤 미션이 오늘 체크리스트에 추가되었습니다.");
-      session.selectedChildId = formData.get("childId");
+      session.selectedChildId = selectedChildIds.length === 1 ? selectedChildIds[0] : "all";
       session.detailScreen = {
         type: "missions",
-        childId: formData.get("childId")
+        childId: selectedChildIds.length === 1 ? selectedChildIds[0] : "all"
       };
     }
 

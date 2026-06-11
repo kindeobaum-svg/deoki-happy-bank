@@ -556,9 +556,12 @@ export function createMissionTemplate(data, user, missionInput, date = new Date(
 }
 
 export function createChecklistMission(data, user, missionInput, date = new Date()) {
-  const child = getChild(data, missionInput.childId);
+  const childIds = Array.isArray(missionInput.childIds)
+    ? missionInput.childIds
+    : [missionInput.childId].filter(Boolean);
+  const children = childIds.map((childId) => getChild(data, childId)).filter(Boolean);
 
-  if (!canManageChild(user, child)) {
+  if (!children.length || children.some((child) => !canManageChild(user, child))) {
     throw new Error("자기 아이 또는 담당 반 아이에게만 미션을 추가할 수 있습니다.");
   }
 
@@ -572,23 +575,25 @@ export function createChecklistMission(data, user, missionInput, date = new Date
     throw new Error("금액은 1원 이상 숫자로 입력해주세요.");
   }
 
-  const template = {
+  const createdAt = toDateKey(date);
+  const templates = children.map((child) => ({
     id: makeId("mission-template"),
     title,
     point,
     targetType: "child",
     targetId: child.id,
     createdBy: user.id,
-    createdAt: toDateKey(date),
+    creatorRole: user.role,
+    createdAt,
     repeatDaily: true,
     active: true,
     checklist: true
-  };
+  }));
 
   return normalizeDailyMissions(
     {
       ...data,
-      missionTemplates: [template, ...data.missionTemplates]
+      missionTemplates: [...templates, ...data.missionTemplates]
     },
     date
   );

@@ -185,6 +185,71 @@ describe("daily missions", () => {
       /자기 아이/
     );
   });
+
+  it("lets a teacher assign a custom mission to selected children in their class", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const withTeacherMission = createChecklistMission(
+      data,
+      teacher,
+      {
+        childIds: ["child-minjun", "child-harin"],
+        title: "견학시 질서 지키기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const missions = getVisibleChecklistMissions(withTeacherMission, teacher, "all", "2026-06-09").filter(
+      (mission) => mission.template.title === "견학시 질서 지키기"
+    );
+
+    assert.deepEqual(
+      missions.map((mission) => mission.childId).sort(),
+      ["child-harin", "child-minjun"]
+    );
+    assert.ok(missions.every((mission) => mission.template.creatorRole === ROLES.TEACHER));
+  });
+
+  it("distinguishes parent-created missions from teacher-created missions", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const teacher = getUser(data, "teacher-sun");
+    const withParentMission = createChecklistMission(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "책읽기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const withTeacherMission = createChecklistMission(
+      withParentMission,
+      teacher,
+      {
+        childIds: ["child-minjun"],
+        title: "발표하기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const missions = getVisibleChecklistMissions(
+      withTeacherMission,
+      getUser(withTeacherMission, "parent-minjun"),
+      "child-minjun",
+      "2026-06-09"
+    );
+
+    assert.equal(
+      missions.find((mission) => mission.template.title === "책읽기").template.creatorRole,
+      ROLES.PARENT
+    );
+    assert.equal(
+      missions.find((mission) => mission.template.title === "발표하기").template.creatorRole,
+      ROLES.TEACHER
+    );
+  });
 });
 
 describe("growth stages", () => {
