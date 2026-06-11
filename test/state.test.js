@@ -8,6 +8,7 @@ import {
   getGrowthProgress,
   getUser,
   getVisibleAccountSummary,
+  getVisibleChecklistMissions,
   getVisibleChildren,
   getVisibleDailyMissions,
   getVisibleGrowthProgress,
@@ -127,6 +128,18 @@ describe("daily missions", () => {
 
     assert.equal(today.filter((mission) => mission.templateId === template.id).length, 2);
     assert.equal(tomorrow.filter((mission) => mission.templateId === template.id).length, 0);
+  });
+
+  it("generates the standard checklist missions for each visible child", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const checklist = getVisibleChecklistMissions(data, teacher, "child-minjun", "2026-06-09");
+
+    assert.deepEqual(
+      checklist.map((mission) => mission.template.title),
+      ["스스로 옷 입기", "인사하기", "정리정돈하기", "친구 도와주기", "양치하기"]
+    );
+    assert.ok(checklist.every((mission) => mission.template.point === 500));
   });
 });
 

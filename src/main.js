@@ -8,6 +8,7 @@ import {
   createMissionTemplate,
   getChildAccountBalance,
   getClass,
+  getVisibleChecklistMissions,
   getDefaultChildId,
   getUser,
   getVisibleChildren,
@@ -21,6 +22,7 @@ import {
   getVisibleTransactions,
   normalizeBankAccounts,
   normalizeDailyMissions,
+  normalizeStandardMissionTemplates,
   toDateKey
 } from "./state.js";
 
@@ -34,7 +36,9 @@ const tabs = [
   { id: "missions", label: "미션", icon: "✅" }
 ];
 
-let state = normalizeBankAccounts(normalizeDailyMissions(loadState(), new Date()));
+let state = normalizeBankAccounts(
+  normalizeDailyMissions(normalizeStandardMissionTemplates(loadState(), new Date()), new Date())
+);
 let session = loadSession();
 let toastMessage = "";
 
@@ -58,11 +62,12 @@ function loadSession() {
       : {
           userId: null,
           tab: "home",
-          selectedChildId: "all"
+          selectedChildId: "all",
+          detailScreen: null
         };
   } catch (error) {
     console.warn("세션을 불러오지 못해 초기화합니다.", error);
-    return { userId: null, tab: "home", selectedChildId: "all" };
+    return { userId: null, tab: "home", selectedChildId: "all", detailScreen: null };
   }
 }
 
@@ -126,6 +131,10 @@ function ensureAllowedSelection(user) {
 
   if (!tabs.some((tab) => tab.id === session.tab)) {
     session.tab = "home";
+  }
+
+  if (session.detailScreen?.childId && !visibleIds.has(session.detailScreen.childId)) {
+    session.detailScreen = null;
   }
 
   saveSession();
@@ -271,6 +280,10 @@ function getRoleDescription(user, visibleChildCount) {
 }
 
 function renderActiveTab(user) {
+  if (session.tab === "home" && session.detailScreen) {
+    return renderHomeDetail(user, session.detailScreen);
+  }
+
   if (session.tab === "bank") {
     return renderBank(user);
   }
@@ -289,7 +302,7 @@ function renderActiveTab(user) {
 function renderHome(user) {
   const accountSummary = getVisibleAccountSummary(state, user, session.selectedChildId);
   const growthItems = getVisibleGrowthProgress(state, user, session.selectedChildId);
-  const visibleMissions = getVisibleDailyMissions(state, user).filter(
+  const visibleMissions = getVisibleChecklistMissions(state, user).filter(
     (mission) => session.selectedChildId === "all" || mission.childId === session.selectedChildId
   );
   const missions = visibleMissions.slice(0, 4);
@@ -305,38 +318,38 @@ function renderHome(user) {
         ${renderHomeChildFilter(user)}
       </div>
 
-      <article class="home-balance-card">
+      <button class="home-balance-card" type="button" data-open-detail="bank">
         <span>현재 잔액</span>
         <strong>${formatWon(accountSummary.currentBalance)}</strong>
-      </article>
+      </button>
 
       <div class="home-money-grid">
-        <article>
+        <button type="button" data-open-detail="bank">
           <span>총 적립</span>
           <strong class="deposit">+${formatWon(accountSummary.totalDeposit)}</strong>
-        </article>
-        <article>
+        </button>
+        <button type="button" data-open-detail="bank">
           <span>총 지출</span>
           <strong class="expense">-${formatWon(accountSummary.totalExpense)}</strong>
-        </article>
+        </button>
       </div>
 
       ${renderHomeGrowthSummary(growthItems)}
 
-      <article class="home-mission-card">
+      <button class="home-mission-card" type="button" data-open-detail="missions">
         <div class="home-card-heading">
           <div>
             <span>오늘의 미션</span>
             <strong>${completedMissions}/${visibleMissions.length} 완료</strong>
           </div>
-          <button class="text-button" type="button" data-tab="missions">전체</button>
+          <span class="home-chevron">보기</span>
         </div>
         <div class="home-mission-list">
           ${missions.length
             ? missions.map((mission) => renderHomeMissionRow(user, mission)).join("")
             : renderEmpty("오늘 생성된 미션이 없습니다.")}
         </div>
-      </article>
+      </button>
     </section>
   `;
 }
@@ -353,13 +366,13 @@ function renderHomeChildFilter(user) {
 
 function renderHomeGrowthSummary(growthItems) {
   return `
-    <article class="home-growth-card">
+    <article class="home-growth-card" data-open-detail="growth" role="button" tabindex="0">
       <div class="home-card-heading">
         <div>
           <span>현재 성장단계</span>
           <strong>${growthItems.length === 1 ? escapeHtml(growthItems[0].progress.currentStage.name) : `${growthItems.length}명 성장 현황`}</strong>
         </div>
-        <button class="text-button" type="button" data-tab="growth">성장</button>
+        <span class="home-chevron">보기</span>
       </div>
       <div class="home-growth-list">
         ${growthItems.length
@@ -376,30 +389,247 @@ function renderHomeGrowthRow(child, progress) {
     : "모든 단계 달성";
 
   return `
-    <div class="home-growth-row">
+    <button class="home-growth-row" type="button" data-open-child="${child.id}">
       <div>
         <strong>${escapeHtml(child.name)}</strong>
         <span>${escapeHtml(progress.currentStage.name)}</span>
       </div>
       <p>${nextText}</p>
-    </div>
+    </button>
   `;
 }
 
 function renderHomeMissionRow(user, mission) {
-  const completeButton =
-    user.role === ROLES.TEACHER && !mission.completed
-      ? `<button class="small-button" type="button" data-complete-mission="${mission.id}">완료</button>`
-      : "";
-
   return `
     <div class="home-mission-row ${mission.completed ? "done" : ""}">
       <div>
         <strong>${escapeHtml(mission.template.title)}</strong>
         <span>${escapeHtml(mission.child.name)} · +${formatWon(mission.template.point)}</span>
       </div>
-      ${completeButton || `<span class="status-pill ${mission.completed ? "success" : ""}">${mission.completed ? "완료" : "진행중"}</span>`}
+      <span class="status-pill ${mission.completed ? "success" : ""}">${mission.completed ? "완료" : "진행중"}</span>
     </div>
+  `;
+}
+
+function renderHomeDetail(user, detailScreen) {
+  if (detailScreen.type === "missions") {
+    return renderMissionChecklist(user, detailScreen.childId ?? session.selectedChildId);
+  }
+
+  if (detailScreen.type === "child") {
+    return renderChildDetail(user, detailScreen.childId);
+  }
+
+  if (detailScreen.type === "growth") {
+    return renderDetailPanel("성장 상세", renderGrowth(user));
+  }
+
+  return renderDetailPanel("통장 상세", renderBank(user));
+}
+
+function renderDetailPanel(title, content) {
+  return `
+    <section class="detail-screen">
+      <div class="detail-header">
+        <button class="ghost-button" type="button" data-back-home>← 홈</button>
+        <h2>${escapeHtml(title)}</h2>
+      </div>
+      ${content}
+    </section>
+  `;
+}
+
+function renderChildDetail(user, childId) {
+  const child = getVisibleChildren(state, user).find((item) => item.id === childId);
+
+  if (!child) {
+    return renderDetailPanel("아이 상세", renderEmpty("조회할 수 없는 아이입니다."));
+  }
+
+  const classroom = getClass(state, child.classId);
+  const accountSummary = getVisibleAccountSummary(state, user, child.id);
+  const growthItem = getVisibleGrowthProgress(state, user, child.id)[0];
+  const checklist = getVisibleChecklistMissions(state, user, child.id);
+  const transactions = getVisibleTransactions(state, user, child.id).slice(0, 3);
+  const records = getVisibleGrowthRecords(state, user, child.id).slice(0, 2);
+
+  return `
+    <section class="detail-screen">
+      <div class="detail-header">
+        <button class="ghost-button" type="button" data-back-home>← 홈</button>
+        <h2>아이 상세</h2>
+      </div>
+      <article class="child-detail-hero">
+        <div class="avatar big" aria-hidden="true">${escapeHtml(child.name.slice(0, 1))}</div>
+        <div>
+          <p class="eyebrow">${escapeHtml(classroom?.name ?? "")}</p>
+          <h3>${escapeHtml(child.name)}</h3>
+          <p>현재 잔액 ${formatWon(accountSummary.currentBalance)}</p>
+        </div>
+      </article>
+      <div class="detail-summary-grid">
+        <article><span>총 적립</span><strong>+${formatWon(accountSummary.totalDeposit)}</strong></article>
+        <article><span>총 지출</span><strong>-${formatWon(accountSummary.totalExpense)}</strong></article>
+        <article><span>성장단계</span><strong>${escapeHtml(growthItem.progress.currentStage.name)}</strong></article>
+      </div>
+      <article class="home-growth-card flat">
+        <div class="home-card-heading">
+          <div>
+            <span>다음 단계</span>
+            <strong>${growthItem.progress.nextStage ? escapeHtml(growthItem.progress.nextStage.name) : "모든 단계 달성"}</strong>
+          </div>
+          <span class="home-chevron">${growthItem.progress.nextStage ? formatWon(growthItem.progress.requiredToNext) : "완료"}</span>
+        </div>
+      </article>
+      <article class="home-mission-card flat">
+        <div class="home-card-heading">
+          <div>
+            <span>오늘의 미션</span>
+            <strong>${checklist.filter((mission) => mission.completed).length}/${checklist.length} 완료</strong>
+          </div>
+          <button class="text-button" type="button" data-open-detail="missions" data-detail-child="${child.id}">체크하기</button>
+        </div>
+      </article>
+      <section class="card-section compact">
+        <h2>최근 거래</h2>
+        ${transactions.length
+          ? transactions
+              .map(
+                (transaction) => `
+                <article class="timeline-card transaction-card ${transaction.direction}">
+                  <div>
+                    <strong>${escapeHtml(transaction.title)}</strong>
+                    <p>${transaction.date}</p>
+                  </div>
+                  <span class="amount ${transaction.direction}">
+                    ${transaction.direction === "deposit" ? "+" : "-"}${formatWon(transaction.absoluteAmount)}
+                  </span>
+                </article>
+              `
+              )
+              .join("")
+          : renderEmpty("거래내역이 없습니다.")}
+      </section>
+      <section class="card-section compact">
+        <h2>성장기록</h2>
+        ${records.length
+          ? records
+              .map(
+                (record) => `
+                <article class="growth-card">
+                  <div class="growth-meta"><span>${record.date}</span><span>${escapeHtml(record.author)}</span></div>
+                  <h3>${escapeHtml(record.title)}</h3>
+                  <p>${escapeHtml(record.note)}</p>
+                </article>
+              `
+              )
+              .join("")
+          : renderEmpty("성장기록이 없습니다.")}
+      </section>
+    </section>
+  `;
+}
+
+function renderMissionChecklist(user, childId = "all") {
+  const normalizedChildId = childId ?? session.selectedChildId;
+  const checklist = getVisibleChecklistMissions(state, user, normalizedChildId);
+  const visibleChildren = getVisibleChildren(state, user).filter(
+    (child) => normalizedChildId === "all" || child.id === normalizedChildId
+  );
+  const grouped = visibleChildren.map((child) => ({
+    child,
+    missions: checklist.filter((mission) => mission.childId === child.id)
+  }));
+  const completedCount = checklist.filter((mission) => mission.completed).length;
+
+  return `
+    <section class="detail-screen checklist-screen">
+      <div class="detail-header">
+        <button class="ghost-button" type="button" data-back-home>← 홈</button>
+        <h2>미션 체크리스트</h2>
+      </div>
+      <article class="checklist-hero">
+        <div>
+          <p class="eyebrow">오늘의 미션</p>
+          <h3>${completedCount}/${checklist.length} 완료</h3>
+          <p>스스로 할 수 있는 생활 미션을 체크해요.</p>
+        </div>
+        ${renderChecklistChildFilter(user, normalizedChildId)}
+      </article>
+      <div class="checklist-groups">
+        ${grouped.length
+          ? grouped.map(({ child, missions }) => renderChecklistGroup(user, child, missions)).join("")
+          : renderEmpty("조회 가능한 미션이 없습니다.")}
+      </div>
+    </section>
+  `;
+}
+
+function renderChecklistChildFilter(user, selectedChildId) {
+  const children = getVisibleChildren(state, user);
+  const allowAll = user.role !== ROLES.PARENT && children.length > 1;
+
+  if (children.length <= 1) {
+    return "";
+  }
+
+  return `
+    <label class="filter-label light">
+      아이 선택
+      <select id="checklist-child-filter">
+        ${allowAll ? `<option value="all" ${selectedChildId === "all" ? "selected" : ""}>전체</option>` : ""}
+        ${children
+          .map(
+            (child) => `
+            <option value="${child.id}" ${selectedChildId === child.id ? "selected" : ""}>
+              ${escapeHtml(child.name)}
+            </option>
+          `
+          )
+          .join("")}
+      </select>
+    </label>
+  `;
+}
+
+function renderChecklistGroup(user, child, missions) {
+  const completedCount = missions.filter((mission) => mission.completed).length;
+
+  return `
+    <article class="checklist-card">
+      <div class="checklist-child-heading">
+        <div class="avatar" aria-hidden="true">${escapeHtml(child.name.slice(0, 1))}</div>
+        <div>
+          <strong>${escapeHtml(child.name)}</strong>
+          <span>${completedCount}/${missions.length} 완료</span>
+        </div>
+      </div>
+      <div class="checklist-items">
+        ${missions.length
+          ? missions.map((mission) => renderChecklistItem(user, mission)).join("")
+          : renderEmpty("오늘 체크할 기본 미션이 없습니다.")}
+      </div>
+    </article>
+  `;
+}
+
+function renderChecklistItem(user, mission) {
+  const canCheck = user.role === ROLES.TEACHER && !mission.completed;
+
+  return `
+    <label class="checklist-item ${mission.completed ? "done" : ""}">
+      <input
+        type="checkbox"
+        data-checklist-mission="${mission.id}"
+        ${mission.completed ? "checked" : ""}
+        ${canCheck ? "" : "disabled"}
+      />
+      <span class="checkmark" aria-hidden="true"></span>
+      <span class="checklist-copy">
+        <strong>${escapeHtml(mission.template.title)}</strong>
+        <small>+${formatWon(mission.template.point)}</small>
+      </span>
+    </label>
   `;
 }
 
@@ -654,8 +884,9 @@ function renderGrowthStageRow(child, stage) {
 }
 
 function renderMissions(user) {
-  const todayMissions = getVisibleDailyMissions(state, user);
+  const todayMissions = getVisibleChecklistMissions(state, user);
   const history = getVisibleMissionHistory(state, user).slice(0, 8);
+  const completedCount = todayMissions.filter((mission) => mission.completed).length;
 
   return `
     <section class="screen-heading stacked">
@@ -668,15 +899,14 @@ function renderMissions(user) {
 
     ${user.role === ROLES.TEACHER ? renderMissionComposer(user) : ""}
 
-    <section class="card-section">
-      <div class="section-heading">
-        <h2>오늘 미션</h2>
-        <span class="mini-badge">${state.lastMissionDate} 생성됨</span>
+    <button class="mission-checklist-entry" type="button" data-open-detail="missions">
+      <div>
+        <span>키즈노트 체크리스트</span>
+        <strong>오늘 미션 ${completedCount}/${todayMissions.length} 완료</strong>
+        <p>스스로 옷 입기, 인사하기, 정리정돈하기, 친구 도와주기, 양치하기</p>
       </div>
-      ${todayMissions.length
-        ? todayMissions.map((mission) => renderMissionCard(user, mission)).join("")
-        : renderEmpty("오늘 생성된 미션이 없습니다.")}
-    </section>
+      <span class="home-chevron">열기</span>
+    </button>
 
     <section class="card-section">
       <h2>최근 수행내역</h2>
@@ -736,7 +966,7 @@ function renderMissionCard(user, mission) {
       : "";
 
   return `
-    <article class="mission-card ${mission.completed ? "done" : ""}">
+    <article class="mission-card ${mission.completed ? "done" : ""}" data-open-detail="missions" data-detail-child="${mission.childId}" role="button" tabindex="0">
       <div>
         <div class="mission-title">
           <strong>${escapeHtml(mission.template.title)}</strong>
@@ -777,7 +1007,8 @@ app.addEventListener("click", (event) => {
     session = {
       userId: user.id,
       tab: "home",
-      selectedChildId: user.role === ROLES.PARENT ? getDefaultChildId(state, user) : "all"
+      selectedChildId: user.role === ROLES.PARENT ? getDefaultChildId(state, user) : "all",
+      detailScreen: null
     };
     saveSession();
     render();
@@ -786,7 +1017,7 @@ app.addEventListener("click", (event) => {
 
   const logoutButton = event.target.closest("[data-logout]");
   if (logoutButton) {
-    session = { userId: null, tab: "home", selectedChildId: "all" };
+    session = { userId: null, tab: "home", selectedChildId: "all", detailScreen: null };
     saveSession();
     render();
     return;
@@ -795,6 +1026,7 @@ app.addEventListener("click", (event) => {
   const tabButton = event.target.closest("[data-tab]");
   if (tabButton) {
     session.tab = tabButton.dataset.tab;
+    session.detailScreen = null;
     saveSession();
     render();
     return;
@@ -811,6 +1043,58 @@ app.addEventListener("click", (event) => {
       setToast(error.message);
       render();
     }
+    return;
+  }
+
+  const checklistButton = event.target.closest("[data-checklist-mission]");
+  if (checklistButton) {
+    if (!checklistButton.checked) {
+      render();
+      return;
+    }
+
+    try {
+      state = completeMission(state, getCurrentUser(), checklistButton.dataset.checklistMission);
+      saveState();
+      setToast("미션 완료가 통장과 성장 단계에 반영되었습니다.");
+      render();
+    } catch (error) {
+      setToast(error.message);
+      render();
+    }
+    return;
+  }
+
+  const childDetailButton = event.target.closest("[data-open-child]");
+  if (childDetailButton) {
+    session.tab = "home";
+    session.detailScreen = {
+      type: "child",
+      childId: childDetailButton.dataset.openChild
+    };
+    saveSession();
+    render();
+    return;
+  }
+
+  const detailButton = event.target.closest("[data-open-detail]");
+  if (detailButton) {
+    session.tab = "home";
+    session.detailScreen = {
+      type: detailButton.dataset.openDetail,
+      childId: detailButton.dataset.detailChild ?? null
+    };
+    saveSession();
+    render();
+    return;
+  }
+
+  const backButton = event.target.closest("[data-back-home]");
+  if (backButton) {
+    session.tab = "home";
+    session.detailScreen = null;
+    saveSession();
+    render();
     return;
   }
 
@@ -843,6 +1127,16 @@ app.addEventListener("click", (event) => {
 app.addEventListener("change", (event) => {
   if (event.target.id === "child-filter") {
     session.selectedChildId = event.target.value;
+    session.detailScreen = null;
+    saveSession();
+    render();
+  }
+
+  if (event.target.id === "checklist-child-filter") {
+    session.detailScreen = {
+      type: "missions",
+      childId: event.target.value
+    };
     saveSession();
     render();
   }
@@ -878,7 +1172,7 @@ app.addEventListener("submit", (event) => {
 
 function runDailyRollover() {
   const before = state.lastMissionDate;
-  state = normalizeDailyMissions(state, new Date());
+  state = normalizeDailyMissions(normalizeStandardMissionTemplates(state, new Date()), new Date());
 
   if (state.lastMissionDate !== before) {
     saveState();

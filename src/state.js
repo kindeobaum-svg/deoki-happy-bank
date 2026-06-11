@@ -13,6 +13,14 @@ export const ROLE_LABELS = {
 export const STORAGE_KEY = "deoki-happy-bank-state-v1";
 export const SESSION_KEY = "deoki-happy-bank-session-v1";
 
+export const STANDARD_MISSIONS = [
+  { key: "dress", title: "스스로 옷 입기", point: 500 },
+  { key: "greeting", title: "인사하기", point: 500 },
+  { key: "cleanup", title: "정리정돈하기", point: 500 },
+  { key: "help-friend", title: "친구 도와주기", point: 500 },
+  { key: "brush-teeth", title: "양치하기", point: 500 }
+];
+
 export const GROWTH_STAGES = [
   {
     id: "seed",
@@ -300,7 +308,7 @@ export function createInitialData(today = toDateKey()) {
     lastMissionDate: null
   };
 
-  return normalizeDailyMissions(normalizeBankAccounts(base), today);
+  return normalizeDailyMissions(normalizeStandardMissionTemplates(normalizeBankAccounts(base), today), today);
 }
 
 export function getUser(data, userId) {
@@ -452,6 +460,46 @@ export function normalizeDailyMissions(data, date = new Date()) {
   };
 }
 
+export function normalizeStandardMissionTemplates(data, date = new Date()) {
+  const dateKey = toDateKey(date);
+  const existingKeys = new Set(
+    data.missionTemplates.map((template) => `${template.standardKey ?? ""}:${template.targetId}`)
+  );
+  const generatedTemplates = [];
+
+  for (const classroom of data.classes) {
+    for (const mission of STANDARD_MISSIONS) {
+      const key = `${mission.key}:${classroom.id}`;
+      if (existingKeys.has(key)) {
+        continue;
+      }
+
+      existingKeys.add(key);
+      generatedTemplates.push({
+        id: `standard-${classroom.id}-${mission.key}`,
+        title: mission.title,
+        point: mission.point,
+        targetType: "class",
+        targetId: classroom.id,
+        createdBy: classroom.teacherId,
+        createdAt: dateKey,
+        repeatDaily: true,
+        active: true,
+        standardKey: mission.key
+      });
+    }
+  }
+
+  if (!generatedTemplates.length) {
+    return data;
+  }
+
+  return {
+    ...data,
+    missionTemplates: [...generatedTemplates, ...data.missionTemplates]
+  };
+}
+
 export function createMissionTemplate(data, user, missionInput, date = new Date()) {
   if (!user || user.role !== ROLES.TEACHER) {
     throw new Error("교사만 미션을 생성할 수 있습니다.");
@@ -522,6 +570,22 @@ export function getVisibleDailyMissions(data, user, date = new Date()) {
         return Number(a.completed) - Number(b.completed);
       }
       return a.child.name.localeCompare(b.child.name, "ko");
+    });
+}
+
+export function getVisibleChecklistMissions(data, user, childId = "all", date = new Date()) {
+  const standardKeys = new Set(STANDARD_MISSIONS.map((mission) => mission.key));
+
+  return getVisibleDailyMissions(data, user, date)
+    .filter((mission) => standardKeys.has(mission.template.standardKey))
+    .filter((mission) => childId === "all" || mission.childId === childId)
+    .sort((a, b) => {
+      const aIndex = STANDARD_MISSIONS.findIndex((mission) => mission.key === a.template.standardKey);
+      const bIndex = STANDARD_MISSIONS.findIndex((mission) => mission.key === b.template.standardKey);
+      if (a.child.name !== b.child.name) {
+        return a.child.name.localeCompare(b.child.name, "ko");
+      }
+      return aIndex - bIndex;
     });
 }
 

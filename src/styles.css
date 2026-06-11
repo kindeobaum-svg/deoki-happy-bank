@@ -230,7 +230,11 @@ select:focus-visible {
 .ghost-button,
 .text-button,
 .small-button,
-.primary-button {
+.primary-button,
+.home-balance-card,
+.home-money-grid button,
+.home-mission-card,
+.mission-checklist-entry {
   min-height: 44px;
   border: 0;
   border-radius: 999px;
@@ -330,8 +334,11 @@ select:focus-visible {
 }
 
 .home-balance-card {
+  width: 100%;
+  border-radius: 24px;
   padding: 24px 22px;
   color: #fff;
+  text-align: left;
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.32), transparent 11rem),
     linear-gradient(135deg, #f58220 0%, #f3ad31 100%);
@@ -364,11 +371,14 @@ select:focus-visible {
   gap: 10px;
 }
 
-.home-money-grid article {
+.home-money-grid button {
+  width: 100%;
   min-height: 86px;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 22px;
+  color: inherit;
+  text-align: left;
   background: var(--surface);
   box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
 }
@@ -396,9 +406,17 @@ select:focus-visible {
 .home-growth-card,
 .home-mission-card {
   display: grid;
+  width: 100%;
   gap: 12px;
   padding: 18px;
+  color: inherit;
+  text-align: left;
   box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.home-growth-card.flat,
+.home-mission-card.flat {
+  box-shadow: none;
 }
 
 .home-card-heading {
@@ -431,6 +449,13 @@ select:focus-visible {
   background: #fffaf2;
 }
 
+.home-growth-row {
+  width: 100%;
+  border: 0;
+  color: inherit;
+  text-align: left;
+}
+
 .home-growth-row div,
 .home-mission-row div {
   display: grid;
@@ -459,6 +484,261 @@ select:focus-visible {
 
 .home-mission-row.done {
   background: #f4fbf6;
+}
+
+.home-chevron {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 900;
+  background: #fff0cf;
+}
+
+.detail-screen {
+  display: grid;
+  gap: 14px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.child-detail-hero,
+.checklist-hero,
+.mission-checklist-entry {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.child-detail-hero {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+}
+
+.avatar.big {
+  flex-basis: 62px;
+  width: 62px;
+  height: 62px;
+  border-radius: 24px;
+  font-size: 26px;
+}
+
+.child-detail-hero h3 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.child-detail-hero p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.detail-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.detail-summary-grid article {
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.detail-summary-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.detail-summary-grid strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.card-section.compact {
+  padding: 16px;
+  box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.checklist-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--green), #7bcf86);
+}
+
+.checklist-hero .eyebrow,
+.checklist-hero p,
+.checklist-hero .filter-label {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.checklist-hero h3 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.filter-label.light select {
+  border-color: rgba(255, 255, 255, 0.44);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.checklist-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.checklist-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.checklist-child-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.checklist-child-heading strong {
+  display: block;
+  font-size: 18px;
+}
+
+.checklist-child-heading span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.checklist-items {
+  display: grid;
+  gap: 9px;
+}
+
+.checklist-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 62px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fffaf2;
+}
+
+.checklist-item.done {
+  border-color: #ccefd8;
+  background: #f4fbf6;
+}
+
+.checklist-item input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.checkmark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 2px solid #e0ccb4;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.checklist-item input:checked + .checkmark {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.checklist-item input:checked + .checkmark::after {
+  content: "✓";
+  color: #fff;
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.checklist-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.checklist-copy strong {
+  font-size: 17px;
+}
+
+.checklist-copy small {
+  color: var(--green);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.mission-checklist-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 20px;
+  color: inherit;
+  text-align: left;
+}
+
+.mission-checklist-entry span:not(.home-chevron) {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.mission-checklist-entry strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 22px;
+}
+
+.mission-checklist-entry p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .stats-grid {
@@ -1020,6 +1300,7 @@ input {
 
   .stats-grid,
   .home-money-grid,
+  .detail-summary-grid,
   .bank-summary-grid,
   .form-row {
     grid-template-columns: 1fr;
@@ -1029,6 +1310,8 @@ input {
   .home-card-heading,
   .home-growth-row,
   .home-mission-row,
+  .checklist-hero,
+  .mission-checklist-entry,
   .bank-hero-top,
   .timeline-card,
   .mission-card,
