@@ -408,7 +408,7 @@ function renderHomeChildFilter(user) {
 
 function renderHomeGrowthSummary(growthItems) {
   return `
-    <article class="home-growth-card" data-open-detail="growth" role="button" tabindex="0">
+    <button class="home-growth-card" type="button" data-open-detail="growth">
       <div class="home-card-heading">
         <div>
           <span>현재 성장단계</span>
@@ -417,7 +417,7 @@ function renderHomeGrowthSummary(growthItems) {
         </div>
         <span class="home-chevron">보기</span>
       </div>
-    </article>
+    </button>
   `;
 }
 
@@ -1399,15 +1399,20 @@ app.addEventListener("click", (event) => {
     return;
   }
 
-  const checklistButton = event.target.closest("[data-checklist-mission]");
-  if (checklistButton) {
-    if (!checklistButton.checked) {
+  const checklistItem = event.target.closest(".checklist-item");
+  if (checklistItem) {
+    const checklistInput = checklistItem.querySelector("[data-checklist-mission]");
+    const mission = checklistInput
+      ? state.dailyMissions.find((item) => item.id === checklistInput.dataset.checklistMission)
+      : null;
+
+    if (!checklistInput || checklistInput.disabled || mission?.completed) {
       render();
       return;
     }
 
     try {
-      state = completeMission(state, getCurrentUser(), checklistButton.dataset.checklistMission);
+      state = completeMission(state, getCurrentUser(), checklistInput.dataset.checklistMission);
       saveState();
       setToast("미션 완료가 통장과 성장 단계에 반영되었습니다.");
       render();

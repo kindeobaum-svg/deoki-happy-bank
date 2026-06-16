@@ -49,6 +49,17 @@ button {
   cursor: pointer;
 }
 
+[data-open-detail],
+[data-open-child],
+.checklist-item,
+.mission-add-details summary {
+  cursor: pointer;
+}
+
+.checklist-item:has(input:disabled) {
+  cursor: default;
+}
+
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
@@ -443,6 +454,8 @@ select:focus-visible {
 .home-mission-card {
   display: grid;
   width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 24px;
   gap: 12px;
   padding: 18px;
   color: inherit;
