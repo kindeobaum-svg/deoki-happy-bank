@@ -257,6 +257,20 @@ describe("daily missions", () => {
     assert.equal(summary.currentBalance, 13300);
   });
 
+  it("lets the director complete any child checklist mission", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const mission = getVisibleChecklistMissions(data, director, "child-minjun", "2026-06-09")[0];
+    const completed = completeMission(data, director, mission.id, "2026-06-09");
+    const summary = getVisibleAccountSummary(completed, director, "child-minjun");
+
+    assert.equal(
+      completed.dailyMissions.find((item) => item.id === mission.id).completed,
+      true
+    );
+    assert.equal(summary.currentBalance, 13300);
+  });
+
   it("does not regenerate one-day checklist missions after completion", () => {
     const data = createInitialData("2026-06-09");
     const parent = getUser(data, "parent-minjun");

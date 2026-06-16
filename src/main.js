@@ -901,18 +901,18 @@ function renderChecklistGroup(user, child, missions) {
 }
 
 function renderChecklistItem(user, mission) {
-  const canCheck = [ROLES.TEACHER, ROLES.PARENT].includes(user.role) && !mission.completed;
+  const canCheck = [ROLES.DIRECTOR, ROLES.TEACHER, ROLES.PARENT].includes(user.role) && !mission.completed;
   const source = getMissionSourceLabel(mission);
 
   return `
     <label class="checklist-item ${mission.completed ? "done" : ""}">
       <input
+        class="checklist-checkbox"
         type="checkbox"
         data-checklist-mission="${mission.id}"
         ${mission.completed ? "checked" : ""}
         ${canCheck ? "" : "disabled"}
       />
-      <span class="checkmark" aria-hidden="true"></span>
       <span class="checklist-copy">
         <strong>
           ${escapeHtml(mission.template.title)} +${formatWon(mission.template.point)}

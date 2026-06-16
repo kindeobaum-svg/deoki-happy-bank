@@ -539,6 +539,10 @@ export function canManageChild(user, child) {
     return false;
   }
 
+  if (user.role === ROLES.DIRECTOR) {
+    return true;
+  }
+
   if (user.role === ROLES.TEACHER) {
     return child.classId === user.classId;
   }
