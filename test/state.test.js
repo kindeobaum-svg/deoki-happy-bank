@@ -18,6 +18,7 @@ import {
   getVisibleMissionHistory,
   getVisibleTransactions,
   normalizeDailyMissions,
+  normalizeMissionCompletionArtifacts,
   normalizeParentInviteCodes,
   registerChild,
   recordExpense,
@@ -255,6 +256,71 @@ describe("daily missions", () => {
     assert.ok(mission);
     assert.equal(mission.template.point, 500);
     assert.equal(summary.currentBalance, 13300);
+  });
+
+  it("creates today's transaction, growth record, and balance change when a mission is checked", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const mission = getVisibleChecklistMissions(data, parent, "child-minjun", "2026-06-09")[0];
+    const completed = completeMission(data, parent, mission.id, "2026-06-09");
+    const transaction = getVisibleTransactions(completed, parent, "child-minjun").find(
+      (item) => item.missionId === mission.id
+    );
+    const growthRecord = getVisibleGrowthRecords(completed, parent, "child-minjun").find(
+      (item) => item.missionId === mission.id
+    );
+    const historyMission = getVisibleMissionHistory(completed, parent).find((item) => item.id === mission.id);
+    const summary = getVisibleAccountSummary(completed, parent, "child-minjun");
+
+    assert.equal(transaction.title, mission.template.title);
+    assert.equal(transaction.child.name, "김민준");
+    assert.equal(transaction.date, "2026-06-09");
+    assert.equal(transaction.amount, 500);
+    assert.equal(transaction.direction, "deposit");
+    assert.equal(growthRecord.title, `미션 완료: ${mission.template.title}`);
+    assert.equal(historyMission.completed, true);
+    assert.equal(summary.currentBalance, 13300);
+  });
+
+  it("does not create duplicate mission deposits when a checked mission is clicked again", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const mission = getVisibleChecklistMissions(data, parent, "child-minjun", "2026-06-09")[0];
+    const completed = completeMission(data, parent, mission.id, "2026-06-09");
+    const completedAgain = completeMission(completed, parent, mission.id, "2026-06-09");
+    const missionTransactions = getVisibleTransactions(completedAgain, parent, "child-minjun").filter(
+      (item) => item.missionId === mission.id
+    );
+
+    assert.equal(missionTransactions.length, 1);
+    assert.equal(getVisibleAccountSummary(completedAgain, parent, "child-minjun").currentBalance, 13300);
+  });
+
+  it("repairs completed missions missing transaction and growth artifacts from saved localStorage", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const mission = getVisibleChecklistMissions(data, parent, "child-minjun", "2026-06-09")[0];
+    const brokenSavedState = {
+      ...data,
+      dailyMissions: data.dailyMissions.map((item) =>
+        item.id === mission.id
+          ? {
+              ...item,
+              completed: true,
+              completedAt: "2026-06-09T09:00:00.000Z"
+            }
+          : item
+      )
+    };
+    const repaired = normalizeMissionCompletionArtifacts(brokenSavedState);
+
+    assert.ok(
+      getVisibleTransactions(repaired, parent, "child-minjun").some((item) => item.missionId === mission.id)
+    );
+    assert.ok(
+      getVisibleGrowthRecords(repaired, parent, "child-minjun").some((item) => item.missionId === mission.id)
+    );
+    assert.equal(getVisibleAccountSummary(repaired, parent, "child-minjun").currentBalance, 13300);
   });
 
   it("lets the director complete any child checklist mission", () => {

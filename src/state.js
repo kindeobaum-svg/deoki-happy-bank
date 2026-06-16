@@ -875,6 +875,142 @@ export function decorateMission(data, mission) {
   };
 }
 
+function getMissionCompletionSeed(point) {
+  return Math.max(1, Math.round(point / 100));
+}
+
+function hasMissionTransaction(data, mission, template) {
+  const point = template?.point ?? 0;
+
+  return data.transactions.some(
+    (transaction) =>
+      transaction.missionId === mission.id ||
+      (transaction.childId === mission.childId &&
+        transaction.date === mission.date &&
+        transaction.amount === point &&
+        transaction.category === "미션" &&
+        transaction.title === (template?.title ?? "미션 완료"))
+  );
+}
+
+function createMissionTransaction(mission, template) {
+  return {
+    id: makeId("tx"),
+    missionId: mission.id,
+    templateId: mission.templateId,
+    childId: mission.childId,
+    date: mission.date,
+    amount: template?.point ?? 0,
+    title: template?.title ?? "미션 완료",
+    category: "미션"
+  };
+}
+
+function hasMissionGrowthRecord(data, mission, template) {
+  return data.growthRecords.some(
+    (record) =>
+      record.missionId === mission.id ||
+      (record.childId === mission.childId &&
+        record.date === mission.date &&
+        record.title === `미션 완료: ${template?.title ?? "미션"}`)
+  );
+}
+
+function createMissionGrowthRecord(user, mission, template, child) {
+  return {
+    id: makeId("growth"),
+    missionId: mission.id,
+    templateId: mission.templateId,
+    childId: mission.childId,
+    date: mission.date,
+    author: user?.name ?? "행복부자 통장",
+    title: `미션 완료: ${template?.title ?? "미션"}`,
+    note: `${child.name} 어린이가 '${template?.title ?? "미션"}' 미션을 완료했습니다.`,
+    tags: ["미션", "자동기록"]
+  };
+}
+
+function hasMissionForestMoment(data, mission, template) {
+  return data.forestMoments.some(
+    (moment) =>
+      moment.missionId === mission.id ||
+      (moment.childId === mission.childId &&
+        moment.date === mission.date &&
+        moment.title === "미션 씨앗" &&
+        moment.note === `${template?.title ?? "미션"} 완료로 행복 씨앗을 모았습니다.`)
+  );
+}
+
+function createMissionForestMoment(mission, template) {
+  const point = template?.point ?? 0;
+
+  return {
+    id: makeId("forest"),
+    missionId: mission.id,
+    templateId: mission.templateId,
+    childId: mission.childId,
+    date: mission.date,
+    seed: getMissionCompletionSeed(point),
+    title: "미션 씨앗",
+    note: `${template?.title ?? "미션"} 완료로 행복 씨앗을 모았습니다.`
+  };
+}
+
+export function normalizeMissionCompletionArtifacts(data) {
+  let transactions = data.transactions;
+  let growthRecords = data.growthRecords;
+  let forestMoments = data.forestMoments;
+  let changed = false;
+
+  for (const mission of data.dailyMissions) {
+    if (!mission.completed) {
+      continue;
+    }
+
+    const template = data.missionTemplates.find((item) => item.id === mission.templateId);
+    const child = getChild(data, mission.childId);
+    if (!template || !child) {
+      continue;
+    }
+
+    const workingData = {
+      ...data,
+      transactions,
+      growthRecords,
+      forestMoments
+    };
+
+    if (!hasMissionTransaction(workingData, mission, template)) {
+      transactions = [createMissionTransaction(mission, template), ...transactions];
+      changed = true;
+    }
+
+    if (!hasMissionGrowthRecord(workingData, mission, template)) {
+      growthRecords = [
+        createMissionGrowthRecord(null, mission, template, child),
+        ...growthRecords
+      ];
+      changed = true;
+    }
+
+    if (!hasMissionForestMoment(workingData, mission, template)) {
+      forestMoments = [createMissionForestMoment(mission, template), ...forestMoments];
+      changed = true;
+    }
+  }
+
+  if (!changed) {
+    return data;
+  }
+
+  return {
+    ...data,
+    transactions,
+    growthRecords,
+    forestMoments
+  };
+}
+
 export function completeMission(data, user, missionId, date = new Date()) {
   const mission = data.dailyMissions.find((item) => item.id === missionId);
   const child = mission ? getChild(data, mission.childId) : null;
@@ -887,13 +1023,19 @@ export function completeMission(data, user, missionId, date = new Date()) {
     throw new Error("자기 아이 또는 담당 반 아이의 미션만 완료 처리할 수 있습니다.");
   }
 
-  if (mission.completed) {
-    return data;
-  }
-
   const template = data.missionTemplates.find((item) => item.id === mission.templateId);
   const point = template?.point ?? 0;
   const dateKey = toDateKey(date);
+  const completedMission = {
+    ...mission,
+    date: mission.date || dateKey,
+    completed: true,
+    completedAt: mission.completedAt ?? new Date().toISOString()
+  };
+  const transactionExists = hasMissionTransaction(data, completedMission, template);
+  const growthRecordExists = hasMissionGrowthRecord(data, completedMission, template);
+  const forestMomentExists = hasMissionForestMoment(data, completedMission, template);
+  const shouldApplyMissionReward = !mission.completed;
 
   return {
     ...data,
@@ -901,43 +1043,28 @@ export function completeMission(data, user, missionId, date = new Date()) {
       item.id === child.id
         ? {
             ...item,
-            balance: item.balance + point,
+            balance: shouldApplyMissionReward ? item.balance + point : item.balance,
             forest: {
               ...item.forest,
-              seeds: item.forest.seeds + Math.max(1, Math.round(point / 100))
+              seeds: shouldApplyMissionReward
+                ? item.forest.seeds + getMissionCompletionSeed(point)
+                : item.forest.seeds
             }
           }
         : item
     ),
-    transactions: [
-      {
-        id: makeId("tx"),
-        childId: child.id,
-        date: dateKey,
-        amount: point,
-        title: template?.title ?? "미션 완료",
-        category: "미션"
-      },
-      ...data.transactions
-    ],
-    forestMoments: [
-      {
-        id: makeId("forest"),
-        childId: child.id,
-        date: dateKey,
-        seed: Math.max(1, Math.round(point / 100)),
-        title: "미션 씨앗",
-        note: `${template?.title ?? "미션"} 완료로 행복 씨앗을 모았습니다.`
-      },
-      ...data.forestMoments
-    ],
+    transactions: transactionExists
+      ? data.transactions
+      : [createMissionTransaction(completedMission, template), ...data.transactions],
+    growthRecords: growthRecordExists
+      ? data.growthRecords
+      : [createMissionGrowthRecord(user, completedMission, template, child), ...data.growthRecords],
+    forestMoments: forestMomentExists
+      ? data.forestMoments
+      : [createMissionForestMoment(completedMission, template), ...data.forestMoments],
     dailyMissions: data.dailyMissions.map((item) =>
       item.id === missionId
-        ? {
-            ...item,
-            completed: true,
-            completedAt: new Date().toISOString()
-          }
+        ? completedMission
         : item
     )
   };
