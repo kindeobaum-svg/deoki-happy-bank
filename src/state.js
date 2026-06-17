@@ -802,6 +802,27 @@ function getTemplateGroupId(template) {
   return template?.groupId ?? template?.id ?? null;
 }
 
+function getTemplateTargetChildIds(data, template) {
+  if (!template) {
+    return [];
+  }
+
+  return getMissionTemplateTargets(data, template);
+}
+
+function canManageTemplateTarget(data, user, template) {
+  if (!user || !template) {
+    return false;
+  }
+
+  if (user.role === ROLES.DIRECTOR) {
+    return true;
+  }
+
+  const childIds = getTemplateTargetChildIds(data, template);
+  return childIds.length > 0 && childIds.every((childId) => canManageChild(user, getChild(data, childId)));
+}
+
 export function getChecklistMissionGroup(data, missionOrTemplateId) {
   const mission = data.dailyMissions.find((item) => item.id === missionOrTemplateId);
   const templateId = mission?.templateId ?? missionOrTemplateId;
@@ -817,24 +838,32 @@ export function getChecklistMissionGroup(data, missionOrTemplateId) {
     groupId,
     templates,
     activeTemplates: templates.filter((template) => template.active !== false),
-    childIds: templates
-      .filter((template) => template.active !== false && template.targetType === "child")
-      .map((template) => template.targetId)
+    childIds: [
+      ...new Set(
+        templates
+          .filter((template) => template.active !== false)
+          .flatMap((template) => getTemplateTargetChildIds(data, template))
+      )
+    ]
   };
 }
 
 export function canManageChecklistMissionGroup(data, user, missionOrTemplateId) {
   const group = getChecklistMissionGroup(data, missionOrTemplateId);
 
-  if (!group.baseTemplate || group.baseTemplate.standardKey || !group.baseTemplate.checklist) {
+  if (!group.baseTemplate || (!group.baseTemplate.standardKey && !group.baseTemplate.checklist)) {
     return false;
   }
 
-  if (user?.role !== ROLES.DIRECTOR && group.baseTemplate.createdBy !== user?.id) {
+  if (
+    user?.role !== ROLES.DIRECTOR &&
+    !group.baseTemplate.standardKey &&
+    group.baseTemplate.createdBy !== user?.id
+  ) {
     return false;
   }
 
-  return group.activeTemplates.every((template) => canManageChild(user, getChild(data, template.targetId)));
+  return group.activeTemplates.every((template) => canManageTemplateTarget(data, user, template));
 }
 
 export function updateChecklistMissionGroup(data, user, missionOrTemplateId, missionInput, date = new Date()) {

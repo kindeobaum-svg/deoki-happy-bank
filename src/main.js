@@ -1355,7 +1355,7 @@ function renderMissions(user) {
     <section class="card-section">
       <h2>최근 수행내역</h2>
       ${history.length
-        ? history.map((mission) => renderMissionHistoryCard(mission)).join("")
+        ? history.map((mission) => renderMissionHistoryCard(user, mission)).join("")
         : renderEmpty("조회 가능한 미션 수행내역이 없습니다.")}
     </section>
   `;
@@ -1426,16 +1426,28 @@ function renderMissionCard(user, mission) {
   `;
 }
 
-function renderMissionHistoryCard(mission) {
+function renderMissionHistoryCard(user, mission) {
+  const canEdit = canManageChecklistMissionGroup(state, user, mission.id);
+
   return `
     <article class="timeline-card">
       <div>
         <strong>${escapeHtml(mission.template.title)}</strong>
         <p>${escapeHtml(mission.child.name)} · ${mission.date} · ${mission.template.repeatDaily ? "반복" : "단일"}</p>
       </div>
-      <span class="status-pill ${mission.completed ? "success" : ""}">
-        ${mission.completed ? "완료" : "미완료"}
-      </span>
+      <div class="mission-actions">
+        <span class="status-pill ${mission.completed ? "success" : ""}">
+          ${mission.completed ? "완료" : "미완료"}
+        </span>
+        ${
+          canEdit
+            ? `<span class="mission-row-actions">
+                <button class="icon-button edit" type="button" data-edit-mission-button="${mission.id}" aria-label="미션 수정">수정</button>
+                <button class="icon-button delete" type="button" data-delete-mission="${mission.id}" aria-label="미션 삭제">삭제</button>
+              </span>`
+            : ""
+        }
+      </div>
     </article>
   `;
 }
@@ -1495,7 +1507,13 @@ app.addEventListener("click", (event) => {
 
   const editMissionButton = event.target.closest("[data-edit-mission-button]");
   if (editMissionButton) {
+    const mission = state.dailyMissions.find((item) => item.id === editMissionButton.dataset.editMissionButton);
     session.editMissionId = editMissionButton.dataset.editMissionButton;
+    session.tab = "home";
+    session.detailScreen = {
+      type: "missions",
+      childId: mission?.childId ?? session.selectedChildId ?? "all"
+    };
     saveSession();
     render();
     return;

@@ -475,6 +475,45 @@ describe("daily missions", () => {
     );
   });
 
+  it("lets a teacher update and delete a default class checklist mission", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const defaultMission = getVisibleChecklistMissions(data, teacher, "child-minjun", "2026-06-09").find(
+      (mission) => mission.template.title === "인사하기"
+    );
+    const updated = updateChecklistMissionGroup(
+      data,
+      teacher,
+      defaultMission.id,
+      {
+        childIds: ["child-minjun"],
+        title: "밝게 인사하기",
+        point: 700,
+        repeatDaily: true
+      },
+      "2026-06-09"
+    );
+    const parent = getUser(updated, "parent-minjun");
+
+    assert.ok(
+      getVisibleChecklistMissions(updated, parent, "child-minjun", "2026-06-09").some(
+        (mission) => mission.template.title === "밝게 인사하기" && mission.template.point === 700
+      )
+    );
+
+    const editedMission = getVisibleChecklistMissions(updated, teacher, "child-minjun", "2026-06-09").find(
+      (mission) => mission.template.title === "밝게 인사하기"
+    );
+    const deleted = deleteChecklistMissionGroup(updated, teacher, editedMission.id);
+
+    assert.equal(
+      getVisibleChecklistMissions(deleted, parent, "child-minjun", "2026-06-09").some(
+        (mission) => mission.template.title === "밝게 인사하기"
+      ),
+      false
+    );
+  });
+
   it("removes a deleted teacher mission from parent-visible checklist", () => {
     const data = createInitialData("2026-06-09");
     const teacher = getUser(data, "teacher-sun");
