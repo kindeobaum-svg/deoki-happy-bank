@@ -578,6 +578,7 @@ select:focus-visible {
 .child-detail-hero,
 .checklist-hero,
 .director-card,
+.mission-editor-card,
 .mission-checklist-entry {
   border: 1px solid var(--line);
   border-radius: 24px;
@@ -598,12 +599,21 @@ select:focus-visible {
   padding: 18px;
 }
 
-.director-card form {
+.mission-editor-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  background: #f4fbf6;
+}
+
+.director-card form,
+.mission-editor-card form {
   display: grid;
   gap: 12px;
 }
 
-.director-card label {
+.director-card label,
+.mission-editor-card label {
   display: grid;
   gap: 7px;
   color: var(--muted);
@@ -813,6 +823,10 @@ select:focus-visible {
 .checklist-item.done {
   border-color: #ccefd8;
   background: #f4fbf6;
+}
+
+.checklist-item.editable {
+  border-color: #ccefd8;
 }
 
 .checklist-checkbox {
@@ -1391,6 +1405,22 @@ input {
 .target-check {
   color: var(--text) !important;
   font-size: 14px !important;
+}
+
+.mission-editor-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.danger-button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 18px;
+  color: #fff;
+  font-weight: 900;
+  background: var(--red);
 }
 
 .expense-card {

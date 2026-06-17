@@ -7,6 +7,7 @@ import {
   createInitialData,
   createMissionTemplate,
   createParentInviteCode,
+  deleteChecklistMissionGroup,
   getGrowthProgress,
   getUser,
   getVisibleAccountSummary,
@@ -22,7 +23,8 @@ import {
   normalizeParentInviteCodes,
   registerChild,
   recordExpense,
-  signInParentWithInviteCode
+  signInParentWithInviteCode,
+  updateChecklistMissionGroup
 } from "../src/state.js";
 
 describe("role based access", () => {
@@ -429,6 +431,75 @@ describe("daily missions", () => {
       ["child-harin", "child-minjun"]
     );
     assert.ok(missions.every((mission) => mission.template.creatorRole === ROLES.TEACHER));
+  });
+
+  it("lets a teacher update title, amount, and targets for their checklist mission", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const withTeacherMission = createChecklistMission(
+      data,
+      teacher,
+      {
+        childIds: ["child-minjun", "child-harin"],
+        title: "견학시 질서 지키기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const mission = getVisibleChecklistMissions(withTeacherMission, teacher, "all", "2026-06-09").find(
+      (item) => item.template.title === "견학시 질서 지키기"
+    );
+    const updated = updateChecklistMissionGroup(
+      withTeacherMission,
+      teacher,
+      mission.id,
+      {
+        childIds: ["child-minjun"],
+        title: "숲체험에서 협력하기",
+        point: 700,
+        repeatDaily: false
+      },
+      "2026-06-09"
+    );
+    const minjunMissions = getVisibleChecklistMissions(updated, teacher, "child-minjun", "2026-06-09");
+    const harinMissions = getVisibleChecklistMissions(updated, teacher, "child-harin", "2026-06-09");
+
+    assert.ok(
+      minjunMissions.some(
+        (item) => item.template.title === "숲체험에서 협력하기" && item.template.point === 700
+      )
+    );
+    assert.equal(
+      harinMissions.some((item) => item.template.title === "숲체험에서 협력하기"),
+      false
+    );
+  });
+
+  it("removes a deleted teacher mission from parent-visible checklist", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const withTeacherMission = createChecklistMission(
+      data,
+      teacher,
+      {
+        childIds: ["child-minjun"],
+        title: "발표하기",
+        point: 500
+      },
+      "2026-06-09"
+    );
+    const mission = getVisibleChecklistMissions(withTeacherMission, teacher, "child-minjun", "2026-06-09").find(
+      (item) => item.template.title === "발표하기"
+    );
+    const deleted = deleteChecklistMissionGroup(withTeacherMission, teacher, mission.id);
+    const parent = getUser(deleted, "parent-minjun");
+
+    assert.equal(
+      getVisibleChecklistMissions(deleted, parent, "child-minjun", "2026-06-09").some(
+        (item) => item.template.title === "발표하기"
+      ),
+      false
+    );
   });
 
   it("distinguishes parent-created missions from teacher-created missions", () => {

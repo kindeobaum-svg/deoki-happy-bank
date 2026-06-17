@@ -3,11 +3,14 @@ import {
   ROLES,
   SESSION_KEY,
   STORAGE_KEY,
+  canManageChecklistMissionGroup,
   completeMission,
   createChecklistMission,
   createInitialData,
   createParentInviteCode,
+  deleteChecklistMissionGroup,
   getChildAccountBalance,
+  getChecklistMissionGroup,
   getClass,
   getVisibleChecklistMissions,
   getDefaultChildId,
@@ -29,7 +32,8 @@ import {
   registerChild,
   recordExpense,
   signInParentWithInviteCode,
-  toDateKey
+  toDateKey,
+  updateChecklistMissionGroup
 } from "./state.js";
 
 const app = document.querySelector("#app");
@@ -75,11 +79,12 @@ function loadSession() {
           userId: null,
           tab: "home",
           selectedChildId: "all",
-          detailScreen: null
+          detailScreen: null,
+          editMissionId: null
         };
   } catch (error) {
     console.warn("세션을 불러오지 못해 초기화합니다.", error);
-    return { userId: null, tab: "home", selectedChildId: "all", detailScreen: null };
+    return { userId: null, tab: "home", selectedChildId: "all", detailScreen: null, editMissionId: null };
   }
 }
 
@@ -107,7 +112,8 @@ function applyPreviewLoginFromUrl() {
     userId: user.id,
     tab: "home",
     selectedChildId: user.role === ROLES.PARENT ? getDefaultChildId(state, user) : "all",
-    detailScreen: null
+    detailScreen: null,
+    editMissionId: null
   };
   saveSession(session);
 }
@@ -720,12 +726,82 @@ function renderMissionChecklist(user, childId = "all") {
         </div>
         ${renderChecklistChildFilter(user, normalizedChildId)}
       </article>
+      ${renderMissionEditor(user)}
       ${renderCustomMissionForm(user, normalizedChildId)}
       <div class="checklist-groups">
         ${grouped.length
           ? grouped.map(({ child, missions }) => renderChecklistGroup(user, child, missions)).join("")
           : renderEmpty("조회 가능한 미션이 없습니다.")}
       </div>
+    </section>
+  `;
+}
+
+function renderMissionEditor(user) {
+  if (!session.editMissionId || !canManageChecklistMissionGroup(state, user, session.editMissionId)) {
+    return "";
+  }
+
+  const group = getChecklistMissionGroup(state, session.editMissionId);
+  const template = group.baseTemplate;
+  const children = getVisibleChildren(state, user);
+  const targetChildIds = new Set(group.childIds);
+
+  return `
+    <section class="mission-editor-card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">미션 수정</p>
+          <h2>${escapeHtml(template.title)}</h2>
+        </div>
+        <button class="text-button" type="button" data-close-mission-editor>닫기</button>
+      </div>
+      <form id="mission-edit-form">
+        <input type="hidden" name="missionId" value="${session.editMissionId}" />
+        <label>
+          미션명
+          <input name="title" type="text" value="${escapeHtml(template.title)}" required maxlength="40" />
+        </label>
+        <label>
+          적립 금액
+          <input name="point" type="number" min="100" step="100" value="${template.point}" required />
+        </label>
+        <fieldset class="mission-target-box">
+          <legend>대상 수정</legend>
+          <label class="check-label target-check">
+            <input name="allClassChildren" type="checkbox" ${targetChildIds.size === children.length ? "checked" : ""} />
+            반 전체
+          </label>
+          <div class="target-child-grid">
+            ${children
+              .map(
+                (child) => `
+                <input type="hidden" name="availableChildIds" value="${child.id}" />
+                <label class="check-label target-check">
+                  <input name="childIds" type="checkbox" value="${child.id}" ${targetChildIds.has(child.id) ? "checked" : ""} />
+                  ${escapeHtml(child.name)}
+                </label>
+              `
+              )
+              .join("")}
+          </div>
+        </fieldset>
+        <fieldset class="mission-repeat-box">
+          <legend>반복 여부</legend>
+          <label class="check-label target-check">
+            <input name="repeatType" type="radio" value="once" ${template.repeatDaily ? "" : "checked"} />
+            하루만 하기
+          </label>
+          <label class="check-label target-check">
+            <input name="repeatType" type="radio" value="daily" ${template.repeatDaily ? "checked" : ""} />
+            매일 반복
+          </label>
+        </fieldset>
+        <div class="mission-editor-actions">
+          <button class="primary-button" type="submit">수정 저장</button>
+          <button class="danger-button" type="button" data-delete-mission="${session.editMissionId}">삭제</button>
+        </div>
+      </form>
     </section>
   `;
 }
@@ -908,10 +984,11 @@ function renderChecklistGroup(user, child, missions) {
 
 function renderChecklistItem(user, mission) {
   const canCheck = [ROLES.DIRECTOR, ROLES.TEACHER, ROLES.PARENT].includes(user.role) && !mission.completed;
+  const canEdit = canManageChecklistMissionGroup(state, user, mission.id);
   const source = getMissionSourceLabel(mission);
 
   return `
-    <label class="checklist-item ${mission.completed ? "done" : ""}">
+    <label class="checklist-item ${mission.completed ? "done" : ""} ${canEdit ? "editable" : ""}" ${canEdit ? `data-edit-mission="${mission.id}"` : ""}>
       <input
         class="checklist-checkbox"
         type="checkbox"
@@ -925,7 +1002,7 @@ function renderChecklistItem(user, mission) {
         </strong>
         <small>
           <em class="mission-source ${source.className}">${source.label}</em>
-          ${mission.completed ? "완료" : "체크"}
+          ${canEdit ? "클릭하여 수정" : mission.completed ? "완료" : "체크"}
         </small>
       </span>
     </label>
@@ -1368,6 +1445,8 @@ app.addEventListener("click", (event) => {
       tab: "home",
       selectedChildId: user.role === ROLES.PARENT ? getDefaultChildId(state, user) : "all",
       detailScreen: null
+      ,
+      editMissionId: null
     };
     saveSession();
     render();
@@ -1376,7 +1455,7 @@ app.addEventListener("click", (event) => {
 
   const logoutButton = event.target.closest("[data-logout]");
   if (logoutButton) {
-    session = { userId: null, tab: "home", selectedChildId: "all", detailScreen: null };
+    session = { userId: null, tab: "home", selectedChildId: "all", detailScreen: null, editMissionId: null };
     saveSession();
     render();
     return;
@@ -1386,6 +1465,7 @@ app.addEventListener("click", (event) => {
   if (tabButton) {
     session.tab = tabButton.dataset.tab;
     session.detailScreen = null;
+    session.editMissionId = null;
     saveSession();
     render();
     return;
@@ -1411,6 +1491,15 @@ app.addEventListener("click", (event) => {
     const mission = checklistInput
       ? state.dailyMissions.find((item) => item.id === checklistInput.dataset.checklistMission)
       : null;
+    const clickedCheckbox = event.target.closest("[data-checklist-mission]");
+    const editMissionId = checklistItem.dataset.editMission;
+
+    if (editMissionId && !clickedCheckbox) {
+      session.editMissionId = editMissionId;
+      saveSession();
+      render();
+      return;
+    }
 
     if (!checklistInput || checklistInput.disabled || mission?.completed) {
       render();
@@ -1421,6 +1510,30 @@ app.addEventListener("click", (event) => {
       state = completeMission(state, getCurrentUser(), checklistInput.dataset.checklistMission);
       saveState();
       setToast("미션 완료가 통장과 성장 단계에 반영되었습니다.");
+      render();
+    } catch (error) {
+      setToast(error.message);
+      render();
+    }
+    return;
+  }
+
+  const closeEditorButton = event.target.closest("[data-close-mission-editor]");
+  if (closeEditorButton) {
+    session.editMissionId = null;
+    saveSession();
+    render();
+    return;
+  }
+
+  const deleteMissionButton = event.target.closest("[data-delete-mission]");
+  if (deleteMissionButton) {
+    try {
+      state = deleteChecklistMissionGroup(state, getCurrentUser(), deleteMissionButton.dataset.deleteMission);
+      session.editMissionId = null;
+      saveState();
+      saveSession();
+      setToast("미션이 삭제되었습니다.");
       render();
     } catch (error) {
       setToast(error.message);
@@ -1457,6 +1570,7 @@ app.addEventListener("click", (event) => {
   if (backButton) {
     session.tab = "home";
     session.detailScreen = null;
+    session.editMissionId = null;
     saveSession();
     render();
     return;
@@ -1511,6 +1625,7 @@ app.addEventListener("submit", (event) => {
     ![
       "parent-invite-form",
       "mission-form",
+      "mission-edit-form",
       "custom-mission-form",
       "expense-form",
       "child-register-form",
@@ -1567,6 +1682,27 @@ app.addEventListener("submit", (event) => {
       session.detailScreen = {
         type: "missions",
         childId: targetChildIds.length === 1 ? targetChildIds[0] : "all"
+      };
+    }
+
+    if (event.target.id === "mission-edit-form") {
+      const currentUser = getCurrentUser();
+      const selectedChildIds = formData.has("allClassChildren")
+        ? formData.getAll("availableChildIds")
+        : formData.getAll("childIds");
+
+      state = updateChecklistMissionGroup(state, currentUser, formData.get("missionId"), {
+        title: formData.get("title"),
+        point: formData.get("point"),
+        childIds: selectedChildIds,
+        repeatDaily: formData.get("repeatType") !== "once"
+      });
+      setToast("미션 수정이 저장되었습니다.");
+      session.editMissionId = null;
+      session.selectedChildId = selectedChildIds.length === 1 ? selectedChildIds[0] : "all";
+      session.detailScreen = {
+        type: "missions",
+        childId: selectedChildIds.length === 1 ? selectedChildIds[0] : "all"
       };
     }
 

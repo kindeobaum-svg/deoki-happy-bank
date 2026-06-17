@@ -773,8 +773,10 @@ export function createChecklistMission(data, user, missionInput, date = new Date
 
   const createdAt = toDateKey(date);
   const repeatDaily = missionInput.repeatDaily !== false && missionInput.repeatDaily !== "false";
+  const groupId = makeId("mission-group");
   const templates = children.map((child) => ({
     id: makeId("mission-template"),
+    groupId,
     title,
     point,
     targetType: "child",
@@ -794,6 +796,146 @@ export function createChecklistMission(data, user, missionInput, date = new Date
     },
     date
   );
+}
+
+function getTemplateGroupId(template) {
+  return template?.groupId ?? template?.id ?? null;
+}
+
+export function getChecklistMissionGroup(data, missionOrTemplateId) {
+  const mission = data.dailyMissions.find((item) => item.id === missionOrTemplateId);
+  const templateId = mission?.templateId ?? missionOrTemplateId;
+  const baseTemplate = data.missionTemplates.find((item) => item.id === templateId) ?? null;
+  const groupId = getTemplateGroupId(baseTemplate);
+  const templates = groupId
+    ? data.missionTemplates.filter((template) => getTemplateGroupId(template) === groupId)
+    : [];
+
+  return {
+    mission,
+    baseTemplate,
+    groupId,
+    templates,
+    activeTemplates: templates.filter((template) => template.active !== false),
+    childIds: templates
+      .filter((template) => template.active !== false && template.targetType === "child")
+      .map((template) => template.targetId)
+  };
+}
+
+export function canManageChecklistMissionGroup(data, user, missionOrTemplateId) {
+  const group = getChecklistMissionGroup(data, missionOrTemplateId);
+
+  if (!group.baseTemplate || group.baseTemplate.standardKey || !group.baseTemplate.checklist) {
+    return false;
+  }
+
+  if (user?.role !== ROLES.DIRECTOR && group.baseTemplate.createdBy !== user?.id) {
+    return false;
+  }
+
+  return group.activeTemplates.every((template) => canManageChild(user, getChild(data, template.targetId)));
+}
+
+export function updateChecklistMissionGroup(data, user, missionOrTemplateId, missionInput, date = new Date()) {
+  const group = getChecklistMissionGroup(data, missionOrTemplateId);
+
+  if (!canManageChecklistMissionGroup(data, user, missionOrTemplateId)) {
+    throw new Error("이 미션을 수정할 권한이 없습니다.");
+  }
+
+  const title = String(missionInput.title ?? "").trim();
+  if (!title) {
+    throw new Error("미션명을 입력해주세요.");
+  }
+
+  const point = Number(missionInput.point);
+  if (!Number.isFinite(point) || point <= 0) {
+    throw new Error("금액은 1원 이상 숫자로 입력해주세요.");
+  }
+
+  const requestedChildIds = [...new Set(Array.isArray(missionInput.childIds) ? missionInput.childIds : [])];
+  const requestedChildren = requestedChildIds.map((childId) => getChild(data, childId)).filter(Boolean);
+  if (!requestedChildren.length || requestedChildren.some((child) => !canManageChild(user, child))) {
+    throw new Error("자기 아이 또는 담당 반 아이에게만 미션을 배정할 수 있습니다.");
+  }
+
+  const repeatDaily = missionInput.repeatDaily !== false && missionInput.repeatDaily !== "false";
+  const groupTemplateIds = new Set(group.templates.map((template) => template.id));
+  const existingByChildId = new Map(
+    group.templates
+      .filter((template) => template.targetType === "child")
+      .map((template) => [template.targetId, template])
+  );
+  const requestedChildIdSet = new Set(requestedChildIds);
+  const nextTemplates = data.missionTemplates.map((template) => {
+    if (!groupTemplateIds.has(template.id)) {
+      return template;
+    }
+
+    if (!requestedChildIdSet.has(template.targetId)) {
+      return {
+        ...template,
+        active: false
+      };
+    }
+
+    return {
+      ...template,
+      title,
+      point,
+      repeatDaily,
+      active: true
+    };
+  });
+  const createdAt = toDateKey(date);
+  const newTemplates = requestedChildren
+    .filter((child) => !existingByChildId.has(child.id))
+    .map((child) => ({
+      id: makeId("mission-template"),
+      groupId: group.groupId,
+      title,
+      point,
+      targetType: "child",
+      targetId: child.id,
+      createdBy: group.baseTemplate.createdBy,
+      creatorRole: group.baseTemplate.creatorRole,
+      createdAt,
+      repeatDaily,
+      active: true,
+      checklist: true
+    }));
+
+  return normalizeDailyMissions(
+    {
+      ...data,
+      missionTemplates: [...newTemplates, ...nextTemplates]
+    },
+    date
+  );
+}
+
+export function deleteChecklistMissionGroup(data, user, missionOrTemplateId) {
+  const group = getChecklistMissionGroup(data, missionOrTemplateId);
+
+  if (!canManageChecklistMissionGroup(data, user, missionOrTemplateId)) {
+    throw new Error("이 미션을 삭제할 권한이 없습니다.");
+  }
+
+  const groupTemplateIds = new Set(group.templates.map((template) => template.id));
+
+  return {
+    ...data,
+    missionTemplates: data.missionTemplates.map((template) =>
+      groupTemplateIds.has(template.id)
+        ? {
+            ...template,
+            active: false
+          }
+        : template
+    ),
+    dailyMissions: data.dailyMissions.filter((mission) => !groupTemplateIds.has(mission.templateId))
+  };
 }
 
 export function canCreateMissionForTarget(data, user, targetType, targetId) {
@@ -863,7 +1005,7 @@ export function decorateMission(data, mission) {
   const template = data.missionTemplates.find((item) => item.id === mission.templateId);
   const classroom = child ? getClass(data, child.classId) : null;
 
-  if (!child || !template || !classroom) {
+  if (!child || !template || template.active === false || !classroom) {
     return null;
   }
 
