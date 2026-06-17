@@ -514,6 +514,45 @@ describe("daily missions", () => {
     );
   });
 
+  it("updates a default class checklist mission in place when the whole class remains selected", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const defaultMission = getVisibleChecklistMissions(data, teacher, "child-minjun", "2026-06-09").find(
+      (mission) => mission.template.title === "정리정돈"
+    );
+    const beforeTemplateCount = data.missionTemplates.length;
+    const updated = updateChecklistMissionGroup(
+      data,
+      teacher,
+      defaultMission.id,
+      {
+        childIds: ["child-minjun", "child-harin"],
+        title: "정리정돈 잘하기",
+        point: 500,
+        repeatDaily: true
+      },
+      "2026-06-09"
+    );
+    const minjunMissions = getVisibleChecklistMissions(updated, teacher, "child-minjun", "2026-06-09");
+    const harinMissions = getVisibleChecklistMissions(updated, teacher, "child-harin", "2026-06-09");
+
+    assert.equal(updated.missionTemplates.length, beforeTemplateCount);
+    assert.equal(
+      minjunMissions.some((mission) => mission.template.title === "정리정돈"),
+      false
+    );
+    assert.equal(
+      harinMissions.some((mission) => mission.template.title === "정리정돈"),
+      false
+    );
+    assert.ok(
+      minjunMissions.some((mission) => mission.template.title === "정리정돈 잘하기")
+    );
+    assert.ok(
+      harinMissions.some((mission) => mission.template.title === "정리정돈 잘하기")
+    );
+  });
+
   it("removes a deleted teacher mission from parent-visible checklist", () => {
     const data = createInitialData("2026-06-09");
     const teacher = getUser(data, "teacher-sun");

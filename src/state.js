@@ -891,6 +891,32 @@ export function updateChecklistMissionGroup(data, user, missionOrTemplateId, mis
 
   const repeatDaily = missionInput.repeatDaily !== false && missionInput.repeatDaily !== "false";
   const groupTemplateIds = new Set(group.templates.map((template) => template.id));
+  const baseTargetChildIds = getTemplateTargetChildIds(data, group.baseTemplate);
+  const keepsOriginalClassTarget =
+    group.baseTemplate.targetType === "class" &&
+    requestedChildIds.length === baseTargetChildIds.length &&
+    requestedChildIds.every((childId) => baseTargetChildIds.includes(childId));
+
+  if (keepsOriginalClassTarget) {
+    return normalizeDailyMissions(
+      {
+        ...data,
+        missionTemplates: data.missionTemplates.map((template) =>
+          groupTemplateIds.has(template.id)
+            ? {
+                ...template,
+                title,
+                point,
+                repeatDaily,
+                active: true
+              }
+            : template
+        )
+      },
+      date
+    );
+  }
+
   const existingByChildId = new Map(
     group.templates
       .filter((template) => template.targetType === "child")
