@@ -810,7 +810,7 @@ select:focus-visible {
 .checklist-item {
   position: relative;
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   gap: 13px;
   align-items: center;
   min-height: 68px;
@@ -883,6 +883,33 @@ select:focus-visible {
   color: var(--green);
   font-size: 13px;
   font-weight: 950;
+}
+
+.mission-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.icon-button.edit {
+  color: #0f6b46;
+  background: #dff7e8;
+}
+
+.icon-button.delete {
+  color: #fff;
+  background: var(--red);
 }
 
 .mission-checklist-entry {
@@ -1584,6 +1611,7 @@ input {
   .home-card-heading,
   .home-growth-row,
   .home-mission-row,
+  .checklist-item,
   .checklist-hero,
   .mission-checklist-entry,
   .bank-hero-top,
@@ -1605,5 +1633,10 @@ input {
 
   .stage-button {
     grid-column: 1 / -1;
+  }
+
+  .mission-row-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
   }
 }

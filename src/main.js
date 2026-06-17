@@ -988,7 +988,7 @@ function renderChecklistItem(user, mission) {
   const source = getMissionSourceLabel(mission);
 
   return `
-    <label class="checklist-item ${mission.completed ? "done" : ""} ${canEdit ? "editable" : ""}" ${canEdit ? `data-edit-mission="${mission.id}"` : ""}>
+    <article class="checklist-item ${mission.completed ? "done" : ""} ${canEdit ? "editable" : ""}" ${canEdit ? `data-edit-mission="${mission.id}"` : ""}>
       <input
         class="checklist-checkbox"
         type="checkbox"
@@ -1005,7 +1005,15 @@ function renderChecklistItem(user, mission) {
           ${canEdit ? "클릭하여 수정" : mission.completed ? "완료" : "체크"}
         </small>
       </span>
-    </label>
+      ${
+        canEdit
+          ? `<span class="mission-row-actions">
+              <button class="icon-button edit" type="button" data-edit-mission-button="${mission.id}" aria-label="미션 수정">수정</button>
+              <button class="icon-button delete" type="button" data-delete-mission="${mission.id}" aria-label="미션 삭제">삭제</button>
+            </span>`
+          : ""
+      }
+    </article>
   `;
 }
 
@@ -1485,6 +1493,34 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  const editMissionButton = event.target.closest("[data-edit-mission-button]");
+  if (editMissionButton) {
+    session.editMissionId = editMissionButton.dataset.editMissionButton;
+    saveSession();
+    render();
+    return;
+  }
+
+  const deleteMissionButton = event.target.closest("[data-delete-mission]");
+  if (deleteMissionButton) {
+    if (!window.confirm("이 미션을 삭제할까요? 학부모 화면에서도 제거됩니다.")) {
+      return;
+    }
+
+    try {
+      state = deleteChecklistMissionGroup(state, getCurrentUser(), deleteMissionButton.dataset.deleteMission);
+      session.editMissionId = null;
+      saveState();
+      saveSession();
+      setToast("미션이 삭제되었습니다.");
+      render();
+    } catch (error) {
+      setToast(error.message);
+      render();
+    }
+    return;
+  }
+
   const checklistItem = event.target.closest(".checklist-item");
   if (checklistItem) {
     const checklistInput = checklistItem.querySelector("[data-checklist-mission]");
@@ -1523,22 +1559,6 @@ app.addEventListener("click", (event) => {
     session.editMissionId = null;
     saveSession();
     render();
-    return;
-  }
-
-  const deleteMissionButton = event.target.closest("[data-delete-mission]");
-  if (deleteMissionButton) {
-    try {
-      state = deleteChecklistMissionGroup(state, getCurrentUser(), deleteMissionButton.dataset.deleteMission);
-      session.editMissionId = null;
-      saveState();
-      saveSession();
-      setToast("미션이 삭제되었습니다.");
-      render();
-    } catch (error) {
-      setToast(error.message);
-      render();
-    }
     return;
   }
 
