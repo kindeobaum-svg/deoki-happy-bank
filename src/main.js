@@ -6,7 +6,6 @@ import {
   completeMission,
   createChecklistMission,
   createInitialData,
-  createMissionTemplate,
   createParentInviteCode,
   getChildAccountBalance,
   getClass,
@@ -175,7 +174,11 @@ function ensureAllowedSelection(user) {
     session.tab = "home";
   }
 
-  if (session.detailScreen?.childId && !visibleIds.has(session.detailScreen.childId)) {
+  if (
+    session.detailScreen?.childId &&
+    session.detailScreen.childId !== "all" &&
+    !visibleIds.has(session.detailScreen.childId)
+  ) {
     session.detailScreen = null;
   }
 
@@ -1544,16 +1547,27 @@ app.addEventListener("submit", (event) => {
 
     if (event.target.id === "mission-form") {
       const [targetType, targetId] = String(formData.get("target")).split(":");
-      state = createMissionTemplate(state, getCurrentUser(), {
+      const currentUser = getCurrentUser();
+      const targetChildIds =
+        targetType === "class"
+          ? getVisibleChildren(state, currentUser)
+              .filter((child) => child.classId === targetId)
+              .map((child) => child.id)
+          : [targetId];
+
+      state = createChecklistMission(state, currentUser, {
         title: formData.get("title"),
         point: formData.get("point"),
-        targetType,
-        targetId,
+        childIds: targetChildIds,
         repeatDaily: formData.has("repeatDaily")
       });
-      setToast("오늘 미션이 생성되었습니다. 반복 미션은 매일 0시에 다시 생성됩니다.");
-      session.tab = "missions";
-      session.detailScreen = null;
+      setToast("교사 미션이 체크리스트에 추가되었습니다.");
+      session.tab = "home";
+      session.selectedChildId = targetChildIds.length === 1 ? targetChildIds[0] : "all";
+      session.detailScreen = {
+        type: "missions",
+        childId: targetChildIds.length === 1 ? targetChildIds[0] : "all"
+      };
     }
 
     if (event.target.id === "child-register-form") {
