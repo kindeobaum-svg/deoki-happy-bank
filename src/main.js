@@ -765,7 +765,7 @@ function renderCustomMissionForm(user, selectedChildId) {
           </label>
           <label>
             적립 금액
-            <input name="point" type="number" min="1" step="100" value="500" required />
+            <input name="point" type="number" min="100" step="100" value="500" required />
           </label>
           ${renderMissionRepeatOptions()}
           <button class="primary-button" type="submit">저장</button>
@@ -791,7 +791,7 @@ function renderCustomMissionForm(user, selectedChildId) {
         </label>
         <label>
           적립 금액
-          <input name="point" type="number" min="1" step="100" value="500" required />
+          <input name="point" type="number" min="100" step="100" value="500" required />
         </label>
         ${renderMissionRepeatOptions()}
         <button class="primary-button" type="submit">+ 미션 추가</button>
@@ -1078,7 +1078,7 @@ function renderExpenseForm(user) {
           </label>
           <label>
             금액
-            <input name="amount" type="number" min="1" step="100" value="500" required />
+            <input name="amount" type="number" min="100" step="100" value="500" required />
           </label>
         </div>
         <label>
@@ -1302,7 +1302,7 @@ function renderMissionComposer(user) {
           </label>
           <label>
             적립
-            <input name="point" type="number" min="0" step="50" value="300" required />
+            <input name="point" type="number" min="100" step="100" value="500" required />
           </label>
         </div>
         <label class="check-label">
