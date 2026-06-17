@@ -898,20 +898,37 @@ export function updateChecklistMissionGroup(data, user, missionOrTemplateId, mis
     requestedChildIds.every((childId) => baseTargetChildIds.includes(childId));
 
   if (keepsOriginalClassTarget) {
+    const oldTitle = group.baseTemplate.title;
+    const duplicateTitles = new Set([oldTitle, title]);
+
     return normalizeDailyMissions(
       {
         ...data,
-        missionTemplates: data.missionTemplates.map((template) =>
-          groupTemplateIds.has(template.id)
+        missionTemplates: data.missionTemplates.map((template) => {
+          if (groupTemplateIds.has(template.id)) {
+            return {
+              ...template,
+              title,
+              point,
+              repeatDaily,
+              active: true
+            };
+          }
+
+          const isStaleDuplicate =
+            template.checklist &&
+            template.targetType === "child" &&
+            template.createdBy === group.baseTemplate.createdBy &&
+            baseTargetChildIds.includes(template.targetId) &&
+            duplicateTitles.has(template.title);
+
+          return isStaleDuplicate
             ? {
                 ...template,
-                title,
-                point,
-                repeatDaily,
-                active: true
+                active: false
               }
-            : template
-        )
+            : template;
+        })
       },
       date
     );
