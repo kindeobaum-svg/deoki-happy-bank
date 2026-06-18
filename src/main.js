@@ -1165,8 +1165,8 @@ function renderExpenseForm(user) {
             </select>
           </label>
           <label>
-            금액
-            <input name="amount" type="number" min="100" step="100" value="500" required />
+            지출 금액
+            <input name="amount" type="number" min="1" step="1" value="500" inputmode="numeric" required />
           </label>
         </div>
         <label>

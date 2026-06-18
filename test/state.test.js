@@ -802,4 +802,27 @@ describe("bank account summary", () => {
     assert.equal(summary.currentBalance, 12100);
     assert.equal(transaction.amount, -700);
   });
+
+  it("records the exact expense amount entered and subtracts the same amount", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const withExpense = recordExpense(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "정확한 금액 지출",
+        amount: 1234
+      },
+      "2026-06-09"
+    );
+    const summary = getVisibleAccountSummary(withExpense, parent, "child-minjun");
+    const transaction = getVisibleTransactions(withExpense, parent, "child-minjun")[0];
+
+    assert.equal(transaction.title, "정확한 금액 지출");
+    assert.equal(transaction.amount, -1234);
+    assert.equal(transaction.absoluteAmount, 1234);
+    assert.equal(summary.totalExpense, 2234);
+    assert.equal(summary.currentBalance, 11566);
+  });
 });
