@@ -199,7 +199,33 @@ describe("invite code login", () => {
 
     assert.ok(child);
     assert.ok(invite);
-    assert.match(invite.code, /^DK-/);
+    assert.match(child.id, /^child-\d{3}$/);
+    assert.match(invite.code, /^DK-\d{3}-2026$/);
+  });
+
+  it("creates unique childId-based invite codes for children with the same name", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const first = registerChild(data, director, {
+      name: "김민준",
+      classId: "sun",
+      birthMonth: "2020.10"
+    });
+    const second = registerChild(first, getUser(first, "director-1"), {
+      name: "김민준",
+      classId: "star",
+      birthMonth: "2020.11"
+    });
+    const duplicatedNameChildren = second.children.filter((child) => child.name === "김민준");
+    const newChildren = duplicatedNameChildren.filter((child) => /^child-\d{3}$/.test(child.id));
+    const inviteCodes = newChildren.map(
+      (child) => second.inviteCodes.find((invite) => invite.childId === child.id).code
+    );
+
+    assert.equal(newChildren.length, 2);
+    assert.notEqual(newChildren[0].id, newChildren[1].id);
+    assert.notEqual(inviteCodes[0], inviteCodes[1]);
+    assert.ok(inviteCodes.every((code) => /^DK-\d{3}-2026/.test(code)));
   });
 
   it("normalizes missing invite codes for existing children", () => {

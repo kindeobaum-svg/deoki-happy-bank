@@ -105,13 +105,63 @@ function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function makeInviteCode(childName = "CHILD") {
-  const romanized = String(childName)
+function getNextChildSequence(data) {
+  const numericIds = data.children
+    .map((child) => /^child-(\d+)$/.exec(child.id)?.[1])
+    .filter(Boolean)
+    .map(Number);
+  const maxExisting = numericIds.length ? Math.max(...numericIds) : data.children.length;
+
+  return maxExisting + 1;
+}
+
+function makeChildId(data) {
+  let sequence = getNextChildSequence(data);
+  let childId = `child-${String(sequence).padStart(3, "0")}`;
+  const existingIds = new Set(data.children.map((child) => child.id));
+
+  while (existingIds.has(childId)) {
+    sequence += 1;
+    childId = `child-${String(sequence).padStart(3, "0")}`;
+  }
+
+  return childId;
+}
+
+function getChildInviteCodePart(childId = "") {
+  const numeric = /^child-(\d+)$/.exec(childId)?.[1];
+
+  if (numeric) {
+    return numeric.padStart(3, "0");
+  }
+
+  return String(childId)
+    .replace(/^child-/i, "")
     .replace(/[^a-zA-Z0-9]/g, "")
-    .slice(0, 8)
-    .toUpperCase();
-  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `DK-${romanized || "CHILD"}-${suffix}`;
+    .toUpperCase()
+    .slice(0, 12) || "CHILD";
+}
+
+function makeInviteCodeForChild(child) {
+  return `DK-${getChildInviteCodePart(child.id)}-2026`;
+}
+
+function makeUniqueInviteCode(data, child) {
+  const base = makeInviteCodeForChild(child);
+  const existingCodes = new Set((data.inviteCodes ?? []).map((invite) => String(invite.code).toUpperCase()));
+
+  if (!existingCodes.has(base.toUpperCase())) {
+    return base;
+  }
+
+  let suffix = 2;
+  let code = `${base}-${suffix}`;
+  while (existingCodes.has(code.toUpperCase())) {
+    suffix += 1;
+    code = `${base}-${suffix}`;
+  }
+
+  return code;
 }
 
 export function createInitialData(today = toDateKey()) {
@@ -371,7 +421,7 @@ export function normalizeParentInviteCodes(data) {
   const generatedInvites = data.children
     .filter((child) => !invitedChildIds.has(child.id))
     .map((child) => ({
-      code: makeInviteCode(child.name),
+      code: makeUniqueInviteCode({ ...data, inviteCodes: [...inviteCodes, ...canonicalInvites] }, child),
       childId: child.id,
       label: `${child.name} 학부모 초대코드`,
       active: true,
@@ -399,7 +449,7 @@ export function createParentInviteCode(data, user, childId) {
   }
 
   const invite = {
-    code: makeInviteCode(child.name),
+    code: makeUniqueInviteCode(data, child),
     childId: child.id,
     label: `${child.name} 학부모 초대코드`,
     active: true,
@@ -433,7 +483,7 @@ export function registerChild(data, user, childInput = {}) {
   }
 
   const child = {
-    id: makeId("child"),
+    id: makeChildId(data),
     name,
     classId,
     birthMonth: String(childInput.birthMonth ?? "").trim(),
@@ -448,7 +498,7 @@ export function registerChild(data, user, childInput = {}) {
     }
   };
   const invite = {
-    code: makeInviteCode(name),
+    code: makeUniqueInviteCode(data, child),
     childId: child.id,
     label: `${name} 학부모 초대코드`,
     active: true,
