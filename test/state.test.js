@@ -81,7 +81,7 @@ describe("invite code login", () => {
     const data = createInitialData("2026-06-09");
     const result = signInParentWithInviteCode(data, {
       inviteCode: "dk-minjun-2026",
-      parentName: "테스트 학부모"
+      parentName: "김민준"
     });
 
     assert.equal(result.user.id, "parent-minjun");
@@ -96,7 +96,7 @@ describe("invite code login", () => {
     const data = createInitialData("2026-06-09");
     const result = signInParentWithInviteCode(data, {
       inviteCode: "DK-HARIN-2026",
-      parentName: "이하린 보호자"
+      parentName: "이하린"
     });
 
     assert.equal(result.isNewUser, true);
@@ -117,9 +117,10 @@ describe("invite code login", () => {
 
     for (const [inviteCode, childId] of cases) {
       const data = createInitialData("2026-06-09");
+      const childName = data.children.find((child) => child.id === childId).name;
       const result = signInParentWithInviteCode(data, {
         inviteCode,
-        parentName: `${childId} 보호자`
+        parentName: childName
       });
       const visibleChildren = getVisibleChildren(result.data, result.user);
 
@@ -147,6 +148,19 @@ describe("invite code login", () => {
 
     assert.ok(normalized.inviteCodes.some((invite) => invite.code === "DK-HARIN-2026"));
     assert.ok(normalized.inviteCodes.some((invite) => invite.code === "DK-DOYUN-2026"));
+  });
+
+  it("rejects invite login when child name does not match the invite code", () => {
+    const data = createInitialData("2026-06-09");
+
+    assert.throws(
+      () =>
+        signInParentWithInviteCode(data, {
+          parentName: "이도윤",
+          inviteCode: "DK-DOYUN-2026"
+        }),
+      /학부모 이름과 초대코드가 일치하지 않습니다/
+    );
   });
 
   it("rejects an invalid parent invite code", () => {

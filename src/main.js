@@ -249,8 +249,8 @@ function renderLogin() {
         <p>원에서 받은 초대코드로 가입하면 자기 자녀 기록만 볼 수 있습니다.</p>
         <form id="parent-invite-form">
           <label>
-            학부모 이름
-            <input name="parentName" type="text" placeholder="예: 김민준 학부모" maxlength="30" />
+            아이 이름
+            <input name="parentName" type="text" placeholder="예: 김민준" maxlength="30" required />
           </label>
           <label>
             초대코드

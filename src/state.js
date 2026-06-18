@@ -468,6 +468,7 @@ export function signInParentWithInviteCode(data, inviteInput = {}) {
   const code = String(inviteInput.inviteCode ?? "")
     .trim()
     .toUpperCase();
+  const inputName = String(inviteInput.parentName ?? "").trim();
   const invite = data.inviteCodes?.find((item) => item.active && item.code.toUpperCase() === code);
 
   if (!invite) {
@@ -477,6 +478,10 @@ export function signInParentWithInviteCode(data, inviteInput = {}) {
   const child = getChild(data, invite.childId);
   if (!child) {
     throw new Error("초대코드에 연결된 아이를 찾을 수 없습니다.");
+  }
+
+  if (!inputName || inputName !== child.name) {
+    throw new Error("학부모 이름과 초대코드가 일치하지 않습니다.");
   }
 
   const existingParent = data.users.find(
@@ -491,7 +496,7 @@ export function signInParentWithInviteCode(data, inviteInput = {}) {
     };
   }
 
-  const parentName = String(inviteInput.parentName ?? "").trim() || `${child.name} 학부모`;
+  const parentName = `${child.name} 학부모`;
   const user = {
     id: makeId("parent"),
     role: ROLES.PARENT,
