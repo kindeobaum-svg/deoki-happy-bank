@@ -1155,6 +1155,10 @@ function renderExpenseForm(user) {
         </div>
       </div>
       <form id="expense-form">
+        <label>
+          지출 내용
+          <input name="title" type="text" placeholder="예: 색종이" required maxlength="40" />
+        </label>
         <div class="form-row">
           <label>
             아이
@@ -1165,16 +1169,13 @@ function renderExpenseForm(user) {
             </select>
           </label>
           <label>
-            지출 금액
-            <input name="amount" type="number" min="1" step="1" value="500" inputmode="numeric" required />
+            지출 금액(원)
+            <input name="amount" type="number" min="1" step="1" placeholder="예: 1000" inputmode="numeric" required />
           </label>
         </div>
-        <label>
-          지출 내용
-          <input name="title" type="text" placeholder="예: 행복상점 간식 교환" required maxlength="40" />
-        </label>
         <button class="primary-button expense-button" type="submit">지출 입력</button>
       </form>
+      <p class="helper-text">예: 색종이 / 1000원, 색연필 / 2500원, 아이스크림 / 3000원</p>
     </section>
   `;
 }
