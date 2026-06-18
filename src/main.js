@@ -220,6 +220,8 @@ function renderLogin() {
         </div>
       </div>
 
+      ${toastMessage ? `<div class="toast login-toast" role="alert">${escapeHtml(toastMessage)}</div>` : ""}
+
       ${roleGroups
         .map(
           (group) => `
