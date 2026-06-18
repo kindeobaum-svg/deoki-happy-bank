@@ -164,6 +164,28 @@ function makeUniqueInviteCode(data, child) {
   return code;
 }
 
+function dedupeParentInviteCodes(data, inviteCodes) {
+  const byChildId = new Map();
+
+  for (const invite of inviteCodes) {
+    const child = data.children.find((item) => item.id === invite.childId);
+    if (!child) {
+      continue;
+    }
+
+    const existing = byChildId.get(invite.childId);
+    const preferredCode = makeInviteCodeForChild(child).toUpperCase();
+    const inviteIsPreferred = String(invite.code).toUpperCase() === preferredCode;
+    const existingIsPreferred = existing && String(existing.code).toUpperCase() === preferredCode;
+
+    if (!existing || (inviteIsPreferred && !existingIsPreferred)) {
+      byChildId.set(invite.childId, invite);
+    }
+  }
+
+  return [...byChildId.values()];
+}
+
 export function createInitialData(today = toDateKey()) {
   const base = {
     classes: [
@@ -428,13 +450,20 @@ export function normalizeParentInviteCodes(data) {
       createdAt: toDateKey()
     }));
 
-  if (!canonicalInvites.length && !generatedInvites.length && Array.isArray(data.inviteCodes)) {
+  const dedupedInvites = dedupeParentInviteCodes(data, [...inviteCodes, ...canonicalInvites, ...generatedInvites]);
+
+  if (
+    !canonicalInvites.length &&
+    !generatedInvites.length &&
+    Array.isArray(data.inviteCodes) &&
+    dedupedInvites.length === data.inviteCodes.length
+  ) {
     return data;
   }
 
   return {
     ...data,
-    inviteCodes: [...inviteCodes, ...canonicalInvites, ...generatedInvites]
+    inviteCodes: dedupedInvites
   };
 }
 
@@ -448,8 +477,14 @@ export function createParentInviteCode(data, user, childId) {
     throw new Error("초대코드를 생성할 아이를 찾을 수 없습니다.");
   }
 
+  const normalizedData = normalizeParentInviteCodes(data);
+  const existingInvite = normalizedData.inviteCodes.find((invite) => invite.childId === child.id);
+  if (existingInvite) {
+    return normalizedData;
+  }
+
   const invite = {
-    code: makeUniqueInviteCode(data, child),
+    code: makeUniqueInviteCode(normalizedData, child),
     childId: child.id,
     label: `${child.name} 학부모 초대코드`,
     active: true,
@@ -457,8 +492,8 @@ export function createParentInviteCode(data, user, childId) {
   };
 
   return {
-    ...data,
-    inviteCodes: [invite, ...(data.inviteCodes ?? [])]
+    ...normalizedData,
+    inviteCodes: [invite, ...(normalizedData.inviteCodes ?? [])]
   };
 }
 
