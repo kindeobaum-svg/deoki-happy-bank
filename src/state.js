@@ -13,6 +13,33 @@ export const ROLE_LABELS = {
 export const STORAGE_KEY = "deoki-happy-bank-state-v1";
 export const SESSION_KEY = "deoki-happy-bank-session-v1";
 
+export const DEFAULT_PARENT_INVITE_CODES = [
+  {
+    code: "DK-MINJUN-2026",
+    childId: "child-minjun",
+    label: "김민준 학부모 초대코드",
+    active: true
+  },
+  {
+    code: "DK-SEOA-2026",
+    childId: "child-seoa",
+    label: "박서아 학부모 초대코드",
+    active: true
+  },
+  {
+    code: "DK-HARIN-2026",
+    childId: "child-harin",
+    label: "이하린 학부모 초대코드",
+    active: true
+  },
+  {
+    code: "DK-DOYUN-2026",
+    childId: "child-doyun",
+    label: "최도윤 학부모 초대코드",
+    active: true
+  }
+];
+
 export const STANDARD_MISSIONS = [
   { key: "greeting", title: "인사하기", point: 500 },
   { key: "cleanup", title: "정리정돈", point: 500 },
@@ -134,26 +161,7 @@ export function createInitialData(today = toDateKey()) {
         description: "박서아 어린이의 기록만 조회합니다."
       }
     ],
-    inviteCodes: [
-      {
-        code: "DK-MINJUN-2026",
-        childId: "child-minjun",
-        label: "김민준 학부모 초대코드",
-        active: true
-      },
-      {
-        code: "DK-SEOA-2026",
-        childId: "child-seoa",
-        label: "박서아 학부모 초대코드",
-        active: true
-      },
-      {
-        code: "DK-HARIN-2026",
-        childId: "child-harin",
-        label: "이하린 학부모 초대코드",
-        active: true
-      }
-    ],
+    inviteCodes: DEFAULT_PARENT_INVITE_CODES,
     children: [
       {
         id: "child-minjun",
@@ -353,7 +361,13 @@ export function getChild(data, childId) {
 
 export function normalizeParentInviteCodes(data) {
   const inviteCodes = Array.isArray(data.inviteCodes) ? data.inviteCodes : [];
-  const invitedChildIds = new Set(inviteCodes.map((invite) => invite.childId));
+  const existingCodes = new Set(inviteCodes.map((invite) => String(invite.code).toUpperCase()));
+  const canonicalInvites = DEFAULT_PARENT_INVITE_CODES.filter(
+    (invite) =>
+      data.children.some((child) => child.id === invite.childId) &&
+      !existingCodes.has(invite.code.toUpperCase())
+  );
+  const invitedChildIds = new Set([...inviteCodes, ...canonicalInvites].map((invite) => invite.childId));
   const generatedInvites = data.children
     .filter((child) => !invitedChildIds.has(child.id))
     .map((child) => ({
@@ -364,13 +378,13 @@ export function normalizeParentInviteCodes(data) {
       createdAt: toDateKey()
     }));
 
-  if (!generatedInvites.length && Array.isArray(data.inviteCodes)) {
+  if (!canonicalInvites.length && !generatedInvites.length && Array.isArray(data.inviteCodes)) {
     return data;
   }
 
   return {
     ...data,
-    inviteCodes: [...inviteCodes, ...generatedInvites]
+    inviteCodes: [...inviteCodes, ...canonicalInvites, ...generatedInvites]
   };
 }
 

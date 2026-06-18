@@ -258,7 +258,7 @@ function renderLogin() {
           </label>
           <button class="primary-button" type="submit">학부모 로그인 / 가입</button>
         </form>
-        <small>테스트 코드: DK-MINJUN-2026, DK-SEOA-2026, DK-HARIN-2026</small>
+        <small>테스트 코드: DK-MINJUN-2026, DK-SEOA-2026, DK-HARIN-2026, DK-DOYUN-2026</small>
       </div>
     </section>
   `;

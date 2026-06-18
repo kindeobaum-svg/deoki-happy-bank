@@ -108,6 +108,47 @@ describe("invite code login", () => {
     );
   });
 
+  it("signs parents into the child mapped by each invite code only", () => {
+    const cases = [
+      ["DK-MINJUN-2026", "child-minjun"],
+      ["DK-HARIN-2026", "child-harin"],
+      ["DK-DOYUN-2026", "child-doyun"]
+    ];
+
+    for (const [inviteCode, childId] of cases) {
+      const data = createInitialData("2026-06-09");
+      const result = signInParentWithInviteCode(data, {
+        inviteCode,
+        parentName: `${childId} 보호자`
+      });
+      const visibleChildren = getVisibleChildren(result.data, result.user);
+
+      assert.deepEqual(visibleChildren.map((child) => child.id), [childId]);
+      assert.ok(getVisibleTransactions(result.data, result.user).every((item) => item.childId === childId));
+      assert.ok(getVisibleGrowthRecords(result.data, result.user).every((item) => item.childId === childId));
+      assert.ok(getVisibleChecklistMissions(result.data, result.user).every((item) => item.childId === childId));
+      assert.ok(getVisibleMissionHistory(result.data, result.user).every((item) => item.childId === childId));
+    }
+  });
+
+  it("adds missing default invite codes to previously saved data", () => {
+    const data = {
+      ...createInitialData("2026-06-09"),
+      inviteCodes: [
+        {
+          code: "DK-MINJUN-2026",
+          childId: "child-minjun",
+          label: "김민준 학부모 초대코드",
+          active: true
+        }
+      ]
+    };
+    const normalized = normalizeParentInviteCodes(data);
+
+    assert.ok(normalized.inviteCodes.some((invite) => invite.code === "DK-HARIN-2026"));
+    assert.ok(normalized.inviteCodes.some((invite) => invite.code === "DK-DOYUN-2026"));
+  });
+
   it("rejects an invalid parent invite code", () => {
     const data = createInitialData("2026-06-09");
 
