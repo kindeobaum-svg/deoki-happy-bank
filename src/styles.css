@@ -214,6 +214,17 @@ select:focus-visible {
   line-height: 1.5;
 }
 
+.login-error {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  color: #b42318;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.45;
+  background: #fff1f1;
+}
+
 .invite-login-card form {
   display: grid;
   gap: 12px;

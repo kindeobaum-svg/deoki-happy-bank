@@ -56,6 +56,8 @@ let state = normalizeBankAccounts(
 );
 let session = loadSession();
 let toastMessage = "";
+let loginErrorMessage = "";
+let loginFormDraft = { parentName: "", inviteCode: "" };
 
 applyPreviewLoginFromUrl();
 saveState(state);
@@ -220,8 +222,6 @@ function renderLogin() {
         </div>
       </div>
 
-      ${toastMessage ? `<div class="toast login-toast" role="alert">${escapeHtml(toastMessage)}</div>` : ""}
-
       ${roleGroups
         .map(
           (group) => `
@@ -249,14 +249,15 @@ function renderLogin() {
       <div class="login-group invite-login-card">
         <h2>학부모용 초대코드 로그인</h2>
         <p>원에서 받은 초대코드로 가입하면 자기 자녀 기록만 볼 수 있습니다.</p>
+        ${loginErrorMessage ? `<div class="login-error" role="alert">${escapeHtml(loginErrorMessage)}</div>` : ""}
         <form id="parent-invite-form">
           <label>
             아이 이름
-            <input name="parentName" type="text" placeholder="예: 김민준" maxlength="30" required />
+            <input name="parentName" type="text" placeholder="예: 김민준" maxlength="30" value="${escapeHtml(loginFormDraft.parentName)}" required />
           </label>
           <label>
             초대코드
-            <input name="inviteCode" type="text" placeholder="예: DK-MINJUN-2026" required />
+            <input name="inviteCode" type="text" placeholder="예: DK-MINJUN-2026" value="${escapeHtml(loginFormDraft.inviteCode)}" required />
           </label>
           <button class="primary-button" type="submit">학부모 로그인 / 가입</button>
         </form>
@@ -1463,6 +1464,8 @@ app.addEventListener("click", (event) => {
   const loginButton = event.target.closest("[data-login-user]");
   if (loginButton) {
     const user = getUser(state, loginButton.dataset.loginUser);
+    loginErrorMessage = "";
+    loginFormDraft = { parentName: "", inviteCode: "" };
     session = {
       userId: user.id,
       tab: "home",
@@ -1683,11 +1686,15 @@ app.addEventListener("submit", (event) => {
 
   try {
     if (event.target.id === "parent-invite-form") {
+      const parentName = String(formData.get("parentName") ?? "");
+      const inviteCode = String(formData.get("inviteCode") ?? "");
       const result = signInParentWithInviteCode(state, {
-        parentName: formData.get("parentName"),
-        inviteCode: formData.get("inviteCode")
+        parentName,
+        inviteCode
       });
       state = result.data;
+      loginErrorMessage = "";
+      loginFormDraft = { parentName: "", inviteCode: "" };
       session = {
         userId: result.user.id,
         tab: "home",
@@ -1811,7 +1818,15 @@ app.addEventListener("submit", (event) => {
     saveSession();
     render();
   } catch (error) {
-    setToast(error.message);
+    if (event.target.id === "parent-invite-form") {
+      loginErrorMessage = error.message;
+      loginFormDraft = {
+        parentName: String(formData.get("parentName") ?? ""),
+        inviteCode: String(formData.get("inviteCode") ?? "")
+      };
+    } else {
+      setToast(error.message);
+    }
     render();
   }
 });
