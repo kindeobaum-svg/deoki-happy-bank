@@ -198,7 +198,7 @@ describe("invite code login", () => {
     const invites = createdThird.inviteCodes.filter((invite) => invite.childId === child.id);
 
     assert.equal(invites.length, 1);
-    assert.equal(invites[0].code, `DK-${child.id.replace("child-", "")}-2026`);
+    assert.equal(invites[0].code, `DK-CHILD-${child.id.replace("child-", "").padStart(6, "0")}`);
   });
 
   it("removes stale duplicate suffix invite codes for the same child", () => {
@@ -213,7 +213,7 @@ describe("invite code login", () => {
       ...registered,
       inviteCodes: [
         {
-          code: `DK-${child.id.replace("child-", "")}-2026-2`,
+          code: `DK-CHILD-${child.id.replace("child-", "").padStart(6, "0")}-2`,
           childId: child.id,
           label: `${child.name} 학부모 초대코드`,
           active: true
@@ -223,6 +223,33 @@ describe("invite code login", () => {
     };
     const normalized = normalizeParentInviteCodes(corrupted);
     const invites = normalized.inviteCodes.filter((invite) => invite.childId === child.id);
+
+    assert.equal(invites.length, 1);
+    assert.equal(invites[0].code, `DK-CHILD-${child.id.replace("child-", "").padStart(6, "0")}`);
+  });
+
+  it("keeps existing old-format invite codes for existing children", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const registered = registerChild(data, director, {
+      name: "한지우",
+      classId: "sun"
+    });
+    const child = registered.children.find((item) => item.name === "한지우");
+    const oldFormatData = {
+      ...registered,
+      inviteCodes: registered.inviteCodes.map((invite) =>
+        invite.childId === child.id
+          ? {
+              ...invite,
+              code: `DK-${child.id.replace("child-", "")}-2026`
+            }
+          : invite
+      )
+    };
+    const normalized = normalizeParentInviteCodes(oldFormatData);
+    const createdAgain = createParentInviteCode(normalized, getUser(normalized, "director-1"), child.id);
+    const invites = createdAgain.inviteCodes.filter((invite) => invite.childId === child.id);
 
     assert.equal(invites.length, 1);
     assert.equal(invites[0].code, `DK-${child.id.replace("child-", "")}-2026`);
@@ -243,7 +270,7 @@ describe("invite code login", () => {
     assert.ok(child);
     assert.ok(invite);
     assert.match(child.id, /^child-\d{3}$/);
-    assert.match(invite.code, /^DK-\d{3}-2026$/);
+    assert.match(invite.code, /^DK-CHILD-\d{6}$/);
   });
 
   it("creates unique childId-based invite codes for children with the same name", () => {
@@ -268,7 +295,7 @@ describe("invite code login", () => {
     assert.equal(newChildren.length, 2);
     assert.notEqual(newChildren[0].id, newChildren[1].id);
     assert.notEqual(inviteCodes[0], inviteCodes[1]);
-    assert.ok(inviteCodes.every((code) => /^DK-\d{3}-2026/.test(code)));
+    assert.ok(inviteCodes.every((code) => /^DK-CHILD-\d{6}$/.test(code)));
   });
 
   it("normalizes missing invite codes for existing children", () => {

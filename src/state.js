@@ -132,18 +132,19 @@ function getChildInviteCodePart(childId = "") {
   const numeric = /^child-(\d+)$/.exec(childId)?.[1];
 
   if (numeric) {
-    return numeric.padStart(3, "0");
+    return numeric.padStart(6, "0");
   }
 
   return String(childId)
     .replace(/^child-/i, "")
     .replace(/[^a-zA-Z0-9]/g, "")
     .toUpperCase()
-    .slice(0, 12) || "CHILD";
+    .slice(0, 6)
+    .padStart(6, "0") || "000000";
 }
 
 function makeInviteCodeForChild(child) {
-  return `DK-${getChildInviteCodePart(child.id)}-2026`;
+  return `DK-CHILD-${getChildInviteCodePart(child.id)}`;
 }
 
 function makeUniqueInviteCode(data, child) {
