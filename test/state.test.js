@@ -385,7 +385,7 @@ describe("daily missions", () => {
 
     assert.deepEqual(
       checklist.map((mission) => mission.template.title),
-      ["스스로 옷 입기", "인사하기", "정리정돈", "양치하기", "친구 돕기"]
+      ["인사하기", "양치하기", "정리정돈 잘하기", "동화책읽기", "친구 돕기"]
     );
     assert.ok(checklist.every((mission) => mission.template.point === 500));
   });
@@ -446,7 +446,7 @@ describe("daily missions", () => {
     const teacher = getUser(data, "teacher-sun");
     const parent = getUser(data, "parent-minjun");
     const mission = getVisibleChecklistMissions(data, parent, "child-minjun", "2026-06-09").find(
-      (item) => item.template.title === "정리정돈"
+      (item) => item.template.title === "정리정돈 잘하기"
     );
     const completed = completeMission(data, parent, mission.id, "2026-06-09");
     const edited = updateChecklistMissionGroup(
@@ -455,7 +455,7 @@ describe("daily missions", () => {
       mission.id,
       {
         childIds: ["child-minjun", "child-harin"],
-        title: "정리정돈 잘하기",
+        title: "정리정돈 더 잘하기",
         point: 500,
         repeatDaily: true
       },
@@ -468,7 +468,7 @@ describe("daily missions", () => {
       (item) => item.missionId === mission.id
     );
 
-    assert.equal(transaction.title, "정리정돈");
+    assert.equal(transaction.title, "정리정돈 잘하기");
     assert.equal(visibleMission.displayTitle, transaction.title);
   });
 
@@ -598,13 +598,16 @@ describe("daily missions", () => {
 
     assert.deepEqual(
       missions.map((mission) => mission.displayTitle).sort(),
-      ["스스로 옷 입기", "양치하기", "인사하기", "정리정돈", "친구 돕기"].sort()
+      ["동화책읽기", "양치하기", "인사하기", "정리정돈 잘하기", "친구 돕기"].sort()
     );
     assert.equal(missions.length, 5);
     assert.equal(missions.filter((mission) => mission.completed).length, missionDeposits.length);
-    assert.equal(missionDeposits.length, 1);
-    assert.equal(missionDeposits[0].title, "인사하기");
-    assert.equal(getVisibleAccountSummary(cleaned, parent, "child-minjun").currentBalance, 13300);
+    assert.equal(missionDeposits.length, 2);
+    assert.deepEqual(
+      missionDeposits.map((transaction) => transaction.title).sort(),
+      ["동화책읽기", "인사하기"].sort()
+    );
+    assert.equal(getVisibleAccountSummary(cleaned, parent, "child-minjun").currentBalance, 13800);
   });
 
   it("keeps extra missions separate from default mission completion rate", () => {
@@ -849,7 +852,7 @@ describe("daily missions", () => {
     const data = createInitialData("2026-06-09");
     const teacher = getUser(data, "teacher-sun");
     const defaultMission = getVisibleChecklistMissions(data, teacher, "child-minjun", "2026-06-09").find(
-      (mission) => mission.template.title === "정리정돈"
+      (mission) => mission.template.title === "정리정돈 잘하기"
     );
     const beforeTemplateCount = data.missionTemplates.length;
     const updated = updateChecklistMissionGroup(
@@ -858,7 +861,7 @@ describe("daily missions", () => {
       defaultMission.id,
       {
         childIds: ["child-minjun", "child-harin"],
-        title: "정리정돈 잘하기",
+        title: "정리정돈 더 잘하기",
         point: 500,
         repeatDaily: true
       },
@@ -877,10 +880,10 @@ describe("daily missions", () => {
       false
     );
     assert.ok(
-      minjunMissions.some((mission) => mission.template.title === "정리정돈 잘하기")
+      minjunMissions.some((mission) => mission.template.title === "정리정돈 더 잘하기")
     );
     assert.ok(
-      harinMissions.some((mission) => mission.template.title === "정리정돈 잘하기")
+      harinMissions.some((mission) => mission.template.title === "정리정돈 더 잘하기")
     );
   });
 
@@ -892,14 +895,14 @@ describe("daily missions", () => {
       teacher,
       {
         childIds: ["child-minjun", "child-harin"],
-        title: "정리정돈 잘하기",
+        title: "정리정돈 더 잘하기",
         point: 500,
         repeatDaily: true
       },
       "2026-06-09"
     );
     const defaultMission = getVisibleChecklistMissions(corrupted, teacher, "child-minjun", "2026-06-09").find(
-      (mission) => mission.template.title === "정리정돈"
+      (mission) => mission.template.title === "정리정돈 잘하기"
     );
     const updated = updateChecklistMissionGroup(
       corrupted,
@@ -907,7 +910,7 @@ describe("daily missions", () => {
       defaultMission.id,
       {
         childIds: ["child-minjun", "child-harin"],
-        title: "정리정돈 잘하기",
+        title: "정리정돈 더 잘하기",
         point: 500,
         repeatDaily: true
       },
@@ -917,11 +920,11 @@ describe("daily missions", () => {
     const harinMissions = getVisibleChecklistMissions(updated, teacher, "child-harin", "2026-06-09");
 
     assert.equal(
-      minjunMissions.filter((mission) => mission.template.title === "정리정돈 잘하기").length,
+      minjunMissions.filter((mission) => mission.template.title === "정리정돈 더 잘하기").length,
       1
     );
     assert.equal(
-      harinMissions.filter((mission) => mission.template.title === "정리정돈 잘하기").length,
+      harinMissions.filter((mission) => mission.template.title === "정리정돈 더 잘하기").length,
       1
     );
     assert.equal(

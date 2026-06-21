@@ -41,10 +41,10 @@ export const DEFAULT_PARENT_INVITE_CODES = [
 ];
 
 export const STANDARD_MISSIONS = [
-  { key: "dress", title: "스스로 옷 입기", point: 500 },
   { key: "greeting", title: "인사하기", point: 500 },
-  { key: "cleanup", title: "정리정돈", point: 500 },
   { key: "brush-teeth", title: "양치하기", point: 500 },
+  { key: "cleanup", title: "정리정돈 잘하기", point: 500 },
+  { key: "dress", title: "동화책읽기", point: 500 },
   { key: "help-friend", title: "친구 돕기", point: 500 }
 ];
 
@@ -779,8 +779,51 @@ export function normalizeDailyMissions(data, date = new Date()) {
 
 export function normalizeStandardMissionTemplates(data, date = new Date()) {
   const dateKey = toDateKey(date);
+  const standardByKey = new Map(STANDARD_MISSIONS.map((mission) => [mission.key, mission]));
+  const usedIds = new Set(data.missionTemplates.map((template) => template.id));
+  let templatesChanged = false;
+  const normalizedTemplates = data.missionTemplates.map((template) => {
+    if (!template.standardKey) {
+      return template;
+    }
+
+    const standard = standardByKey.get(template.standardKey);
+    if (!standard) {
+      templatesChanged = true;
+      return {
+        ...template,
+        standardKey: undefined,
+        checklist: true
+      };
+    }
+
+    const isCanonical = normalizeMissionTitle(template.title) === normalizeMissionTitle(standard.title);
+    const shouldCoerceToCanonical = ["cleanup", "dress"].includes(template.standardKey);
+
+    if (isCanonical || shouldCoerceToCanonical) {
+      if (template.title !== standard.title || template.point !== standard.point || !template.checklist) {
+        templatesChanged = true;
+      }
+      return {
+        ...template,
+        title: standard.title,
+        point: standard.point,
+        checklist: true,
+        active: template.active !== false
+      };
+    }
+
+    templatesChanged = true;
+    return {
+      ...template,
+      standardKey: undefined,
+      checklist: true
+    };
+  });
   const existingKeys = new Set(
-    data.missionTemplates.map((template) => `${template.standardKey ?? ""}:${template.targetId}`)
+    normalizedTemplates
+      .filter((template) => template.standardKey)
+      .map((template) => `${template.standardKey}:${template.targetId}`)
   );
   const generatedTemplates = [];
 
@@ -792,8 +835,16 @@ export function normalizeStandardMissionTemplates(data, date = new Date()) {
       }
 
       existingKeys.add(key);
+      const preferredId = `standard-${classroom.id}-${mission.key}`;
+      let templateId = preferredId;
+      let suffix = 2;
+      while (usedIds.has(templateId)) {
+        templateId = `${preferredId}-${suffix}`;
+        suffix += 1;
+      }
+      usedIds.add(templateId);
       generatedTemplates.push({
-        id: `standard-${classroom.id}-${mission.key}`,
+        id: templateId,
         title: mission.title,
         point: mission.point,
         targetType: "class",
@@ -807,13 +858,13 @@ export function normalizeStandardMissionTemplates(data, date = new Date()) {
     }
   }
 
-  if (!generatedTemplates.length) {
+  if (!generatedTemplates.length && !templatesChanged) {
     return data;
   }
 
   return {
     ...data,
-    missionTemplates: [...generatedTemplates, ...data.missionTemplates]
+    missionTemplates: [...generatedTemplates, ...normalizedTemplates]
   };
 }
 
