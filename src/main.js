@@ -271,6 +271,7 @@ function renderLogin() {
 function renderShell(user) {
   const visibleChildren = getVisibleChildren(state, user);
   const visibleClasses = getVisibleClasses(state, user);
+  const displayTitle = getUserDisplayTitle(user);
   const currentClassLabel =
     user.role === ROLES.DIRECTOR
       ? `${visibleClasses.length}개 반 전체`
@@ -281,7 +282,7 @@ function renderShell(user) {
       <header class="top-bar">
         <div>
           <p class="eyebrow">${escapeHtml(user.title)} · ${escapeHtml(currentClassLabel)}</p>
-          <h1>${escapeHtml(user.name)}</h1>
+          <h1>${escapeHtml(displayTitle)}</h1>
         </div>
         <button class="ghost-button" type="button" data-logout>전환</button>
       </header>
@@ -323,6 +324,18 @@ function renderShell(user) {
       </nav>
     </div>
   `;
+}
+
+function getUserDisplayTitle(user) {
+  if (user.role === ROLES.DIRECTOR) {
+    return "원장 화면";
+  }
+
+  if (user.role === ROLES.TEACHER) {
+    return getClass(state, user.classId)?.name ?? "교사 화면";
+  }
+
+  return user.name;
 }
 
 function getRoleHeadline(user) {
