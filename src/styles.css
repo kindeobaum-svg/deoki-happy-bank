@@ -411,6 +411,7 @@ select:focus-visible {
 .teacher-child-inline {
   display: grid;
   gap: 12px;
+  margin-bottom: 16px;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 22px;

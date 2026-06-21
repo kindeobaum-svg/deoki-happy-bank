@@ -291,6 +291,8 @@ function renderShell(user) {
         <button class="ghost-button" type="button" data-logout>전환</button>
       </header>
 
+      ${user.role === ROLES.TEACHER && session.tab === "home" && !session.detailScreen ? renderTeacherInlineChildRegistration(user) : ""}
+
       ${
         session.tab === "home"
           ? ""
@@ -410,8 +412,6 @@ function renderHome(user) {
           ${renderHomeChildFilter(user)}
         </div>
       </div>
-
-      ${renderTeacherInlineChildRegistration(user)}
 
       <button class="home-balance-card" type="button" data-open-detail="bank">
         <span>현재 잔액</span>
