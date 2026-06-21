@@ -626,8 +626,8 @@ export function createParentInviteCode(data, user, childId) {
 }
 
 export function registerChild(data, user, childInput = {}) {
-  if (!user || user.role !== ROLES.TEACHER) {
-    throw new Error("교사만 아이를 등록할 수 있습니다.");
+  if (!user || user.role !== ROLES.DIRECTOR) {
+    throw new Error("원장만 아이를 등록할 수 있습니다.");
   }
 
   const name = String(childInput.name ?? "").trim();
@@ -635,9 +635,9 @@ export function registerChild(data, user, childInput = {}) {
     throw new Error("아이 이름을 입력해주세요.");
   }
 
-  const classId = String(user.classId ?? "").trim();
+  const classId = String(childInput.classId ?? "").trim();
   if (!data.classes.some((classroom) => classroom.id === classId)) {
-    throw new Error("담당 반을 찾을 수 없습니다.");
+    throw new Error("등록할 반을 선택해주세요.");
   }
 
   const balance = Number(childInput.balance ?? 0);
@@ -675,98 +675,6 @@ export function registerChild(data, user, childInput = {}) {
       inviteCodes: [invite, ...(data.inviteCodes ?? [])]
     })
   );
-}
-
-export function updateChild(data, user, childId, childInput = {}) {
-  if (!user || user.role !== ROLES.TEACHER) {
-    throw new Error("교사만 아이 이름을 수정할 수 있습니다.");
-  }
-
-  const child = getChild(data, childId);
-  if (!child || child.classId !== user.classId) {
-    throw new Error("담당 반 아이만 수정할 수 있습니다.");
-  }
-
-  const name = String(childInput.name ?? "").trim();
-  if (!name) {
-    throw new Error("아이 이름을 입력해주세요.");
-  }
-
-  const previousDefaultTreeName = `${child.name}의 행복나무`;
-  const nextDefaultTreeName = `${name}의 행복나무`;
-
-  return {
-    ...data,
-    children: data.children.map((item) =>
-      item.id === child.id
-        ? {
-            ...item,
-            name,
-            forest: {
-              ...item.forest,
-              treeName: item.forest?.treeName === previousDefaultTreeName ? nextDefaultTreeName : item.forest?.treeName
-            }
-          }
-        : item
-    ),
-    inviteCodes: (data.inviteCodes ?? []).map((invite) =>
-      invite.childId === child.id
-        ? {
-            ...invite,
-            label: `${name} 학부모 초대코드`
-          }
-        : invite
-    )
-  };
-}
-
-export function deleteChild(data, user, childId) {
-  if (!user || user.role !== ROLES.TEACHER) {
-    throw new Error("교사만 아이를 삭제할 수 있습니다.");
-  }
-
-  const child = getChild(data, childId);
-  if (!child || child.classId !== user.classId) {
-    throw new Error("담당 반 아이만 삭제할 수 있습니다.");
-  }
-
-  const linkedParentIds = new Set([
-    ...(child.parentUserIds ?? []),
-    ...data.users
-      .filter((item) => item.role === ROLES.PARENT && Array.isArray(item.childIds) && item.childIds.includes(child.id))
-      .map((item) => item.id)
-  ]);
-
-  return {
-    ...data,
-    children: data.children.filter((item) => item.id !== child.id),
-    users: data.users
-      .map((item) => {
-        if (!linkedParentIds.has(item.id) || item.role !== ROLES.PARENT) {
-          return item;
-        }
-
-        const childIds = (item.childIds ?? []).filter((id) => id !== child.id);
-        return {
-          ...item,
-          childIds
-        };
-      })
-      .filter((item) => item.role !== ROLES.PARENT || (item.childIds ?? []).length > 0),
-    inviteCodes: (data.inviteCodes ?? []).filter((invite) => invite.childId !== child.id),
-    transactions: data.transactions.filter((transaction) => transaction.childId !== child.id),
-    growthRecords: data.growthRecords.filter((record) => record.childId !== child.id),
-    forestMoments: data.forestMoments.filter((moment) => moment.childId !== child.id),
-    dailyMissions: data.dailyMissions.filter((mission) => mission.childId !== child.id),
-    missionTemplates: data.missionTemplates.map((template) =>
-      template.targetType === "child" && template.targetId === child.id
-        ? {
-            ...template,
-            active: false
-          }
-        : template
-    )
-  };
 }
 
 export function signInParentWithInviteCode(data, inviteInput = {}) {
