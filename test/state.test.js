@@ -19,6 +19,7 @@ import {
   getVisibleMissionHistory,
   getVisibleTransactions,
   normalizeDailyMissions,
+  normalizeMissionIntegrity,
   normalizeMissionCompletionArtifacts,
   normalizeParentInviteCodes,
   registerChild,
@@ -26,6 +27,10 @@ import {
   signInParentWithInviteCode,
   updateChecklistMissionGroup
 } from "../src/state.js";
+
+function normalizeMissionTitleForTest(title) {
+  return String(title).replace(/\s+/g, "").trim();
+}
 
 describe("role based access", () => {
   it("allows the director to see all classes and children", () => {
@@ -478,6 +483,51 @@ describe("daily missions", () => {
 
     assert.equal(missionTransactions.length, 1);
     assert.equal(getVisibleAccountSummary(completedAgain, parent, "child-minjun").currentBalance, 13300);
+  });
+
+  it("deduplicates same child-date-title missions and aligns completed count with mission deposits", () => {
+    const data = createInitialData("2026-06-09");
+    const parent = getUser(data, "parent-minjun");
+    const mission = getVisibleChecklistMissions(data, parent, "child-minjun", "2026-06-09").find(
+      (item) => item.template.title === "인사하기"
+    );
+    const completed = completeMission(data, parent, mission.id, "2026-06-09");
+    const duplicateMission = {
+      ...completed.dailyMissions.find((item) => item.id === mission.id),
+      id: "duplicate-mission-id",
+      completed: true,
+      completedAt: "2026-06-09T10:00:00.000Z"
+    };
+    const corrupted = {
+      ...completed,
+      dailyMissions: [duplicateMission, ...completed.dailyMissions],
+      transactions: [
+        {
+          id: "duplicate-tx-id",
+          missionId: duplicateMission.id,
+          templateId: duplicateMission.templateId,
+          childId: duplicateMission.childId,
+          date: duplicateMission.date,
+          amount: 500,
+          title: "인사하기",
+          category: "미션"
+        },
+        ...completed.transactions
+      ]
+    };
+    const normalized = normalizeMissionIntegrity(corrupted);
+    const visibleMissions = getVisibleChecklistMissions(normalized, parent, "child-minjun", "2026-06-09");
+    const missionDeposits = getVisibleTransactions(normalized, parent, "child-minjun").filter(
+      (transaction) => transaction.category === "미션"
+    );
+
+    assert.equal(
+      visibleMissions.filter((item) => normalizeMissionTitleForTest(item.displayTitle) === "인사하기").length,
+      1
+    );
+    assert.equal(visibleMissions.filter((item) => item.completed).length, missionDeposits.length);
+    assert.equal(missionDeposits.filter((transaction) => transaction.title === "인사하기").length, 1);
+    assert.equal(getVisibleAccountSummary(normalized, parent, "child-minjun").currentBalance, 13300);
   });
 
   it("repairs completed missions missing transaction and growth artifacts from saved localStorage", () => {

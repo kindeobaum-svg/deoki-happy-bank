@@ -769,11 +769,11 @@ export function normalizeDailyMissions(data, date = new Date()) {
     }
   }
 
-  return {
+  return normalizeDailyMissionUniqueness({
     ...data,
     dailyMissions: [...data.dailyMissions, ...generated],
     lastMissionDate: dateKey
-  };
+  });
 }
 
 export function normalizeStandardMissionTemplates(data, date = new Date()) {
@@ -1183,7 +1183,7 @@ export function decorateMission(data, mission) {
   const classroom = child ? getClass(data, child.classId) : null;
   const transaction = data.transactions.find((item) => item.missionId === mission.id) ?? null;
 
-  if (!child || !template || template.active === false || !classroom) {
+  if (!child || !template || (template.active === false && !mission.completed) || !classroom) {
     return null;
   }
 
@@ -1196,6 +1196,99 @@ export function decorateMission(data, mission) {
     transaction,
     classroom
   };
+}
+
+function normalizeMissionTitle(title = "") {
+  return String(title).replace(/\s+/g, "").trim();
+}
+
+function getMissionDisplayTitleForKey(data, mission) {
+  const transaction = data.transactions.find((item) => item.missionId === mission.id);
+  const template = data.missionTemplates.find((item) => item.id === mission.templateId);
+
+  return transaction?.title ?? template?.title ?? mission.templateId;
+}
+
+function getMissionUniqueKey(data, mission) {
+  return [
+    mission.childId,
+    mission.date,
+    normalizeMissionTitle(getMissionDisplayTitleForKey(data, mission))
+  ].join("::");
+}
+
+function scoreMissionForDedupe(data, mission) {
+  const hasTransaction = data.transactions.some((item) => item.missionId === mission.id);
+  const template = data.missionTemplates.find((item) => item.id === mission.templateId);
+  const templateActive = template?.active !== false;
+
+  return Number(Boolean(mission.completed)) * 100 + Number(hasTransaction) * 10 + Number(templateActive);
+}
+
+export function normalizeDailyMissionUniqueness(data) {
+  const byKey = new Map();
+  const removedMissionIds = new Set();
+
+  for (const mission of data.dailyMissions) {
+    const key = getMissionUniqueKey(data, mission);
+    const existing = byKey.get(key);
+
+    if (!existing) {
+      byKey.set(key, mission);
+      continue;
+    }
+
+    const existingScore = scoreMissionForDedupe(data, existing);
+    const missionScore = scoreMissionForDedupe(data, mission);
+    const winner = missionScore > existingScore ? mission : existing;
+    const loser = winner === mission ? existing : mission;
+    const mergedWinner = {
+      ...winner,
+      completed: Boolean(existing.completed || mission.completed),
+      completedAt: winner.completedAt ?? existing.completedAt ?? mission.completedAt ?? null
+    };
+
+    byKey.set(key, mergedWinner);
+    removedMissionIds.add(loser.id);
+  }
+
+  if (!removedMissionIds.size) {
+    return data;
+  }
+
+  return {
+    ...data,
+    dailyMissions: [...byKey.values()],
+    transactions: data.transactions.filter((transaction) => !removedMissionIds.has(transaction.missionId)),
+    growthRecords: data.growthRecords.filter((record) => !removedMissionIds.has(record.missionId)),
+    forestMoments: data.forestMoments.filter((moment) => !removedMissionIds.has(moment.missionId))
+  };
+}
+
+export function normalizeMissionTransactionUniqueness(data) {
+  const seen = new Set();
+  let changed = false;
+  const transactions = data.transactions.filter((transaction) => {
+    if (transaction.category !== "미션") {
+      return true;
+    }
+
+    const key = [
+      transaction.childId,
+      transaction.date,
+      normalizeMissionTitle(transaction.title)
+    ].join("::");
+
+    if (seen.has(key)) {
+      changed = true;
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+
+  return changed ? { ...data, transactions } : data;
 }
 
 function getMissionCompletionSeed(point) {
@@ -1334,6 +1427,12 @@ export function normalizeMissionCompletionArtifacts(data) {
   };
 }
 
+export function normalizeMissionIntegrity(data) {
+  return normalizeMissionTransactionUniqueness(
+    normalizeMissionCompletionArtifacts(normalizeDailyMissionUniqueness(data))
+  );
+}
+
 export function completeMission(data, user, missionId, date = new Date()) {
   const mission = data.dailyMissions.find((item) => item.id === missionId);
   const child = mission ? getChild(data, mission.childId) : null;
@@ -1360,7 +1459,7 @@ export function completeMission(data, user, missionId, date = new Date()) {
   const forestMomentExists = hasMissionForestMoment(data, completedMission, template);
   const shouldApplyMissionReward = !mission.completed;
 
-  return {
+  return normalizeMissionIntegrity({
     ...data,
     children: data.children.map((item) =>
       item.id === child.id
@@ -1390,7 +1489,7 @@ export function completeMission(data, user, missionId, date = new Date()) {
         ? completedMission
         : item
     )
-  };
+  });
 }
 
 export function recordExpense(data, user, expenseInput, date = new Date()) {

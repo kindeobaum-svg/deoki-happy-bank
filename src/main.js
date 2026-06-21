@@ -26,7 +26,7 @@ import {
   getVisibleTransactions,
   normalizeBankAccounts,
   normalizeDailyMissions,
-  normalizeMissionCompletionArtifacts,
+  normalizeMissionIntegrity,
   normalizeParentInviteCodes,
   normalizeStandardMissionTemplates,
   registerChild,
@@ -47,7 +47,7 @@ const tabs = [
 ];
 
 let state = normalizeBankAccounts(
-  normalizeMissionCompletionArtifacts(
+  normalizeMissionIntegrity(
     normalizeDailyMissions(
       normalizeStandardMissionTemplates(normalizeParentInviteCodes(loadState()), new Date()),
       new Date()
@@ -1833,7 +1833,7 @@ app.addEventListener("submit", (event) => {
 
 function runDailyRollover() {
   const before = state.lastMissionDate;
-  state = normalizeMissionCompletionArtifacts(
+  state = normalizeMissionIntegrity(
     normalizeDailyMissions(normalizeStandardMissionTemplates(state, new Date()), new Date())
   );
 
