@@ -9,6 +9,7 @@ import {
   createMissionTemplate,
   createParentInviteCode,
   cleanupTodayMissionData,
+  deleteChild,
   deleteChecklistMissionGroup,
   deleteClassroom,
   getGrowthProgress,
@@ -29,6 +30,7 @@ import {
   registerChild,
   recordExpense,
   signInParentWithInviteCode,
+  updateChild,
   updateChecklistMissionGroup,
   updateClassroom
 } from "../src/state.js";
@@ -119,6 +121,64 @@ describe("classroom management", () => {
     const director = getUser(data, "director-1");
 
     assert.throws(() => deleteClassroom(data, director, "sun"), /아이들이 등록된 반/);
+  });
+});
+
+describe("teacher child management", () => {
+  it("lets a teacher register a child in their own class with an invite code", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const updated = registerChild(data, teacher, {
+      name: "한지우"
+    });
+    const child = updated.children.find((item) => item.name === "한지우");
+    const invite = updated.inviteCodes.find((item) => item.childId === child.id);
+
+    assert.equal(child.classId, "sun");
+    assert.match(invite.code, /^DK-CHILD-\d{6}$/);
+    assert.ok(getVisibleChildren(updated, teacher).some((item) => item.id === child.id));
+    assert.ok(getVisibleChildren(updated, getUser(updated, "director-1")).some((item) => item.id === child.id));
+    assert.equal(getVisibleChildren(updated, getUser(updated, "teacher-star")).some((item) => item.id === child.id), false);
+  });
+
+  it("prevents directors and other-class teachers from managing teacher child records", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const sunTeacher = getUser(data, "teacher-sun");
+    const starTeacher = getUser(data, "teacher-star");
+    const updated = registerChild(data, sunTeacher, {
+      name: "한지우"
+    });
+    const child = updated.children.find((item) => item.name === "한지우");
+
+    assert.throws(() => registerChild(data, director, { name: "원장등록" }), /교사만 아이를 등록/);
+    assert.throws(() => updateChild(updated, director, child.id, { name: "원장수정" }), /교사만 아이 이름을 수정/);
+    assert.throws(() => updateChild(updated, starTeacher, child.id, { name: "다른반수정" }), /담당 반 아이만 수정/);
+    assert.throws(() => deleteChild(updated, director, child.id), /교사만 아이를 삭제/);
+    assert.throws(() => deleteChild(updated, starTeacher, child.id), /담당 반 아이만 삭제/);
+  });
+
+  it("lets a teacher rename and delete a child in their class", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const registered = registerChild(data, teacher, {
+      name: "한지우"
+    });
+    const child = registered.children.find((item) => item.name === "한지우");
+    const renamed = updateChild(registered, getUser(registered, "teacher-sun"), child.id, {
+      name: "한서우"
+    });
+    const renamedChild = renamed.children.find((item) => item.id === child.id);
+    const invite = renamed.inviteCodes.find((item) => item.childId === child.id);
+
+    assert.equal(renamedChild.name, "한서우");
+    assert.equal(invite.label, "한서우 학부모 초대코드");
+
+    const deleted = deleteChild(renamed, getUser(renamed, "teacher-sun"), child.id);
+
+    assert.equal(deleted.children.some((item) => item.id === child.id), false);
+    assert.equal(deleted.inviteCodes.some((item) => item.childId === child.id), false);
+    assert.equal(deleted.dailyMissions.some((mission) => mission.childId === child.id), false);
   });
 });
 
@@ -233,10 +293,9 @@ describe("invite code login", () => {
 
   it("does not create duplicate suffix invite codes for the same child", () => {
     const data = createInitialData("2026-06-09");
-    const director = getUser(data, "director-1");
-    const registered = registerChild(data, director, {
-      name: "한지우",
-      classId: "sun"
+    const teacher = getUser(data, "teacher-sun");
+    const registered = registerChild(data, teacher, {
+      name: "한지우"
     });
     const child = registered.children.find((item) => item.name === "한지우");
     const createdAgain = createParentInviteCode(registered, getUser(registered, "director-1"), child.id);
@@ -249,10 +308,9 @@ describe("invite code login", () => {
 
   it("removes stale duplicate suffix invite codes for the same child", () => {
     const data = createInitialData("2026-06-09");
-    const director = getUser(data, "director-1");
-    const registered = registerChild(data, director, {
-      name: "한지우",
-      classId: "sun"
+    const teacher = getUser(data, "teacher-sun");
+    const registered = registerChild(data, teacher, {
+      name: "한지우"
     });
     const child = registered.children.find((item) => item.name === "한지우");
     const corrupted = {
@@ -276,10 +334,9 @@ describe("invite code login", () => {
 
   it("keeps existing old-format invite codes for existing children", () => {
     const data = createInitialData("2026-06-09");
-    const director = getUser(data, "director-1");
-    const registered = registerChild(data, director, {
-      name: "한지우",
-      classId: "sun"
+    const teacher = getUser(data, "teacher-sun");
+    const registered = registerChild(data, teacher, {
+      name: "한지우"
     });
     const child = registered.children.find((item) => item.name === "한지우");
     const oldFormatData = {
@@ -303,10 +360,9 @@ describe("invite code login", () => {
 
   it("registers a child and automatically creates an invite code", () => {
     const data = createInitialData("2026-06-09");
-    const director = getUser(data, "director-1");
-    const updated = registerChild(data, director, {
+    const teacher = getUser(data, "teacher-sun");
+    const updated = registerChild(data, teacher, {
       name: "한지우",
-      classId: "sun",
       birthMonth: "2020.10",
       balance: 1000
     });
@@ -316,20 +372,18 @@ describe("invite code login", () => {
     assert.ok(child);
     assert.ok(invite);
     assert.match(child.id, /^child-\d{3}$/);
+    assert.equal(child.classId, "sun");
     assert.match(invite.code, /^DK-CHILD-\d{6}$/);
   });
 
   it("creates unique childId-based invite codes for children with the same name", () => {
     const data = createInitialData("2026-06-09");
-    const director = getUser(data, "director-1");
-    const first = registerChild(data, director, {
+    const first = registerChild(data, getUser(data, "teacher-sun"), {
       name: "김민준",
-      classId: "sun",
       birthMonth: "2020.10"
     });
-    const second = registerChild(first, getUser(first, "director-1"), {
+    const second = registerChild(first, getUser(first, "teacher-star"), {
       name: "김민준",
-      classId: "star",
       birthMonth: "2020.11"
     });
     const duplicatedNameChildren = second.children.filter((child) => child.name === "김민준");

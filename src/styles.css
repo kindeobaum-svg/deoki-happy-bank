@@ -88,6 +88,7 @@ select:focus-visible {
 .brand-card,
 .bank-hero,
 .home-balance-card,
+.teacher-child-card,
 .home-growth-card,
 .home-mission-card,
 .permission-card,
@@ -408,6 +409,26 @@ select:focus-visible {
     linear-gradient(135deg, #f58220 0%, #f3ad31 100%);
 }
 
+.teacher-child-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  background: #f4fbf6;
+}
+
+.teacher-child-card h2,
+.teacher-child-card p {
+  margin: 0;
+}
+
+.teacher-child-card p:not(.eyebrow) {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .home-balance-card span,
 .home-money-grid span,
 .home-card-heading span {
@@ -660,23 +681,37 @@ select:focus-visible {
   font-weight: 800;
 }
 
-.classroom-row {
+.classroom-row,
+.managed-child-row {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: #fffaf2;
 }
 
-.classroom-edit-form {
+.classroom-edit-form,
+.child-edit-form {
   display: grid;
   gap: 10px;
 }
 
-.classroom-actions {
+.classroom-actions,
+.managed-child-meta {
   display: flex;
   align-items: center;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.managed-child-meta {
+  flex-wrap: wrap;
+}
+
+.managed-child-meta span {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .avatar.big {
