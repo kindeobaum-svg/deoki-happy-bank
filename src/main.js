@@ -405,12 +405,13 @@ function renderHome(user) {
         </div>
         <div class="home-title-actions">
           ${user.role === ROLES.DIRECTOR ? `<button class="text-button" type="button" data-open-detail="classes">반 관리</button>` : ""}
-          ${user.role === ROLES.TEACHER ? `<button class="text-button" type="button" data-open-detail="teacher-children">+ 아이 등록</button>` : ""}
           ${user.role === ROLES.DIRECTOR ? `<button class="text-button" type="button" data-open-detail="invites">초대코드</button>` : ""}
           ${user.role === ROLES.DIRECTOR ? `<button class="text-button danger-text" type="button" data-cleanup-data>데이터 정리</button>` : ""}
           ${renderHomeChildFilter(user)}
         </div>
       </div>
+
+      ${renderTeacherInlineChildRegistration(user)}
 
       <button class="home-balance-card" type="button" data-open-detail="bank">
         <span>현재 잔액</span>
@@ -429,6 +430,38 @@ function renderHome(user) {
           <span class="home-chevron">보기</span>
         </div>
       </button>
+    </section>
+  `;
+}
+
+function renderTeacherInlineChildRegistration(user) {
+  if (user.role !== ROLES.TEACHER) {
+    return "";
+  }
+
+  const children = getVisibleChildren(state, user);
+
+  return `
+    <section class="teacher-child-inline">
+      <button class="primary-button" type="button" data-toggle-teacher-child-form>+ 아이 등록</button>
+      ${
+        session.showTeacherChildForm
+          ? `
+            <form id="teacher-child-form">
+              <label>
+                아이 이름
+                <input name="name" type="text" placeholder="예: 한지우" required maxlength="20" />
+              </label>
+              <button class="primary-button" type="submit">저장</button>
+            </form>
+            <div class="teacher-child-inline-list">
+              ${children
+                .map((child) => `<span>${escapeHtml(child.name)}</span>`)
+                .join("")}
+            </div>
+          `
+          : ""
+      }
     </section>
   `;
 }
@@ -1730,6 +1763,16 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  const toggleTeacherChildFormButton = event.target.closest("[data-toggle-teacher-child-form]");
+  if (toggleTeacherChildFormButton) {
+    session.showTeacherChildForm = !session.showTeacherChildForm;
+    session.tab = "home";
+    session.detailScreen = null;
+    saveSession();
+    render();
+    return;
+  }
+
   const deleteClassroomButton = event.target.closest("[data-delete-classroom]");
   if (deleteClassroomButton) {
     if (!window.confirm("이 반을 삭제할까요?")) {
@@ -1977,11 +2020,11 @@ app.addEventListener("submit", (event) => {
       state = registerChild(state, getCurrentUser(), {
         name: formData.get("name")
       });
-      setToast("아이가 등록되었습니다.");
-      session.detailScreen = {
-        type: "teacher-children",
-        childId: null
-      };
+      setToast("아이가 등록되고 학부모 초대코드가 자동 생성되었습니다.");
+      session.tab = "home";
+      session.detailScreen = null;
+      session.showTeacherChildForm = true;
+      session.selectedChildId = "all";
     }
 
     if (event.target.id === "invite-code-form") {

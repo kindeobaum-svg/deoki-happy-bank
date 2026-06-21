@@ -408,6 +408,44 @@ select:focus-visible {
     linear-gradient(135deg, #f58220 0%, #f3ad31 100%);
 }
 
+.teacher-child-inline {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(107, 74, 34, 0.08);
+}
+
+.teacher-child-inline form {
+  display: grid;
+  gap: 10px;
+}
+
+.teacher-child-inline label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.teacher-child-inline-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.teacher-child-inline-list span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #8f4c00;
+  font-size: 12px;
+  font-weight: 900;
+  background: #fff0cf;
+}
+
 .home-balance-card span,
 .home-money-grid span,
 .home-card-heading span {
