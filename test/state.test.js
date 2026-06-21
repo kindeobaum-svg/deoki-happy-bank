@@ -29,6 +29,7 @@ import {
   registerChild,
   recordExpense,
   signInParentWithInviteCode,
+  updateChild,
   updateChecklistMissionGroup,
   updateClassroom
 } from "../src/state.js";
@@ -119,6 +120,36 @@ describe("classroom management", () => {
     const director = getUser(data, "director-1");
 
     assert.throws(() => deleteClassroom(data, director, "sun"), /아이들이 등록된 반/);
+  });
+});
+
+describe("teacher child registration", () => {
+  it("lets a teacher save a new child to their own class", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const updated = registerChild(data, teacher, {
+      name: "한지우"
+    });
+    const child = updated.children.find((item) => item.name === "한지우");
+    const invite = updated.inviteCodes.find((item) => item.childId === child.id);
+
+    assert.ok(child);
+    assert.equal(child.classId, "sun");
+    assert.ok(invite);
+    assert.ok(getVisibleChildren(updated, teacher).some((item) => item.id === child.id));
+  });
+
+  it("lets a teacher edit only their own class child names", () => {
+    const data = createInitialData("2026-06-09");
+    const sunTeacher = getUser(data, "teacher-sun");
+    const starTeacher = getUser(data, "teacher-star");
+    const updated = updateChild(data, sunTeacher, "child-minjun", {
+      name: "김민재"
+    });
+
+    assert.equal(updated.children.find((child) => child.id === "child-minjun").name, "김민재");
+    assert.throws(() => updateChild(data, sunTeacher, "child-seoa", { name: "박서윤" }), /담당 반 아이만 수정/);
+    assert.throws(() => updateChild(data, starTeacher, "child-minjun", { name: "김민재" }), /담당 반 아이만 수정/);
   });
 });
 

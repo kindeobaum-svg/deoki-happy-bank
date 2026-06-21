@@ -36,6 +36,7 @@ import {
   recordExpense,
   signInParentWithInviteCode,
   toDateKey,
+  updateChild,
   updateClassroom,
   updateChecklistMissionGroup
 } from "./state.js";
@@ -404,6 +405,7 @@ function renderHome(user) {
         </div>
         <div class="home-title-actions">
           ${user.role === ROLES.DIRECTOR ? `<button class="text-button" type="button" data-open-detail="classes">반 관리</button>` : ""}
+          ${user.role === ROLES.TEACHER ? `<button class="text-button" type="button" data-open-detail="teacher-children">+ 아이 등록</button>` : ""}
           ${user.role === ROLES.DIRECTOR ? `<button class="text-button" type="button" data-open-detail="invites">초대코드</button>` : ""}
           ${user.role === ROLES.DIRECTOR ? `<button class="text-button danger-text" type="button" data-cleanup-data>데이터 정리</button>` : ""}
           ${renderHomeChildFilter(user)}
@@ -509,7 +511,67 @@ function renderHomeDetail(user, detailScreen) {
     return renderClassroomManager(user);
   }
 
+  if (detailScreen.type === "teacher-children") {
+    return renderTeacherChildRegistration(user);
+  }
+
   return renderDetailPanel("통장 상세", renderBank(user));
+}
+
+function renderTeacherChildRegistration(user) {
+  if (user.role !== ROLES.TEACHER) {
+    return renderDetailPanel("아이 등록", renderEmpty("교사만 아이를 등록할 수 있습니다."));
+  }
+
+  const classroom = getClass(state, user.classId);
+  const children = getVisibleChildren(state, user);
+
+  return `
+    <section class="detail-screen">
+      <div class="detail-header">
+        <button class="ghost-button" type="button" data-back-home>← 홈</button>
+        <h2>아이 등록</h2>
+      </div>
+      <section class="director-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">${escapeHtml(classroom?.name ?? "담당 반")}</p>
+            <h2>+ 아이 등록</h2>
+          </div>
+        </div>
+        <form id="teacher-child-form">
+          <label>
+            아이 이름
+            <input name="name" type="text" placeholder="예: 한지우" required maxlength="20" />
+          </label>
+          <button class="primary-button" type="submit">저장</button>
+        </form>
+      </section>
+      <section class="card-section compact">
+        <div class="section-heading">
+          <h2>아이 이름 수정</h2>
+          <span class="mini-badge">${children.length}명</span>
+        </div>
+        ${children.length ? children.map((child) => renderTeacherChildEditRow(child)).join("") : renderEmpty("등록된 아이가 없습니다.")}
+      </section>
+    </section>
+  `;
+}
+
+function renderTeacherChildEditRow(child) {
+  return `
+    <article class="classroom-row">
+      <form class="teacher-child-edit-form" data-child-id="${child.id}">
+        <label>
+          아이 이름
+          <input name="name" type="text" value="${escapeHtml(child.name)}" required maxlength="20" />
+        </label>
+        <div class="classroom-actions">
+          <button class="icon-button edit" type="submit">수정</button>
+        </div>
+      </form>
+    </article>
+  `;
 }
 
 function renderClassroomManager(user) {
@@ -1814,10 +1876,12 @@ app.addEventListener("submit", (event) => {
       "custom-mission-form",
       "expense-form",
       "child-register-form",
+      "teacher-child-form",
       "invite-code-form",
       "classroom-form"
     ].includes(event.target.id) &&
-    !event.target.classList.contains("classroom-edit-form")
+    !event.target.classList.contains("classroom-edit-form") &&
+    !event.target.classList.contains("teacher-child-edit-form")
   ) {
     return;
   }
@@ -1909,6 +1973,17 @@ app.addEventListener("submit", (event) => {
       };
     }
 
+    if (event.target.id === "teacher-child-form") {
+      state = registerChild(state, getCurrentUser(), {
+        name: formData.get("name")
+      });
+      setToast("아이가 등록되었습니다.");
+      session.detailScreen = {
+        type: "teacher-children",
+        childId: null
+      };
+    }
+
     if (event.target.id === "invite-code-form") {
       state = createParentInviteCode(state, getCurrentUser(), formData.get("childId"));
       setToast("학부모 초대코드가 생성되었습니다.");
@@ -1936,6 +2011,17 @@ app.addEventListener("submit", (event) => {
       setToast("반 이름이 수정되었습니다.");
       session.detailScreen = {
         type: "classes",
+        childId: null
+      };
+    }
+
+    if (event.target.classList.contains("teacher-child-edit-form")) {
+      state = updateChild(state, getCurrentUser(), event.target.dataset.childId, {
+        name: formData.get("name")
+      });
+      setToast("아이 이름이 수정되었습니다.");
+      session.detailScreen = {
+        type: "teacher-children",
         childId: null
       };
     }

@@ -667,7 +667,8 @@ select:focus-visible {
   background: #fffaf2;
 }
 
-.classroom-edit-form {
+.classroom-edit-form,
+.teacher-child-edit-form {
   display: grid;
   gap: 10px;
 }
