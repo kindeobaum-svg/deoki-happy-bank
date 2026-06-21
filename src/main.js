@@ -730,7 +730,7 @@ function renderMissionChecklist(user, childId = "all") {
       <article class="checklist-hero">
         <div>
           <p class="eyebrow">오늘의 미션</p>
-          <h3>${completedCount}/${checklist.length} 완료</h3>
+          <h3>${completedCount}/${defaultMissions.length} 완료</h3>
           <p>스스로 할 수 있는 생활 미션을 체크해요.</p>
         </div>
         ${renderChecklistChildFilter(user, normalizedChildId)}
