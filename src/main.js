@@ -460,8 +460,8 @@ function renderHomeMissionRow(user, mission) {
   return `
     <div class="home-mission-row ${mission.completed ? "done" : ""}">
       <div>
-        <strong>${escapeHtml(mission.template.title)}</strong>
-        <span>${escapeHtml(mission.child.name)} · +${formatWon(mission.template.point)}</span>
+        <strong>${escapeHtml(mission.displayTitle)}</strong>
+        <span>${escapeHtml(mission.child.name)} · +${formatWon(mission.displayPoint)}</span>
       </div>
       <span class="status-pill ${mission.completed ? "success" : ""}">${mission.completed ? "완료" : "진행중"}</span>
     </div>
@@ -1001,7 +1001,7 @@ function renderChecklistItem(user, mission) {
       />
       <span class="checklist-copy">
         <strong>
-          ${escapeHtml(mission.template.title)} +${formatWon(mission.template.point)}
+          ${escapeHtml(mission.displayTitle)} +${formatWon(mission.displayPoint)}
         </strong>
         <small>
           <em class="mission-source ${source.className}">${source.label}</em>
@@ -1417,10 +1417,10 @@ function renderMissionCard(user, mission) {
     <article class="mission-card ${mission.completed ? "done" : ""}" data-open-detail="missions" data-detail-child="${mission.childId}" role="button" tabindex="0">
       <div>
         <div class="mission-title">
-          <strong>${escapeHtml(mission.template.title)}</strong>
+          <strong>${escapeHtml(mission.displayTitle)}</strong>
           <span>${mission.template.repeatDaily ? "매일 반복" : "오늘만"}</span>
         </div>
-        <p>${escapeHtml(mission.child.name)} · ${escapeHtml(mission.classroom.name)} · +${formatMoney(mission.template.point)}</p>
+        <p>${escapeHtml(mission.child.name)} · ${escapeHtml(mission.classroom.name)} · +${formatMoney(mission.displayPoint)}</p>
       </div>
       <div class="mission-actions">
         <span class="status-pill">${mission.completed ? "완료" : "진행중"}</span>
@@ -1436,7 +1436,7 @@ function renderMissionHistoryCard(user, mission) {
   return `
     <article class="timeline-card">
       <div>
-        <strong>${escapeHtml(mission.template.title)}</strong>
+        <strong>${escapeHtml(mission.displayTitle)}</strong>
         <p>${escapeHtml(mission.child.name)} · ${mission.date} · ${mission.template.repeatDaily ? "반복" : "단일"}</p>
       </div>
       <div class="mission-actions">

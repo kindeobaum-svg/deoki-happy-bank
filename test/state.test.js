@@ -435,6 +435,37 @@ describe("daily missions", () => {
     assert.equal(summary.currentBalance, 13300);
   });
 
+  it("keeps completed mission display name identical to the bank transaction name after edits", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const parent = getUser(data, "parent-minjun");
+    const mission = getVisibleChecklistMissions(data, parent, "child-minjun", "2026-06-09").find(
+      (item) => item.template.title === "정리정돈"
+    );
+    const completed = completeMission(data, parent, mission.id, "2026-06-09");
+    const edited = updateChecklistMissionGroup(
+      completed,
+      teacher,
+      mission.id,
+      {
+        childIds: ["child-minjun", "child-harin"],
+        title: "정리정돈 잘하기",
+        point: 500,
+        repeatDaily: true
+      },
+      "2026-06-09"
+    );
+    const visibleMission = getVisibleChecklistMissions(edited, parent, "child-minjun", "2026-06-09").find(
+      (item) => item.id === mission.id
+    );
+    const transaction = getVisibleTransactions(edited, parent, "child-minjun").find(
+      (item) => item.missionId === mission.id
+    );
+
+    assert.equal(transaction.title, "정리정돈");
+    assert.equal(visibleMission.displayTitle, transaction.title);
+  });
+
   it("does not create duplicate mission deposits when a checked mission is clicked again", () => {
     const data = createInitialData("2026-06-09");
     const parent = getUser(data, "parent-minjun");

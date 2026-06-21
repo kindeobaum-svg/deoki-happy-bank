@@ -1181,6 +1181,7 @@ export function decorateMission(data, mission) {
   const child = getChild(data, mission.childId);
   const template = data.missionTemplates.find((item) => item.id === mission.templateId);
   const classroom = child ? getClass(data, child.classId) : null;
+  const transaction = data.transactions.find((item) => item.missionId === mission.id) ?? null;
 
   if (!child || !template || template.active === false || !classroom) {
     return null;
@@ -1190,6 +1191,9 @@ export function decorateMission(data, mission) {
     ...mission,
     child,
     template,
+    displayTitle: transaction?.title ?? template.title,
+    displayPoint: transaction?.amount ?? template.point,
+    transaction,
     classroom
   };
 }
