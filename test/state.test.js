@@ -7,6 +7,7 @@ import {
   createInitialData,
   createMissionTemplate,
   createParentInviteCode,
+  cleanupTodayMissionData,
   deleteChecklistMissionGroup,
   getGrowthProgress,
   getUser,
@@ -528,6 +529,82 @@ describe("daily missions", () => {
     assert.equal(visibleMissions.filter((item) => item.completed).length, missionDeposits.length);
     assert.equal(missionDeposits.filter((transaction) => transaction.title === "인사하기").length, 1);
     assert.equal(getVisibleAccountSummary(normalized, parent, "child-minjun").currentBalance, 13300);
+  });
+
+  it("cleans browser-local duplicate mission data to four standard missions for today", () => {
+    const data = createInitialData("2026-06-21");
+    const parent = getUser(data, "parent-minjun");
+    const teacher = getUser(data, "teacher-sun");
+    const withCustom = createChecklistMission(
+      data,
+      teacher,
+      {
+        childIds: ["child-minjun"],
+        title: "동화책 읽기",
+        point: 500
+      },
+      "2026-06-21"
+    );
+    const greeting = getVisibleChecklistMissions(withCustom, parent, "child-minjun", "2026-06-21").find(
+      (mission) => mission.template.title === "인사하기"
+    );
+    const completed = completeMission(withCustom, parent, greeting.id, "2026-06-21");
+    const duplicateGreeting = {
+      ...completed.dailyMissions.find((mission) => mission.id === greeting.id),
+      id: "duplicate-greeting"
+    };
+    const corrupted = {
+      ...completed,
+      dailyMissions: [
+        duplicateGreeting,
+        {
+          id: "legacy-non-checklist",
+          templateId: "mission-template-greeting",
+          childId: "child-minjun",
+          date: "2026-06-21",
+          completed: false,
+          completedAt: null
+        },
+        ...completed.dailyMissions
+      ],
+      transactions: [
+        {
+          id: "duplicate-greeting-tx",
+          missionId: duplicateGreeting.id,
+          templateId: duplicateGreeting.templateId,
+          childId: "child-minjun",
+          date: "2026-06-21",
+          amount: 500,
+          title: "인사하기",
+          category: "미션"
+        },
+        {
+          id: "custom-book-tx",
+          missionId: "custom-book-mission",
+          childId: "child-minjun",
+          date: "2026-06-21",
+          amount: 500,
+          title: "동화책 읽기",
+          category: "미션"
+        },
+        ...completed.transactions
+      ]
+    };
+    const cleaned = cleanupTodayMissionData(corrupted, "2026-06-21");
+    const missions = getVisibleChecklistMissions(cleaned, parent, "child-minjun", "2026-06-21");
+    const missionDeposits = getVisibleTransactions(cleaned, parent, "child-minjun").filter(
+      (transaction) => transaction.date === "2026-06-21" && transaction.category === "미션"
+    );
+
+    assert.deepEqual(
+      missions.map((mission) => mission.displayTitle).sort(),
+      ["양치하기", "인사하기", "정리정돈", "친구 돕기"].sort()
+    );
+    assert.equal(missions.length, 4);
+    assert.equal(missions.filter((mission) => mission.completed).length, missionDeposits.length);
+    assert.equal(missionDeposits.length, 1);
+    assert.equal(missionDeposits[0].title, "인사하기");
+    assert.equal(getVisibleAccountSummary(cleaned, parent, "child-minjun").currentBalance, 13300);
   });
 
   it("repairs completed missions missing transaction and growth artifacts from saved localStorage", () => {

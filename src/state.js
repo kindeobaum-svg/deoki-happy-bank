@@ -1291,6 +1291,157 @@ export function normalizeMissionTransactionUniqueness(data) {
   return changed ? { ...data, transactions } : data;
 }
 
+function isChecklistTemplate(template) {
+  return Boolean(template?.standardKey || template?.checklist);
+}
+
+function ensureLedgerTemplateForTransaction(missionTemplates, transaction, dateKey) {
+  const existing = missionTemplates.find((template) => template.id === transaction.templateId);
+
+  if (existing) {
+    return {
+      missionTemplates,
+      templateId: existing.id
+    };
+  }
+
+  const templateId = transaction.templateId || `ledger-template-${transaction.id || makeId("ledger")}`;
+  const template = {
+    id: templateId,
+    title: transaction.title,
+    point: Number(transaction.amount ?? 0),
+    targetType: "child",
+    targetId: transaction.childId,
+    createdBy: "ledger",
+    creatorRole: "ledger",
+    createdAt: dateKey,
+    repeatDaily: false,
+    active: true,
+    checklist: true
+  };
+
+  return {
+    missionTemplates: [template, ...missionTemplates],
+    templateId
+  };
+}
+
+export function normalizeTodayMissionLedgerConsistency(data, date = new Date()) {
+  const dateKey = toDateKey(date);
+  let missionTemplates = data.missionTemplates;
+  let transactions = data.transactions;
+  let dailyMissions = data.dailyMissions;
+  const keepMissionIds = new Set();
+  const todayMissionDeposits = transactions.filter(
+    (transaction) =>
+      transaction.date === dateKey &&
+      transaction.category === "미션" &&
+      Number(transaction.amount) > 0
+  );
+
+  for (const transaction of todayMissionDeposits) {
+    const normalizedTitle = normalizeMissionTitle(transaction.title);
+    let mission =
+      dailyMissions.find((item) => item.id === transaction.missionId) ??
+      dailyMissions.find(
+        (item) =>
+          item.childId === transaction.childId &&
+          item.date === dateKey &&
+          normalizeMissionTitle(getMissionDisplayTitleForKey({ ...data, transactions, missionTemplates }, item)) ===
+            normalizedTitle
+      );
+
+    if (!mission) {
+      const ensured = ensureLedgerTemplateForTransaction(missionTemplates, transaction, dateKey);
+      missionTemplates = ensured.missionTemplates;
+      mission = {
+        id: transaction.missionId || makeId("daily-mission"),
+        templateId: ensured.templateId,
+        childId: transaction.childId,
+        date: dateKey,
+        completed: true,
+        completedAt: new Date().toISOString()
+      };
+      dailyMissions = [mission, ...dailyMissions];
+    }
+
+    keepMissionIds.add(mission.id);
+    transactions = transactions.map((item) =>
+      item.id === transaction.id
+        ? {
+            ...item,
+            missionId: mission.id,
+            templateId: mission.templateId
+          }
+        : item
+    );
+    dailyMissions = dailyMissions.map((item) =>
+      item.id === mission.id
+        ? {
+            ...item,
+            completed: true,
+            completedAt: item.completedAt ?? new Date().toISOString()
+          }
+        : item
+    );
+  }
+
+  const depositTitleByChild = new Map();
+  for (const transaction of todayMissionDeposits) {
+    const titles = depositTitleByChild.get(transaction.childId) ?? new Set();
+    titles.add(normalizeMissionTitle(transaction.title));
+    depositTitleByChild.set(transaction.childId, titles);
+  }
+
+  for (const mission of dailyMissions) {
+    if (mission.date !== dateKey || keepMissionIds.has(mission.id)) {
+      continue;
+    }
+
+    const template = missionTemplates.find((item) => item.id === mission.templateId);
+    if (!isChecklistTemplate(template) || template.active === false) {
+      continue;
+    }
+
+    const depositedTitles = depositTitleByChild.get(mission.childId) ?? new Set();
+    const title = normalizeMissionTitle(template.title);
+    const isUncompletedDefault = Boolean(template.standardKey) && !depositedTitles.has(title);
+    const isTodayCustom = Boolean(template.checklist) && template.createdAt === dateKey && !depositedTitles.has(title);
+
+    if (isUncompletedDefault || isTodayCustom) {
+      keepMissionIds.add(mission.id);
+    }
+  }
+
+  const cleanedDailyMissions = dailyMissions.filter((mission) => {
+    if (mission.date !== dateKey) {
+      return true;
+    }
+
+    const template = missionTemplates.find((item) => item.id === mission.templateId);
+    if (!isChecklistTemplate(template)) {
+      return true;
+    }
+
+    return keepMissionIds.has(mission.id);
+  });
+
+  if (
+    cleanedDailyMissions.length === data.dailyMissions.length &&
+    missionTemplates === data.missionTemplates &&
+    transactions === data.transactions
+  ) {
+    return data;
+  }
+
+  return {
+    ...data,
+    missionTemplates,
+    dailyMissions: cleanedDailyMissions,
+    transactions
+  };
+}
+
 function getMissionCompletionSeed(point) {
   return Math.max(1, Math.round(point / 100));
 }
@@ -1427,10 +1578,178 @@ export function normalizeMissionCompletionArtifacts(data) {
   };
 }
 
-export function normalizeMissionIntegrity(data) {
+export function normalizeMissionIntegrity(data, date = new Date()) {
   return normalizeMissionTransactionUniqueness(
-    normalizeMissionCompletionArtifacts(normalizeDailyMissionUniqueness(data))
+    normalizeTodayMissionLedgerConsistency(
+      normalizeMissionCompletionArtifacts(normalizeDailyMissionUniqueness(data)),
+      date
+    )
   );
+}
+
+export function cleanupTodayMissionData(data, date = new Date()) {
+  const dateKey = toDateKey(date);
+  const standardByKey = new Map(STANDARD_MISSIONS.map((mission) => [mission.key, mission]));
+  const standardTitleSet = new Set(STANDARD_MISSIONS.map((mission) => normalizeMissionTitle(mission.title)));
+  const normalizedBase = normalizeDailyMissions(normalizeStandardMissionTemplates(data, date), date);
+  const missionTemplates = normalizedBase.missionTemplates.map((template) => {
+    const standard = standardByKey.get(template.standardKey);
+
+    if (standard) {
+      return {
+        ...template,
+        title: standard.title,
+        point: standard.point,
+        repeatDaily: true,
+        active: true
+      };
+    }
+
+    return {
+      ...template,
+      active: false
+    };
+  });
+  const templateById = new Map(missionTemplates.map((template) => [template.id, template]));
+  const removedMissionIds = new Set();
+  const keptMissionByChildAndTitle = new Map();
+
+  for (const mission of normalizedBase.dailyMissions.filter((item) => item.date === dateKey)) {
+    const template = templateById.get(mission.templateId);
+    const standard = standardByKey.get(template?.standardKey);
+
+    if (!standard) {
+      removedMissionIds.add(mission.id);
+      continue;
+    }
+
+    const key = `${mission.childId}::${normalizeMissionTitle(standard.title)}`;
+    const existing = keptMissionByChildAndTitle.get(key);
+    const missionHasDeposit = normalizedBase.transactions.some((transaction) => transaction.missionId === mission.id);
+    const existingHasDeposit = existing
+      ? normalizedBase.transactions.some((transaction) => transaction.missionId === existing.id)
+      : false;
+    const shouldReplace =
+      !existing ||
+      Number(Boolean(mission.completed)) * 10 + Number(missionHasDeposit) >
+        Number(Boolean(existing.completed)) * 10 + Number(existingHasDeposit);
+
+    if (shouldReplace) {
+      if (existing) {
+        removedMissionIds.add(existing.id);
+      }
+      keptMissionByChildAndTitle.set(key, {
+        ...mission,
+        completed: Boolean(mission.completed || missionHasDeposit),
+        completedAt: mission.completedAt ?? null
+      });
+    } else {
+      removedMissionIds.add(mission.id);
+    }
+  }
+
+  const generatedStandardMissions = [];
+  for (const child of normalizedBase.children) {
+    for (const standard of STANDARD_MISSIONS) {
+      const key = `${child.id}::${normalizeMissionTitle(standard.title)}`;
+      if (keptMissionByChildAndTitle.has(key)) {
+        continue;
+      }
+
+      const template = missionTemplates.find(
+        (item) => item.standardKey === standard.key && item.targetType === "class" && item.targetId === child.classId
+      );
+
+      if (!template) {
+        continue;
+      }
+
+      generatedStandardMissions.push({
+        id: makeId("daily-mission"),
+        templateId: template.id,
+        childId: child.id,
+        date: dateKey,
+        completed: false,
+        completedAt: null
+      });
+    }
+  }
+
+  const keptTodayMissions = [...keptMissionByChildAndTitle.values(), ...generatedStandardMissions];
+  const todayMissionByChildAndTitle = new Map(
+    keptTodayMissions.map((mission) => {
+      const template = templateById.get(mission.templateId);
+      return [`${mission.childId}::${normalizeMissionTitle(template?.title)}`, mission];
+    })
+  );
+  const seenDepositKeys = new Set();
+  const transactions = normalizedBase.transactions
+    .filter((transaction) => !removedMissionIds.has(transaction.missionId))
+    .filter((transaction) => {
+      if (transaction.date !== dateKey || transaction.category !== "미션") {
+        return true;
+      }
+
+      const title = normalizeMissionTitle(transaction.title);
+      if (!standardTitleSet.has(title)) {
+        return false;
+      }
+
+      const key = `${transaction.childId}::${title}`;
+      if (seenDepositKeys.has(key)) {
+        return false;
+      }
+
+      seenDepositKeys.add(key);
+      return true;
+    })
+    .map((transaction) => {
+      if (transaction.date !== dateKey || transaction.category !== "미션") {
+        return transaction;
+      }
+
+      const mission = todayMissionByChildAndTitle.get(`${transaction.childId}::${normalizeMissionTitle(transaction.title)}`);
+      const template = mission ? templateById.get(mission.templateId) : null;
+
+      return mission && template
+        ? {
+            ...transaction,
+            missionId: mission.id,
+            templateId: mission.templateId,
+            title: template.title,
+            amount: template.point
+          }
+        : transaction;
+    });
+  const depositKeys = new Set(
+    transactions
+      .filter((transaction) => transaction.date === dateKey && transaction.category === "미션")
+      .map((transaction) => `${transaction.childId}::${normalizeMissionTitle(transaction.title)}`)
+  );
+  const dailyMissions = [
+    ...normalizedBase.dailyMissions.filter((mission) => mission.date !== dateKey),
+    ...keptTodayMissions.map((mission) => {
+      const template = templateById.get(mission.templateId);
+      const key = `${mission.childId}::${normalizeMissionTitle(template?.title)}`;
+      const completed = depositKeys.has(key) || Boolean(mission.completed);
+
+      return {
+        ...mission,
+        completed,
+        completedAt: completed ? mission.completedAt ?? new Date().toISOString() : null
+      };
+    })
+  ];
+  const cleaned = {
+    ...normalizedBase,
+    missionTemplates,
+    dailyMissions,
+    transactions,
+    growthRecords: normalizedBase.growthRecords.filter((record) => !removedMissionIds.has(record.missionId)),
+    forestMoments: normalizedBase.forestMoments.filter((moment) => !removedMissionIds.has(moment.missionId))
+  };
+
+  return normalizeMissionIntegrity(cleaned, date);
 }
 
 export function completeMission(data, user, missionId, date = new Date()) {

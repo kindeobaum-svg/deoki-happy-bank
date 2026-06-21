@@ -4,6 +4,7 @@ import {
   SESSION_KEY,
   STORAGE_KEY,
   canManageChecklistMissionGroup,
+  cleanupTodayMissionData,
   completeMission,
   createChecklistMission,
   createInitialData,
@@ -386,6 +387,7 @@ function renderHome(user) {
         </div>
         <div class="home-title-actions">
           ${user.role === ROLES.DIRECTOR ? `<button class="text-button" type="button" data-open-detail="invites">초대코드</button>` : ""}
+          ${user.role === ROLES.DIRECTOR ? `<button class="text-button danger-text" type="button" data-cleanup-data>데이터 정리</button>` : ""}
           ${renderHomeChildFilter(user)}
         </div>
       </div>
@@ -1508,6 +1510,23 @@ app.addEventListener("click", (event) => {
       setToast(error.message);
       render();
     }
+    return;
+  }
+
+  const cleanupButton = event.target.closest("[data-cleanup-data]");
+  if (cleanupButton) {
+    if (!window.confirm("오늘 날짜 기준으로 중복 미션과 중복 입금 데이터를 정리할까요?")) {
+      return;
+    }
+
+    state = cleanupTodayMissionData(state, new Date());
+    session.selectedChildId = "all";
+    session.detailScreen = null;
+    session.editMissionId = null;
+    saveState();
+    saveSession();
+    setToast("오늘 미션/통장 중복 데이터가 정리되었습니다.");
+    render();
     return;
   }
 
