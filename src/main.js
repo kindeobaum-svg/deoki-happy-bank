@@ -291,7 +291,7 @@ function renderShell(user) {
         <button class="ghost-button" type="button" data-logout>전환</button>
       </header>
 
-      ${user.role === ROLES.TEACHER && session.tab === "home" && !session.detailScreen ? renderTeacherInlineChildRegistration(user) : ""}
+      ${user.role === ROLES.TEACHER ? renderTeacherInlineChildRegistration(user) : ""}
 
       ${
         session.tab === "home"
