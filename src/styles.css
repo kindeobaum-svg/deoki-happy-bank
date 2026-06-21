@@ -822,6 +822,24 @@ select:focus-visible {
   gap: 9px;
 }
 
+.extra-mission-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+
+.compact-heading {
+  margin-bottom: 0;
+  align-items: center;
+}
+
+.compact-heading h3 {
+  margin: 2px 0 0;
+  font-size: 16px;
+}
+
 .checklist-item {
   position: relative;
   display: grid;

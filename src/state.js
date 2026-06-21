@@ -41,6 +41,7 @@ export const DEFAULT_PARENT_INVITE_CODES = [
 ];
 
 export const STANDARD_MISSIONS = [
+  { key: "dress", title: "스스로 옷 입기", point: 500 },
   { key: "greeting", title: "인사하기", point: 500 },
   { key: "cleanup", title: "정리정돈", point: 500 },
   { key: "brush-teeth", title: "양치하기", point: 500 },

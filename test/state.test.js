@@ -385,7 +385,7 @@ describe("daily missions", () => {
 
     assert.deepEqual(
       checklist.map((mission) => mission.template.title),
-      ["인사하기", "정리정돈", "양치하기", "친구 돕기"]
+      ["스스로 옷 입기", "인사하기", "정리정돈", "양치하기", "친구 돕기"]
     );
     assert.ok(checklist.every((mission) => mission.template.point === 500));
   });
@@ -598,13 +598,35 @@ describe("daily missions", () => {
 
     assert.deepEqual(
       missions.map((mission) => mission.displayTitle).sort(),
-      ["양치하기", "인사하기", "정리정돈", "친구 돕기"].sort()
+      ["스스로 옷 입기", "양치하기", "인사하기", "정리정돈", "친구 돕기"].sort()
     );
-    assert.equal(missions.length, 4);
+    assert.equal(missions.length, 5);
     assert.equal(missions.filter((mission) => mission.completed).length, missionDeposits.length);
     assert.equal(missionDeposits.length, 1);
     assert.equal(missionDeposits[0].title, "인사하기");
     assert.equal(getVisibleAccountSummary(cleaned, parent, "child-minjun").currentBalance, 13300);
+  });
+
+  it("keeps extra missions separate from default mission completion rate", () => {
+    const data = createInitialData("2026-06-21");
+    const parent = getUser(data, "parent-minjun");
+    const withExtra = createChecklistMission(
+      data,
+      parent,
+      {
+        childId: "child-minjun",
+        title: "책읽기",
+        point: 500
+      },
+      "2026-06-21"
+    );
+    const missions = getVisibleChecklistMissions(withExtra, parent, "child-minjun", "2026-06-21");
+    const defaultMissions = missions.filter((mission) => mission.template.standardKey);
+    const extraMissions = missions.filter((mission) => !mission.template.standardKey);
+
+    assert.equal(defaultMissions.length, 5);
+    assert.equal(extraMissions.length, 1);
+    assert.equal(defaultMissions.filter((mission) => mission.completed).length, 0);
   });
 
   it("repairs completed missions missing transaction and growth artifacts from saved localStorage", () => {

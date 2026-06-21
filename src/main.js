@@ -376,7 +376,8 @@ function renderHome(user) {
   const visibleMissions = getVisibleChecklistMissions(state, user).filter(
     (mission) => session.selectedChildId === "all" || mission.childId === session.selectedChildId
   );
-  const completedMissions = visibleMissions.filter((mission) => mission.completed).length;
+  const defaultMissions = visibleMissions.filter((mission) => mission.template.standardKey);
+  const completedMissions = defaultMissions.filter((mission) => mission.completed).length;
 
   return `
     <section class="home-dashboard">
@@ -403,7 +404,7 @@ function renderHome(user) {
         <div class="home-card-heading">
           <div>
             <span>오늘의 미션 개수</span>
-            <strong>${visibleMissions.length}개</strong>
+            <strong>${defaultMissions.length}개</strong>
             <small>${completedMissions}개 완료</small>
           </div>
           <span class="home-chevron">보기</span>
@@ -693,15 +694,18 @@ function renderChildDetail(user, childId) {
 function renderMissionChecklist(user, childId = "all") {
   const normalizedChildId = childId ?? session.selectedChildId;
   const checklist = getVisibleChecklistMissions(state, user, normalizedChildId);
+  const defaultMissions = checklist.filter((mission) => mission.template.standardKey);
+  const extraMissions = checklist.filter((mission) => !mission.template.standardKey);
   const moneySummary = getChecklistMoneySummary(user, normalizedChildId);
   const visibleChildren = getVisibleChildren(state, user).filter(
     (child) => normalizedChildId === "all" || child.id === normalizedChildId
   );
   const grouped = visibleChildren.map((child) => ({
     child,
-    missions: checklist.filter((mission) => mission.childId === child.id)
+    defaultMissions: defaultMissions.filter((mission) => mission.childId === child.id),
+    extraMissions: extraMissions.filter((mission) => mission.childId === child.id)
   }));
-  const completedCount = checklist.filter((mission) => mission.completed).length;
+  const completedCount = defaultMissions.filter((mission) => mission.completed).length;
 
   return `
     <section class="detail-screen checklist-screen">
@@ -735,7 +739,11 @@ function renderMissionChecklist(user, childId = "all") {
       ${renderCustomMissionForm(user, normalizedChildId)}
       <div class="checklist-groups">
         ${grouped.length
-          ? grouped.map(({ child, missions }) => renderChecklistGroup(user, child, missions)).join("")
+          ? grouped
+              .map(({ child, defaultMissions: childDefaultMissions, extraMissions: childExtraMissions }) =>
+                renderChecklistGroup(user, child, childDefaultMissions, childExtraMissions)
+              )
+              .join("")
           : renderEmpty("조회 가능한 미션이 없습니다.")}
       </div>
     </section>
@@ -966,8 +974,8 @@ function renderChecklistChildFilter(user, selectedChildId) {
   `;
 }
 
-function renderChecklistGroup(user, child, missions) {
-  const completedCount = missions.filter((mission) => mission.completed).length;
+function renderChecklistGroup(user, child, defaultMissions, extraMissions) {
+  const completedCount = defaultMissions.filter((mission) => mission.completed).length;
 
   return `
     <article class="checklist-card">
@@ -975,13 +983,27 @@ function renderChecklistGroup(user, child, missions) {
         <div class="avatar" aria-hidden="true">${escapeHtml(child.name.slice(0, 1))}</div>
         <div>
           <strong>${escapeHtml(child.name)}</strong>
-          <span>${completedCount}/${missions.length} 완료</span>
+          <span>기본 미션 ${completedCount}/${defaultMissions.length} 완료</span>
         </div>
       </div>
       <div class="checklist-items">
-        ${missions.length
-          ? missions.map((mission) => renderChecklistItem(user, mission)).join("")
+        ${defaultMissions.length
+          ? defaultMissions.map((mission) => renderChecklistItem(user, mission)).join("")
           : renderEmpty("오늘 체크할 기본 미션이 없습니다.")}
+      </div>
+      <div class="extra-mission-section">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">추가 미션</p>
+            <h3>최근 수행내역 / 추가 입력 미션</h3>
+          </div>
+          <span class="mini-badge">${extraMissions.length}개</span>
+        </div>
+        <div class="checklist-items">
+          ${extraMissions.length
+            ? extraMissions.map((mission) => renderChecklistItem(user, mission)).join("")
+            : renderEmpty("추가 미션이 없습니다.")}
+        </div>
       </div>
     </article>
   `;
