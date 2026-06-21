@@ -1525,8 +1525,11 @@ app.addEventListener("click", (event) => {
     session.editMissionId = null;
     saveState();
     saveSession();
-    setToast("오늘 미션/통장 중복 데이터가 정리되었습니다.");
+    setToast("오늘 미션/통장 중복 데이터가 정리되었습니다. 화면을 새로고침합니다.");
     render();
+    window.setTimeout(() => {
+      window.location.reload();
+    }, 900);
     return;
   }
 
