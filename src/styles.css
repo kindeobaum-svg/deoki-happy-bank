@@ -660,6 +660,25 @@ select:focus-visible {
   font-weight: 800;
 }
 
+.classroom-row {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fffaf2;
+}
+
+.classroom-edit-form {
+  display: grid;
+  gap: 10px;
+}
+
+.classroom-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .avatar.big {
   flex-basis: 62px;
   width: 62px;

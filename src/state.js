@@ -106,6 +106,16 @@ function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function slugifyClassName(name) {
+  const ascii = String(name)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return ascii || `class-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function getNextChildSequence(data) {
   const numericIds = data.children
     .map((child) => /^child-(\d+)$/.exec(child.id)?.[1])
@@ -427,6 +437,122 @@ export function getUser(data, userId) {
 
 export function getClass(data, classId) {
   return data.classes.find((classroom) => classroom.id === classId) ?? null;
+}
+
+export function createClassroom(data, user, classInput = {}) {
+  if (!user || user.role !== ROLES.DIRECTOR) {
+    throw new Error("원장만 반을 추가할 수 있습니다.");
+  }
+
+  const name = String(classInput.name ?? "").trim();
+  if (!name) {
+    throw new Error("반 이름을 입력해주세요.");
+  }
+
+  const existingNames = new Set(data.classes.map((classroom) => classroom.name));
+  if (existingNames.has(name)) {
+    throw new Error("이미 등록된 반 이름입니다.");
+  }
+
+  const existingIds = new Set(data.classes.map((classroom) => classroom.id));
+  const baseId = slugifyClassName(name);
+  let id = baseId;
+  let suffix = 2;
+
+  while (existingIds.has(id)) {
+    id = `${baseId}-${suffix}`;
+    suffix += 1;
+  }
+
+  return normalizeDailyMissions(
+    normalizeStandardMissionTemplates({
+      ...data,
+      classes: [
+        ...data.classes,
+        {
+          id,
+          name,
+          teacherId: `teacher-${id}`,
+          color: classInput.color ?? "#9ad95f"
+        }
+      ],
+      users: [
+        ...data.users,
+        {
+          id: `teacher-${id}`,
+          role: ROLES.TEACHER,
+          name: `${name} 선생님`,
+          classId: id,
+          title: "교사용",
+          description: `${name} 아이만 조회하고 미션을 생성합니다.`
+        }
+      ]
+    })
+  );
+}
+
+export function updateClassroom(data, user, classId, classInput = {}) {
+  if (!user || user.role !== ROLES.DIRECTOR) {
+    throw new Error("원장만 반을 수정할 수 있습니다.");
+  }
+
+  const name = String(classInput.name ?? "").trim();
+  if (!name) {
+    throw new Error("반 이름을 입력해주세요.");
+  }
+
+  if (data.classes.some((classroom) => classroom.id !== classId && classroom.name === name)) {
+    throw new Error("이미 등록된 반 이름입니다.");
+  }
+
+  return {
+    ...data,
+    classes: data.classes.map((classroom) =>
+      classroom.id === classId
+        ? {
+            ...classroom,
+            name
+          }
+        : classroom
+    ),
+    users: data.users.map((item) =>
+      item.role === ROLES.TEACHER && item.classId === classId
+        ? {
+            ...item,
+            name: `${name} 선생님`,
+            description: `${name} 아이만 조회하고 미션을 생성합니다.`
+          }
+        : item
+    )
+  };
+}
+
+export function deleteClassroom(data, user, classId) {
+  if (!user || user.role !== ROLES.DIRECTOR) {
+    throw new Error("원장만 반을 삭제할 수 있습니다.");
+  }
+
+  if (data.children.some((child) => child.classId === classId)) {
+    throw new Error("아이들이 등록된 반은 삭제할 수 없습니다.");
+  }
+
+  const teacherIds = new Set(
+    data.users.filter((item) => item.role === ROLES.TEACHER && item.classId === classId).map((item) => item.id)
+  );
+
+  return {
+    ...data,
+    classes: data.classes.filter((classroom) => classroom.id !== classId),
+    users: data.users.filter((item) => !teacherIds.has(item.id)),
+    missionTemplates: data.missionTemplates.map((template) =>
+      template.targetType === "class" && template.targetId === classId
+        ? {
+            ...template,
+            active: false
+          }
+        : template
+    )
+  };
 }
 
 export function getChild(data, childId) {

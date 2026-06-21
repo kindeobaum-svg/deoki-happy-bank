@@ -6,9 +6,11 @@ import {
   canManageChecklistMissionGroup,
   cleanupTodayMissionData,
   completeMission,
+  createClassroom,
   createChecklistMission,
   createInitialData,
   createParentInviteCode,
+  deleteClassroom,
   deleteChecklistMissionGroup,
   getChildAccountBalance,
   getChecklistMissionGroup,
@@ -34,6 +36,7 @@ import {
   recordExpense,
   signInParentWithInviteCode,
   toDateKey,
+  updateClassroom,
   updateChecklistMissionGroup
 } from "./state.js";
 
@@ -328,7 +331,7 @@ function renderShell(user) {
 
 function getUserDisplayTitle(user) {
   if (user.role === ROLES.DIRECTOR) {
-    return "원장 화면";
+    return "원장";
   }
 
   if (user.role === ROLES.TEACHER) {
@@ -400,6 +403,7 @@ function renderHome(user) {
           <h2>행복부자 통장</h2>
         </div>
         <div class="home-title-actions">
+          ${user.role === ROLES.DIRECTOR ? `<button class="text-button" type="button" data-open-detail="classes">반 관리</button>` : ""}
           ${user.role === ROLES.DIRECTOR ? `<button class="text-button" type="button" data-open-detail="invites">초대코드</button>` : ""}
           ${user.role === ROLES.DIRECTOR ? `<button class="text-button danger-text" type="button" data-cleanup-data>데이터 정리</button>` : ""}
           ${renderHomeChildFilter(user)}
@@ -501,7 +505,69 @@ function renderHomeDetail(user, detailScreen) {
     return renderDirectorInviteManager(user);
   }
 
+  if (detailScreen.type === "classes") {
+    return renderClassroomManager(user);
+  }
+
   return renderDetailPanel("통장 상세", renderBank(user));
+}
+
+function renderClassroomManager(user) {
+  if (user.role !== ROLES.DIRECTOR) {
+    return renderDetailPanel("반 관리", renderEmpty("원장만 반을 관리할 수 있습니다."));
+  }
+
+  return `
+    <section class="detail-screen">
+      <div class="detail-header">
+        <button class="ghost-button" type="button" data-back-home>← 홈</button>
+        <h2>반 관리</h2>
+      </div>
+      <section class="director-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">반 추가</p>
+            <h2>+ 반 추가</h2>
+          </div>
+        </div>
+        <form id="classroom-form">
+          <label>
+            반 이름
+            <input name="name" type="text" placeholder="예: 숲속향기반" required maxlength="30" />
+          </label>
+          <button class="primary-button" type="submit">반 저장</button>
+        </form>
+        <p class="helper-text">예: 숲속향기반, 하얀 구름반, 파란하늘반, 푸른새</p>
+      </section>
+      <section class="card-section compact">
+        <div class="section-heading">
+          <h2>등록된 반</h2>
+          <span class="mini-badge">${state.classes.length}개</span>
+        </div>
+        ${state.classes.map((classroom) => renderClassroomRow(classroom)).join("")}
+      </section>
+    </section>
+  `;
+}
+
+function renderClassroomRow(classroom) {
+  const childCount = state.children.filter((child) => child.classId === classroom.id).length;
+
+  return `
+    <article class="classroom-row">
+      <form class="classroom-edit-form" data-classroom-id="${classroom.id}">
+        <label>
+          반 이름
+          <input name="name" type="text" value="${escapeHtml(classroom.name)}" required maxlength="30" />
+        </label>
+        <div class="classroom-actions">
+          <span class="mini-badge">${childCount}명</span>
+          <button class="icon-button edit" type="submit">수정</button>
+          <button class="icon-button delete" type="button" data-delete-classroom="${classroom.id}" ${childCount ? "disabled" : ""}>삭제</button>
+        </div>
+      </form>
+    </article>
+  `;
 }
 
 function renderDirectorInviteManager(user) {
@@ -1602,6 +1668,24 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  const deleteClassroomButton = event.target.closest("[data-delete-classroom]");
+  if (deleteClassroomButton) {
+    if (!window.confirm("이 반을 삭제할까요?")) {
+      return;
+    }
+
+    try {
+      state = deleteClassroom(state, getCurrentUser(), deleteClassroomButton.dataset.deleteClassroom);
+      saveState();
+      setToast("반이 삭제되었습니다.");
+      render();
+    } catch (error) {
+      setToast(error.message);
+      render();
+    }
+    return;
+  }
+
   const checklistItem = event.target.closest(".checklist-item");
   if (checklistItem) {
     const checklistInput = checklistItem.querySelector("[data-checklist-mission]");
@@ -1730,10 +1814,10 @@ app.addEventListener("submit", (event) => {
       "custom-mission-form",
       "expense-form",
       "child-register-form",
-      "invite-code-form"
-    ].includes(
-      event.target.id
-    )
+      "invite-code-form",
+      "classroom-form"
+    ].includes(event.target.id) &&
+    !event.target.classList.contains("classroom-edit-form")
   ) {
     return;
   }
@@ -1830,6 +1914,28 @@ app.addEventListener("submit", (event) => {
       setToast("학부모 초대코드가 생성되었습니다.");
       session.detailScreen = {
         type: "invites",
+        childId: null
+      };
+    }
+
+    if (event.target.id === "classroom-form") {
+      state = createClassroom(state, getCurrentUser(), {
+        name: formData.get("name")
+      });
+      setToast("반이 추가되었습니다.");
+      session.detailScreen = {
+        type: "classes",
+        childId: null
+      };
+    }
+
+    if (event.target.classList.contains("classroom-edit-form")) {
+      state = updateClassroom(state, getCurrentUser(), event.target.dataset.classroomId, {
+        name: formData.get("name")
+      });
+      setToast("반 이름이 수정되었습니다.");
+      session.detailScreen = {
+        type: "classes",
         childId: null
       };
     }

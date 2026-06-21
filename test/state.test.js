@@ -3,17 +3,20 @@ import { describe, it } from "node:test";
 import {
   ROLES,
   completeMission,
+  createClassroom,
   createChecklistMission,
   createInitialData,
   createMissionTemplate,
   createParentInviteCode,
   cleanupTodayMissionData,
   deleteChecklistMissionGroup,
+  deleteClassroom,
   getGrowthProgress,
   getUser,
   getVisibleAccountSummary,
   getVisibleChecklistMissions,
   getVisibleChildren,
+  getVisibleClasses,
   getVisibleDailyMissions,
   getVisibleGrowthProgress,
   getVisibleGrowthRecords,
@@ -26,7 +29,8 @@ import {
   registerChild,
   recordExpense,
   signInParentWithInviteCode,
-  updateChecklistMissionGroup
+  updateChecklistMissionGroup,
+  updateClassroom
 } from "../src/state.js";
 
 function normalizeMissionTitleForTest(title) {
@@ -79,6 +83,42 @@ describe("role based access", () => {
     assert.ok(getVisibleGrowthRecords(data, parent).every((item) => item.childId === "child-minjun"));
     assert.ok(getVisibleDailyMissions(data, parent).every((item) => item.childId === "child-minjun"));
     assert.ok(getVisibleMissionHistory(data, parent).every((item) => item.childId === "child-minjun"));
+  });
+});
+
+describe("classroom management", () => {
+  it("lets the director create, rename, and delete empty classrooms", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const created = createClassroom(data, director, {
+      name: "숲속향기반"
+    });
+    const classroom = created.classes.find((item) => item.name === "숲속향기반");
+    const teacher = created.users.find((item) => item.role === ROLES.TEACHER && item.classId === classroom.id);
+
+    assert.ok(classroom);
+    assert.ok(teacher);
+    assert.deepEqual(
+      getVisibleClasses(created, director).map((item) => item.name).sort(),
+      ["별님반", "숲속향기반", "햇살반"].sort()
+    );
+
+    const renamed = updateClassroom(created, director, classroom.id, {
+      name: "하얀 구름반"
+    });
+    assert.ok(renamed.classes.some((item) => item.name === "하얀 구름반"));
+    assert.ok(renamed.users.some((item) => item.role === ROLES.TEACHER && item.name === "하얀 구름반 선생님"));
+
+    const deleted = deleteClassroom(renamed, director, classroom.id);
+    assert.equal(deleted.classes.some((item) => item.id === classroom.id), false);
+    assert.equal(deleted.users.some((item) => item.role === ROLES.TEACHER && item.classId === classroom.id), false);
+  });
+
+  it("prevents deleting classrooms that still have children", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+
+    assert.throws(() => deleteClassroom(data, director, "sun"), /아이들이 등록된 반/);
   });
 });
 
