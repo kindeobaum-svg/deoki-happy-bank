@@ -141,13 +141,18 @@ describe("teacher child registration", () => {
 
   it("lets a teacher edit only their own class child names", () => {
     const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
     const sunTeacher = getUser(data, "teacher-sun");
     const starTeacher = getUser(data, "teacher-star");
     const updated = updateChild(data, sunTeacher, "child-minjun", {
       name: "김민재"
     });
+    const directorUpdated = updateChild(data, director, "child-seoa", {
+      name: "박서윤"
+    });
 
     assert.equal(updated.children.find((child) => child.id === "child-minjun").name, "김민재");
+    assert.equal(directorUpdated.children.find((child) => child.id === "child-seoa").name, "박서윤");
     assert.throws(() => updateChild(data, sunTeacher, "child-seoa", { name: "박서윤" }), /담당 반 아이만 수정/);
     assert.throws(() => updateChild(data, starTeacher, "child-minjun", { name: "김민재" }), /담당 반 아이만 수정/);
   });

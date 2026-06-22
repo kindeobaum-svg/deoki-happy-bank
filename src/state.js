@@ -678,12 +678,12 @@ export function registerChild(data, user, childInput = {}) {
 }
 
 export function updateChild(data, user, childId, childInput = {}) {
-  if (!user || user.role !== ROLES.TEACHER) {
-    throw new Error("교사만 아이 이름을 수정할 수 있습니다.");
+  if (!user || ![ROLES.DIRECTOR, ROLES.TEACHER].includes(user.role)) {
+    throw new Error("원장 또는 교사만 아이 이름을 수정할 수 있습니다.");
   }
 
   const child = getChild(data, childId);
-  if (!child || child.classId !== user.classId) {
+  if (!child || !canManageChild(user, child)) {
     throw new Error("담당 반 아이만 수정할 수 있습니다.");
   }
 

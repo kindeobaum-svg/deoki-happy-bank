@@ -707,6 +707,7 @@ select:focus-visible {
 }
 
 .classroom-edit-form,
+.class-child-edit-form,
 .teacher-child-edit-form {
   display: grid;
   gap: 10px;

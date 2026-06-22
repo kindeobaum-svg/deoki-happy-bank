@@ -544,6 +544,10 @@ function renderHomeDetail(user, detailScreen) {
     return renderClassroomManager(user);
   }
 
+  if (detailScreen.type === "class-children") {
+    return renderClassChildManager(user, detailScreen.classId);
+  }
+
   if (detailScreen.type === "teacher-children") {
     return renderTeacherChildRegistration(user);
   }
@@ -607,6 +611,65 @@ function renderTeacherChildEditRow(child) {
   `;
 }
 
+function renderClassChildManager(user, classId) {
+  const classroom = getVisibleClasses(state, user).find((item) => item.id === classId);
+
+  if (!classroom) {
+    return renderDetailPanel("아이관리", renderEmpty("조회할 수 없는 반입니다."));
+  }
+
+  const children = getVisibleChildren(state, user).filter((child) => child.classId === classroom.id);
+  const showForm = session.showClassChildFormClassId === classroom.id;
+
+  return `
+    <section class="detail-screen">
+      <div class="detail-header">
+        <button class="ghost-button" type="button" data-open-detail="classes">← 반 관리</button>
+        <h2>${escapeHtml(classroom.name)} 아이관리</h2>
+      </div>
+      <section class="director-card">
+        <button class="primary-button" type="button" data-toggle-class-child-form="${classroom.id}">+ 아이 등록</button>
+        ${
+          showForm
+            ? `
+              <form id="class-child-form" data-class-id="${classroom.id}">
+                <label>
+                  아이 이름
+                  <input name="name" type="text" placeholder="예: 김민준" required maxlength="20" />
+                </label>
+                <button class="primary-button" type="submit">저장</button>
+              </form>
+            `
+            : ""
+        }
+      </section>
+      <section class="card-section compact">
+        <div class="section-heading">
+          <h2>등록된 아이</h2>
+          <span class="mini-badge">${children.length}명</span>
+        </div>
+        ${children.length ? children.map((child) => renderClassChildRow(child, classroom.id)).join("") : renderEmpty("등록된 아이가 없습니다.")}
+      </section>
+    </section>
+  `;
+}
+
+function renderClassChildRow(child, classId) {
+  return `
+    <article class="classroom-row">
+      <form class="class-child-edit-form" data-child-id="${child.id}" data-class-id="${classId}">
+        <label>
+          아이 이름
+          <input name="name" type="text" value="${escapeHtml(child.name)}" required maxlength="20" />
+        </label>
+        <div class="classroom-actions">
+          <button class="icon-button edit" type="submit">수정</button>
+        </div>
+      </form>
+    </article>
+  `;
+}
+
 function renderClassroomManager(user) {
   if (user.role !== ROLES.DIRECTOR) {
     return renderDetailPanel("반 관리", renderEmpty("원장만 반을 관리할 수 있습니다."));
@@ -657,6 +720,7 @@ function renderClassroomRow(classroom) {
         </label>
         <div class="classroom-actions">
           <span class="mini-badge">${childCount}명</span>
+          <button class="icon-button edit" type="button" data-open-detail="class-children" data-detail-class="${classroom.id}">아이관리</button>
           <button class="icon-button edit" type="submit">수정</button>
           <button class="icon-button delete" type="button" data-delete-classroom="${classroom.id}" ${childCount ? "disabled" : ""}>삭제</button>
         </div>
@@ -1773,6 +1837,20 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  const toggleClassChildFormButton = event.target.closest("[data-toggle-class-child-form]");
+  if (toggleClassChildFormButton) {
+    const classId = toggleClassChildFormButton.dataset.toggleClassChildForm;
+    session.showClassChildFormClassId = session.showClassChildFormClassId === classId ? null : classId;
+    session.tab = "home";
+    session.detailScreen = {
+      type: "class-children",
+      classId
+    };
+    saveSession();
+    render();
+    return;
+  }
+
   const deleteClassroomButton = event.target.closest("[data-delete-classroom]");
   if (deleteClassroomButton) {
     if (!window.confirm("이 반을 삭제할까요?")) {
@@ -1849,7 +1927,8 @@ app.addEventListener("click", (event) => {
     session.tab = "home";
     session.detailScreen = {
       type: detailButton.dataset.openDetail,
-      childId: detailButton.dataset.detailChild ?? null
+      childId: detailButton.dataset.detailChild ?? null,
+      classId: detailButton.dataset.detailClass ?? null
     };
     saveSession();
     render();
@@ -1919,11 +1998,13 @@ app.addEventListener("submit", (event) => {
       "custom-mission-form",
       "expense-form",
       "child-register-form",
+      "class-child-form",
       "teacher-child-form",
       "invite-code-form",
       "classroom-form"
     ].includes(event.target.id) &&
     !event.target.classList.contains("classroom-edit-form") &&
+    !event.target.classList.contains("class-child-edit-form") &&
     !event.target.classList.contains("teacher-child-edit-form")
   ) {
     return;
@@ -2027,6 +2108,20 @@ app.addEventListener("submit", (event) => {
       session.selectedChildId = "all";
     }
 
+    if (event.target.id === "class-child-form") {
+      state = registerChild(state, getCurrentUser(), {
+        name: formData.get("name"),
+        classId: event.target.dataset.classId
+      });
+      setToast("아이가 등록되고 학부모 초대코드가 자동 생성되었습니다.");
+      session.detailScreen = {
+        type: "class-children",
+        classId: event.target.dataset.classId
+      };
+      session.showClassChildFormClassId = event.target.dataset.classId;
+      session.selectedChildId = "all";
+    }
+
     if (event.target.id === "invite-code-form") {
       state = createParentInviteCode(state, getCurrentUser(), formData.get("childId"));
       setToast("학부모 초대코드가 생성되었습니다.");
@@ -2055,6 +2150,17 @@ app.addEventListener("submit", (event) => {
       session.detailScreen = {
         type: "classes",
         childId: null
+      };
+    }
+
+    if (event.target.classList.contains("class-child-edit-form")) {
+      state = updateChild(state, getCurrentUser(), event.target.dataset.childId, {
+        name: formData.get("name")
+      });
+      setToast("아이 이름이 수정되었습니다.");
+      session.detailScreen = {
+        type: "class-children",
+        classId: event.target.dataset.classId
       };
     }
 
