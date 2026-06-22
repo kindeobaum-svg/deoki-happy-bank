@@ -9,6 +9,7 @@ import {
   createMissionTemplate,
   createParentInviteCode,
   cleanupTodayMissionData,
+  deleteChild,
   deleteChecklistMissionGroup,
   deleteClassroom,
   getGrowthProgress,
@@ -155,6 +156,20 @@ describe("teacher child registration", () => {
     assert.equal(directorUpdated.children.find((child) => child.id === "child-seoa").name, "박서윤");
     assert.throws(() => updateChild(data, sunTeacher, "child-seoa", { name: "박서윤" }), /담당 반 아이만 수정/);
     assert.throws(() => updateChild(data, starTeacher, "child-minjun", { name: "김민재" }), /담당 반 아이만 수정/);
+  });
+
+  it("lets authorized users delete children and their invite codes", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const registered = registerChild(data, teacher, {
+      name: "한지우"
+    });
+    const child = registered.children.find((item) => item.name === "한지우");
+    const deleted = deleteChild(registered, getUser(registered, "teacher-sun"), child.id);
+
+    assert.equal(deleted.children.some((item) => item.id === child.id), false);
+    assert.equal(deleted.inviteCodes.some((invite) => invite.childId === child.id), false);
+    assert.throws(() => deleteChild(data, teacher, "child-seoa"), /담당 반 아이만 삭제/);
   });
 });
 

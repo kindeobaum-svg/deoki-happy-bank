@@ -433,18 +433,12 @@ select:focus-visible {
 }
 
 .teacher-child-inline-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  gap: 10px;
 }
 
-.teacher-child-inline-list span {
-  padding: 7px 10px;
-  border-radius: 999px;
-  color: #8f4c00;
-  font-size: 12px;
-  font-weight: 900;
-  background: #fff0cf;
+.teacher-child-inline-list .empty-card {
+  box-shadow: none;
 }
 
 .home-balance-card span,
@@ -699,7 +693,8 @@ select:focus-visible {
   font-weight: 800;
 }
 
-.classroom-row {
+.classroom-row,
+.child-management-row {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -718,6 +713,26 @@ select:focus-visible {
   align-items: center;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.icon-button.child-manage {
+  color: #fff;
+  background: var(--blue);
+}
+
+.child-management-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.child-management-meta span {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .avatar.big {

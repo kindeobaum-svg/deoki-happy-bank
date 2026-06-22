@@ -720,6 +720,54 @@ export function updateChild(data, user, childId, childInput = {}) {
   };
 }
 
+export function deleteChild(data, user, childId) {
+  if (!user || ![ROLES.DIRECTOR, ROLES.TEACHER].includes(user.role)) {
+    throw new Error("원장 또는 교사만 아이를 삭제할 수 있습니다.");
+  }
+
+  const child = getChild(data, childId);
+  if (!child || !canManageChild(user, child)) {
+    throw new Error("담당 반 아이만 삭제할 수 있습니다.");
+  }
+
+  const linkedParentIds = new Set([
+    ...(child.parentUserIds ?? []),
+    ...data.users
+      .filter((item) => item.role === ROLES.PARENT && Array.isArray(item.childIds) && item.childIds.includes(child.id))
+      .map((item) => item.id)
+  ]);
+
+  return {
+    ...data,
+    children: data.children.filter((item) => item.id !== child.id),
+    users: data.users
+      .map((item) => {
+        if (!linkedParentIds.has(item.id) || item.role !== ROLES.PARENT) {
+          return item;
+        }
+
+        return {
+          ...item,
+          childIds: (item.childIds ?? []).filter((id) => id !== child.id)
+        };
+      })
+      .filter((item) => item.role !== ROLES.PARENT || (item.childIds ?? []).length > 0),
+    inviteCodes: (data.inviteCodes ?? []).filter((invite) => invite.childId !== child.id),
+    transactions: data.transactions.filter((transaction) => transaction.childId !== child.id),
+    growthRecords: data.growthRecords.filter((record) => record.childId !== child.id),
+    forestMoments: data.forestMoments.filter((moment) => moment.childId !== child.id),
+    dailyMissions: data.dailyMissions.filter((mission) => mission.childId !== child.id),
+    missionTemplates: data.missionTemplates.map((template) =>
+      template.targetType === "child" && template.targetId === child.id
+        ? {
+            ...template,
+            active: false
+          }
+        : template
+    )
+  };
+}
+
 export function signInParentWithInviteCode(data, inviteInput = {}) {
   const code = String(inviteInput.inviteCode ?? "")
     .trim()
