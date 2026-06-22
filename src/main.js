@@ -2250,31 +2250,23 @@ app.addEventListener("submit", (event) => {
 
       accountLoginDraft = { email, password };
       accountLoginErrorMessage = "";
-      accountLoginLoading = true;
-      startAccountLoginTimeout();
-      render();
+      accountLoginLoading = false;
 
-      window.setTimeout(() => {
-        try {
-          if (!account || account.password !== password) {
-            failAccountLogin("이메일 또는 비밀번호가 올바르지 않습니다.");
-            return;
-          }
+      if (!account || account.password !== password) {
+        failAccountLogin("이메일 또는 비밀번호가 올바르지 않습니다.");
+        return;
+      }
 
-          const user = getUser(state, account.userId);
-          if (!user) {
-            failAccountLogin("계정에 연결된 사용자를 찾을 수 없습니다.");
-            return;
-          }
+      const user = getUser(state, account.userId);
+      if (!user) {
+        failAccountLogin("계정에 연결된 사용자를 찾을 수 없습니다.");
+        return;
+      }
 
-          completeAccountLogin(
-            user,
-            formData.get("authAction") === "signup" ? "회원가입 없이 테스트 계정으로 로그인했습니다." : "로그인했습니다."
-          );
-        } catch (error) {
-          failAccountLogin(error.message);
-        }
-      }, 100);
+      completeAccountLogin(
+        user,
+        formData.get("authAction") === "signup" ? "회원가입 없이 테스트 계정으로 로그인했습니다." : "로그인했습니다."
+      );
       return;
     }
 

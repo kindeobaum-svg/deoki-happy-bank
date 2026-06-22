@@ -140,6 +140,12 @@ select:focus-visible {
   margin: 0;
 }
 
+.brand-card h1 {
+  font-size: clamp(24px, 7vw, 34px);
+  line-height: 1.15;
+  word-break: keep-all;
+}
+
 .brand-card p,
 .permission-card p,
 .notice-card p,
@@ -212,6 +218,7 @@ select:focus-visible {
 .invite-login-card small {
   color: var(--muted);
   line-height: 1.5;
+  word-break: keep-all;
 }
 
 .login-error {
@@ -1738,6 +1745,46 @@ input {
     bottom: 24px;
     border: 1px solid var(--line);
     border-radius: 28px;
+  }
+}
+
+@media (max-width: 420px) {
+  .login-screen {
+    padding: max(16px, env(safe-area-inset-top)) 14px 24px;
+  }
+
+  .brand-card {
+    gap: 12px;
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+
+  .brand-mark {
+    flex-basis: 48px;
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    font-size: 24px;
+  }
+
+  .brand-card h1 {
+    font-size: 26px;
+  }
+
+  .brand-card p:not(.eyebrow),
+  .invite-login-card p,
+  .invite-login-card small,
+  .role-card small {
+    font-size: 14px;
+  }
+
+  .login-group {
+    margin-top: 16px;
+  }
+
+  .invite-login-card,
+  .role-card {
+    border-radius: 20px;
   }
 }
 
