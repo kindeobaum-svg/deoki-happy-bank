@@ -66,16 +66,12 @@ let loginErrorMessage = "";
 let loginFormDraft = { parentName: "", inviteCode: "" };
 let accountLoginErrorMessage = "";
 let accountLoginDraft = { email: "", password: "" };
-let accountLoginLoading = false;
-let accountLoginTimer = null;
 
 const TEST_ACCOUNTS = {
   "director@test.com": { password: "123456", userId: "director-1" },
   "teacher@test.com": { password: "123456", userId: "teacher-sun" },
   "parent@test.com": { password: "123456", userId: "parent-minjun" }
 };
-
-const MAX_LOGIN_LOADING_MS = 3000;
 
 applyPreviewLoginFromUrl();
 saveState(state);
@@ -205,8 +201,6 @@ function buildLoginSession(user) {
 }
 
 function completeAccountLogin(user, message) {
-  window.clearTimeout(accountLoginTimer);
-  accountLoginLoading = false;
   accountLoginErrorMessage = "";
   accountLoginDraft = { email: "", password: "" };
   loginErrorMessage = "";
@@ -219,21 +213,8 @@ function completeAccountLogin(user, message) {
 }
 
 function failAccountLogin(message) {
-  window.clearTimeout(accountLoginTimer);
-  accountLoginLoading = false;
   accountLoginErrorMessage = message;
   render();
-}
-
-function startAccountLoginTimeout() {
-  window.clearTimeout(accountLoginTimer);
-  accountLoginTimer = window.setTimeout(() => {
-    if (!accountLoginLoading) {
-      return;
-    }
-
-    failAccountLogin("로그인 시간이 초과되었습니다. 다시 시도해주세요.");
-  }, MAX_LOGIN_LOADING_MS);
 }
 
 function ensureAllowedSelection(user) {
@@ -314,15 +295,10 @@ function renderLogin() {
             <input name="password" type="password" placeholder="123456" value="${escapeHtml(accountLoginDraft.password)}" required />
           </label>
           <div class="account-login-actions">
-            <button class="primary-button" type="submit" name="authAction" value="login" ${accountLoginLoading ? "disabled" : ""}>로그인</button>
-            <button class="ghost-button" type="submit" name="authAction" value="signup" ${accountLoginLoading ? "disabled" : ""}>회원가입</button>
+            <button class="primary-button" type="submit" name="authAction" value="login">로그인</button>
+            <button class="ghost-button" type="submit" name="authAction" value="signup">회원가입</button>
           </div>
         </form>
-        ${
-          accountLoginLoading
-            ? `<div class="login-loading" role="status"><span class="spinner" aria-hidden="true"></span>로그인 처리 중입니다...</div>`
-            : ""
-        }
         <small>원장 director@test.com / 123456 · 교사 teacher@test.com / 123456 · 학부모 parent@test.com / 123456</small>
       </div>
 
@@ -2250,7 +2226,6 @@ app.addEventListener("submit", (event) => {
 
       accountLoginDraft = { email, password };
       accountLoginErrorMessage = "";
-      accountLoginLoading = false;
 
       if (!account || account.password !== password) {
         failAccountLogin("이메일 또는 비밀번호가 올바르지 않습니다.");
