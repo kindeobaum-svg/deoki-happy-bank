@@ -64,6 +64,18 @@ let session = loadSession();
 let toastMessage = "";
 let loginErrorMessage = "";
 let loginFormDraft = { parentName: "", inviteCode: "" };
+let accountLoginErrorMessage = "";
+let accountLoginDraft = { email: "", password: "" };
+let accountLoginLoading = false;
+let accountLoginTimer = null;
+
+const TEST_ACCOUNTS = {
+  "director@test.com": { password: "123456", userId: "director-1" },
+  "teacher@test.com": { password: "123456", userId: "teacher-sun" },
+  "parent@test.com": { password: "123456", userId: "parent-minjun" }
+};
+
+const MAX_LOGIN_LOADING_MS = 3000;
 
 applyPreviewLoginFromUrl();
 saveState(state);
@@ -164,6 +176,66 @@ function getCurrentUser() {
   return getUser(state, session.userId);
 }
 
+function getRoleStartDetailScreen(user) {
+  if (user.role === ROLES.DIRECTOR) {
+    return { type: "all-children", childId: null };
+  }
+
+  if (user.role === ROLES.TEACHER) {
+    return { type: "teacher-children", childId: null };
+  }
+
+  const childId = getDefaultChildId(state, user);
+  return { type: "child", childId };
+}
+
+function buildLoginSession(user) {
+  const selectedChildId = user.role === ROLES.PARENT ? getDefaultChildId(state, user) : "all";
+
+  return {
+    userId: user.id,
+    tab: "home",
+    selectedChildId,
+    detailScreen: getRoleStartDetailScreen(user),
+    editMissionId: null,
+    showTeacherChildForm: false,
+    showAllChildForm: false,
+    showClassChildFormClassId: null
+  };
+}
+
+function completeAccountLogin(user, message) {
+  window.clearTimeout(accountLoginTimer);
+  accountLoginLoading = false;
+  accountLoginErrorMessage = "";
+  accountLoginDraft = { email: "", password: "" };
+  loginErrorMessage = "";
+  loginFormDraft = { parentName: "", inviteCode: "" };
+  session = buildLoginSession(user);
+  saveState();
+  saveSession();
+  setToast(message);
+  render();
+}
+
+function failAccountLogin(message) {
+  window.clearTimeout(accountLoginTimer);
+  accountLoginLoading = false;
+  accountLoginErrorMessage = message;
+  render();
+}
+
+function startAccountLoginTimeout() {
+  window.clearTimeout(accountLoginTimer);
+  accountLoginTimer = window.setTimeout(() => {
+    if (!accountLoginLoading) {
+      return;
+    }
+
+    failAccountLogin("로그인 시간이 초과되었습니다. 다시 시도해주세요.");
+  }, MAX_LOGIN_LOADING_MS);
+}
+
 function ensureAllowedSelection(user) {
   const visibleChildren = getVisibleChildren(state, user);
   const visibleIds = new Set(visibleChildren.map((child) => child.id));
@@ -226,6 +298,32 @@ function renderLogin() {
           <h1>행복부자 통장</h1>
           <p>행복숲, 통장, 성장기록, 미션을 역할별 권한으로 확인합니다.</p>
         </div>
+      </div>
+
+      <div class="login-group invite-login-card account-login-card">
+        <h2>테스트 계정 로그인 / 회원가입</h2>
+        <p>아래 테스트 계정은 별도 회원가입 없이 바로 로그인할 수 있습니다.</p>
+        ${accountLoginErrorMessage ? `<div class="login-error" role="alert">${escapeHtml(accountLoginErrorMessage)}</div>` : ""}
+        <form id="account-login-form">
+          <label>
+            이메일
+            <input name="email" type="email" placeholder="director@test.com" value="${escapeHtml(accountLoginDraft.email)}" required />
+          </label>
+          <label>
+            비밀번호
+            <input name="password" type="password" placeholder="123456" value="${escapeHtml(accountLoginDraft.password)}" required />
+          </label>
+          <div class="account-login-actions">
+            <button class="primary-button" type="submit" name="authAction" value="login" ${accountLoginLoading ? "disabled" : ""}>로그인</button>
+            <button class="ghost-button" type="submit" name="authAction" value="signup" ${accountLoginLoading ? "disabled" : ""}>회원가입</button>
+          </div>
+        </form>
+        ${
+          accountLoginLoading
+            ? `<div class="login-loading" role="status"><span class="spinner" aria-hidden="true"></span>로그인 처리 중입니다...</div>`
+            : ""
+        }
+        <small>원장 director@test.com / 123456 · 교사 teacher@test.com / 123456 · 학부모 parent@test.com / 123456</small>
       </div>
 
       ${roleGroups
@@ -573,6 +671,10 @@ function renderHomeDetail(user, detailScreen) {
     return renderClassroomManager(user);
   }
 
+  if (detailScreen.type === "all-children") {
+    return renderDirectorAllChildManager(user);
+  }
+
   if (detailScreen.type === "class-children") {
     return renderClassChildManager(user, detailScreen.classId);
   }
@@ -640,6 +742,59 @@ function renderTeacherChildEditRow(child) {
   `;
 }
 
+function renderDirectorAllChildManager(user) {
+  if (user.role !== ROLES.DIRECTOR) {
+    return renderDetailPanel("전체 아이관리", renderEmpty("원장만 전체 아이를 관리할 수 있습니다."));
+  }
+
+  const children = getVisibleChildren(state, user);
+
+  return `
+    <section class="detail-screen">
+      <div class="detail-header">
+        <button class="ghost-button" type="button" data-back-home>← 홈</button>
+        <h2>전체 아이관리</h2>
+      </div>
+      <section class="director-card">
+        <button class="primary-button" type="button" data-toggle-all-child-form>+ 아이 등록</button>
+        ${
+          session.showAllChildForm
+            ? `
+              <form id="all-child-form">
+                <label>
+                  아이 이름
+                  <input name="name" type="text" placeholder="예: 김민준" required maxlength="20" />
+                </label>
+                <label>
+                  반
+                  <select name="classId" required>
+                    ${state.classes
+                      .map((classroom) => `<option value="${classroom.id}">${escapeHtml(classroom.name)}</option>`)
+                      .join("")}
+                  </select>
+                </label>
+                <button class="primary-button" type="submit">저장</button>
+              </form>
+            `
+            : ""
+        }
+      </section>
+      <section class="card-section compact">
+        <div class="section-heading">
+          <h2>등록된 아이</h2>
+          <span class="mini-badge">${children.length}명</span>
+        </div>
+        ${children.length ? children.map((child) => renderAllChildRow(child)).join("") : renderEmpty("등록된 아이가 없습니다.")}
+      </section>
+    </section>
+  `;
+}
+
+function renderAllChildRow(child) {
+  const classroom = getClass(state, child.classId);
+  return renderClassChildRow(child, classroom?.id ?? child.classId, classroom?.name ?? "");
+}
+
 function renderClassChildManager(user, classId) {
   const classroom = getVisibleClasses(state, user).find((item) => item.id === classId);
 
@@ -683,14 +838,14 @@ function renderClassChildManager(user, classId) {
   `;
 }
 
-function renderClassChildRow(child, classId) {
+function renderClassChildRow(child, classId, classroomName = "") {
   const invite = getInviteForChild(child.id);
 
   return `
     <article class="child-management-row">
       <form class="class-child-edit-form" data-child-id="${child.id}" data-class-id="${classId}">
         <label>
-          아이 이름
+          아이 이름 ${classroomName ? `<span class="child-class-name">${escapeHtml(classroomName)}</span>` : ""}
           <input name="name" type="text" value="${escapeHtml(child.name)}" required maxlength="20" />
         </label>
         <div class="child-management-meta">
@@ -1763,18 +1918,7 @@ app.addEventListener("click", (event) => {
   const loginButton = event.target.closest("[data-login-user]");
   if (loginButton) {
     const user = getUser(state, loginButton.dataset.loginUser);
-    loginErrorMessage = "";
-    loginFormDraft = { parentName: "", inviteCode: "" };
-    session = {
-      userId: user.id,
-      tab: "home",
-      selectedChildId: user.role === ROLES.PARENT ? getDefaultChildId(state, user) : "all",
-      detailScreen: null
-      ,
-      editMissionId: null
-    };
-    saveSession();
-    render();
+    completeAccountLogin(user, "로그인했습니다.");
     return;
   }
 
@@ -1882,6 +2026,19 @@ app.addEventListener("click", (event) => {
     session.detailScreen = {
       type: "class-children",
       classId
+    };
+    saveSession();
+    render();
+    return;
+  }
+
+  const toggleAllChildFormButton = event.target.closest("[data-toggle-all-child-form]");
+  if (toggleAllChildFormButton) {
+    session.showAllChildForm = !session.showAllChildForm;
+    session.tab = "home";
+    session.detailScreen = {
+      type: "all-children",
+      childId: null
     };
     saveSession();
     render();
@@ -2060,12 +2217,14 @@ app.addEventListener("change", (event) => {
 app.addEventListener("submit", (event) => {
   if (
     ![
+      "account-login-form",
       "parent-invite-form",
       "mission-form",
       "mission-edit-form",
       "custom-mission-form",
       "expense-form",
       "child-register-form",
+      "all-child-form",
       "class-child-form",
       "teacher-child-form",
       "invite-code-form",
@@ -2082,6 +2241,43 @@ app.addEventListener("submit", (event) => {
   const formData = new FormData(event.target);
 
   try {
+    if (event.target.id === "account-login-form") {
+      const email = String(formData.get("email") ?? "")
+        .trim()
+        .toLowerCase();
+      const password = String(formData.get("password") ?? "");
+      const account = TEST_ACCOUNTS[email];
+
+      accountLoginDraft = { email, password };
+      accountLoginErrorMessage = "";
+      accountLoginLoading = true;
+      startAccountLoginTimeout();
+      render();
+
+      window.setTimeout(() => {
+        try {
+          if (!account || account.password !== password) {
+            failAccountLogin("이메일 또는 비밀번호가 올바르지 않습니다.");
+            return;
+          }
+
+          const user = getUser(state, account.userId);
+          if (!user) {
+            failAccountLogin("계정에 연결된 사용자를 찾을 수 없습니다.");
+            return;
+          }
+
+          completeAccountLogin(
+            user,
+            formData.get("authAction") === "signup" ? "회원가입 없이 테스트 계정으로 로그인했습니다." : "로그인했습니다."
+          );
+        } catch (error) {
+          failAccountLogin(error.message);
+        }
+      }, 100);
+      return;
+    }
+
     if (event.target.id === "parent-invite-form") {
       const parentName = String(formData.get("parentName") ?? "");
       const inviteCode = String(formData.get("inviteCode") ?? "");
@@ -2092,12 +2288,7 @@ app.addEventListener("submit", (event) => {
       state = result.data;
       loginErrorMessage = "";
       loginFormDraft = { parentName: "", inviteCode: "" };
-      session = {
-        userId: result.user.id,
-        tab: "home",
-        selectedChildId: getDefaultChildId(state, result.user),
-        detailScreen: null
-      };
+      session = buildLoginSession(result.user);
       saveState();
       saveSession();
       setToast(result.isNewUser ? "초대코드 가입이 완료되었습니다." : "학부모로 로그인했습니다.");
@@ -2173,6 +2364,20 @@ app.addEventListener("submit", (event) => {
       session.tab = "home";
       session.detailScreen = null;
       session.showTeacherChildForm = true;
+      session.selectedChildId = "all";
+    }
+
+    if (event.target.id === "all-child-form") {
+      state = registerChild(state, getCurrentUser(), {
+        name: formData.get("name"),
+        classId: formData.get("classId")
+      });
+      setToast("아이가 등록되고 학부모 초대코드가 자동 생성되었습니다.");
+      session.detailScreen = {
+        type: "all-children",
+        childId: null
+      };
+      session.showAllChildForm = true;
       session.selectedChildId = "all";
     }
 
