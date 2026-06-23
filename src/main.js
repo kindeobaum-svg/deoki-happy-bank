@@ -314,6 +314,8 @@ function renderLogin() {
         </div>
       </div>
 
+      ${toastMessage ? `<div class="toast login-toast" role="status">${escapeHtml(toastMessage)}</div>` : ""}
+
       <div class="invite-login-card parent-code-card">
         <h2>우리 아이 통장 보기</h2>
         <p>카카오톡으로 받은 초대코드를 입력해 주세요.</p>
@@ -1926,6 +1928,7 @@ app.addEventListener("click", (event) => {
   const homeAddGuideButton = event.target.closest("[data-home-add-guide]");
   if (homeAddGuideButton) {
     setToast("Chrome 메뉴(⋮)를 누른 뒤 '홈 화면에 추가'를 선택해주세요.");
+    render();
     return;
   }
 
