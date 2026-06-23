@@ -509,7 +509,7 @@ function renderHome(user) {
     <section class="home-dashboard">
       <div class="home-title-row">
         <div>
-          <p class="eyebrow">오늘 한눈 요약</p>
+          <p class="eyebrow">오늘 한일 요약</p>
           <h2>행복부자 통장</h2>
         </div>
         <div class="home-title-actions">
