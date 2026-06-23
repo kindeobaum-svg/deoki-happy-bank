@@ -63,7 +63,7 @@ let state = normalizeBankAccounts(
 let session = loadSession();
 let toastMessage = "";
 let loginErrorMessage = "";
-let loginFormDraft = { parentName: "", inviteCode: "" };
+let loginFormDraft = { inviteCode: "" };
 let accountLoginErrorMessage = "";
 let accountLoginDraft = { email: "", password: "" };
 
@@ -271,78 +271,77 @@ function renderLogin() {
   ];
 
   return `
-    <section class="login-screen">
+    <section class="login-screen parent-entry-screen">
       <div class="brand-card">
         <span class="brand-mark">덕</span>
         <div>
           <p class="eyebrow">덕이킨더바움</p>
           <h1>행복부자 통장</h1>
-          <p>행복숲, 통장, 성장기록, 미션을 역할별 권한으로 확인합니다.</p>
+          <p>초대코드를 입력하면 우리 아이 행복부자 통장을 볼 수 있습니다.</p>
         </div>
       </div>
 
-      <div class="login-group invite-login-card account-login-card">
-        <h2>테스트 계정 로그인 / 회원가입</h2>
-        <p>아래 테스트 계정은 별도 회원가입 없이 바로 로그인할 수 있습니다.</p>
-        ${accountLoginErrorMessage ? `<div class="login-error" role="alert">${escapeHtml(accountLoginErrorMessage)}</div>` : ""}
-        <form id="account-login-form">
-          <label>
-            이메일
-            <input name="email" type="email" placeholder="director@test.com" value="${escapeHtml(accountLoginDraft.email)}" required />
-          </label>
-          <label>
-            비밀번호
-            <input name="password" type="password" placeholder="123456" value="${escapeHtml(accountLoginDraft.password)}" required />
-          </label>
-          <div class="account-login-actions">
-            <button class="primary-button" type="submit" name="authAction" value="login">로그인</button>
-            <button class="ghost-button" type="submit" name="authAction" value="signup">회원가입</button>
-          </div>
-        </form>
-        <small>원장 director@test.com / 123456 · 교사 teacher@test.com / 123456 · 학부모 parent@test.com / 123456</small>
-      </div>
-
-      ${roleGroups
-        .map(
-          (group) => `
-          <div class="login-group">
-            <h2>${group.title}</h2>
-            <div class="role-list">
-              ${state.users
-                .filter((candidate) => candidate.role === group.role)
-                .map(
-                  (candidate) => `
-                    <button class="role-card" type="button" data-login-user="${candidate.id}">
-                      <span class="role-badge">${ROLE_LABELS[candidate.role]}</span>
-                      <strong>${escapeHtml(candidate.name)}</strong>
-                      <small>${escapeHtml(candidate.description)}</small>
-                    </button>
-                  `
-                )
-                .join("")}
-            </div>
-          </div>
-        `
-        )
-        .join("")}
-
-      <div class="login-group invite-login-card">
-        <h2>학부모용 초대코드 로그인</h2>
-        <p>원에서 받은 초대코드로 가입하면 자기 자녀 기록만 볼 수 있습니다.</p>
+      <div class="invite-login-card parent-code-card">
+        <h2>우리 아이 통장 보기</h2>
+        <p>카카오톡으로 받은 초대코드를 입력해 주세요.</p>
         ${loginErrorMessage ? `<div class="login-error" role="alert">${escapeHtml(loginErrorMessage)}</div>` : ""}
         <form id="parent-invite-form">
           <label>
-            아이 이름
-            <input name="parentName" type="text" placeholder="예: 김민준" maxlength="30" value="${escapeHtml(loginFormDraft.parentName)}" required />
-          </label>
-          <label>
             초대코드
-            <input name="inviteCode" type="text" placeholder="예: DK-MINJUN-2026" value="${escapeHtml(loginFormDraft.inviteCode)}" required />
+            <input name="inviteCode" type="text" placeholder="예: DK-MINJUN-2026" value="${escapeHtml(loginFormDraft.inviteCode)}" autocomplete="one-time-code" required />
           </label>
-          <button class="primary-button" type="submit">학부모 로그인 / 가입</button>
+          <button class="primary-button parent-start-button" type="submit">우리 아이 통장 보기</button>
         </form>
-        <small>테스트 코드: DK-MINJUN-2026, DK-SEOA-2026, DK-HARIN-2026, DK-DOYUN-2026</small>
+        <small>홈 화면에 추가하면 앱처럼 사용할 수 있습니다.</small>
       </div>
+
+      <details class="login-group admin-login-details">
+        <summary>운영자 테스트 로그인</summary>
+        <div class="invite-login-card account-login-card">
+          <h2>테스트 계정 로그인 / 회원가입</h2>
+          <p>원장/교사용 점검 계정입니다. 학부모님은 초대코드만 입력하면 됩니다.</p>
+          ${accountLoginErrorMessage ? `<div class="login-error" role="alert">${escapeHtml(accountLoginErrorMessage)}</div>` : ""}
+          <form id="account-login-form">
+            <label>
+              이메일
+              <input name="email" type="email" placeholder="director@test.com" value="${escapeHtml(accountLoginDraft.email)}" required />
+            </label>
+            <label>
+              비밀번호
+              <input name="password" type="password" placeholder="123456" value="${escapeHtml(accountLoginDraft.password)}" required />
+            </label>
+            <div class="account-login-actions">
+              <button class="primary-button" type="submit" name="authAction" value="login">로그인</button>
+              <button class="ghost-button" type="submit" name="authAction" value="signup">회원가입</button>
+            </div>
+          </form>
+          <small>원장 director@test.com / 123456 · 교사 teacher@test.com / 123456 · 학부모 parent@test.com / 123456</small>
+        </div>
+
+        ${roleGroups
+          .map(
+            (group) => `
+            <div class="login-group">
+              <h2>${group.title}</h2>
+              <div class="role-list">
+                ${state.users
+                  .filter((candidate) => candidate.role === group.role)
+                  .map(
+                    (candidate) => `
+                      <button class="role-card" type="button" data-login-user="${candidate.id}">
+                        <span class="role-badge">${ROLE_LABELS[candidate.role]}</span>
+                        <strong>${escapeHtml(candidate.name)}</strong>
+                        <small>${escapeHtml(candidate.description)}</small>
+                      </button>
+                    `
+                  )
+                  .join("")}
+              </div>
+            </div>
+          `
+          )
+          .join("")}
+      </details>
     </section>
   `;
 }
@@ -363,7 +362,7 @@ function renderShell(user) {
           <p class="eyebrow">${escapeHtml(user.title)} · ${escapeHtml(currentClassLabel)}</p>
           <h1>${escapeHtml(displayTitle)}</h1>
         </div>
-        <button class="ghost-button" type="button" data-logout>전환</button>
+        ${user.role === ROLES.PARENT ? "" : `<button class="ghost-button" type="button" data-logout>전환</button>`}
       </header>
 
       ${user.role === ROLES.TEACHER ? renderTeacherInlineChildRegistration(user) : ""}
@@ -2246,15 +2245,13 @@ app.addEventListener("submit", (event) => {
     }
 
     if (event.target.id === "parent-invite-form") {
-      const parentName = String(formData.get("parentName") ?? "");
       const inviteCode = String(formData.get("inviteCode") ?? "");
       const result = signInParentWithInviteCode(state, {
-        parentName,
         inviteCode
       });
       state = result.data;
       loginErrorMessage = "";
-      loginFormDraft = { parentName: "", inviteCode: "" };
+      loginFormDraft = { inviteCode: "" };
       session = buildLoginSession(result.user);
       saveState();
       saveSession();
@@ -2465,7 +2462,6 @@ app.addEventListener("submit", (event) => {
     if (event.target.id === "parent-invite-form") {
       loginErrorMessage = error.message;
       loginFormDraft = {
-        parentName: String(formData.get("parentName") ?? ""),
         inviteCode: String(formData.get("inviteCode") ?? "")
       };
     } else {

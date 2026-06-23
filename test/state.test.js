@@ -189,6 +189,19 @@ describe("invite code login", () => {
     );
   });
 
+  it("signs a parent in with only an invite code", () => {
+    const data = createInitialData("2026-06-09");
+    const result = signInParentWithInviteCode(data, {
+      inviteCode: "dk-minjun-2026"
+    });
+
+    assert.equal(result.user.id, "parent-minjun");
+    assert.deepEqual(
+      getVisibleChildren(result.data, result.user).map((child) => child.id),
+      ["child-minjun"]
+    );
+  });
+
   it("creates a parent account for an unclaimed invite code", () => {
     const data = createInitialData("2026-06-09");
     const result = signInParentWithInviteCode(data, {

@@ -784,7 +784,7 @@ export function signInParentWithInviteCode(data, inviteInput = {}) {
     throw new Error("초대코드에 연결된 아이를 찾을 수 없습니다.");
   }
 
-  if (!inputName || inputName !== child.name) {
+  if (inputName && inputName !== child.name) {
     throw new Error("학부모 이름과 초대코드가 일치하지 않습니다.");
   }
 

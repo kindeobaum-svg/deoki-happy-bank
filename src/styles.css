@@ -85,6 +85,12 @@ select:focus-visible {
   padding: max(20px, env(safe-area-inset-top)) 18px 28px;
 }
 
+.parent-entry-screen {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
 .brand-card,
 .bank-hero,
 .home-balance-card,
@@ -212,6 +218,50 @@ select:focus-visible {
   border-radius: 24px;
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.parent-code-card {
+  padding: 22px;
+  background: linear-gradient(180deg, #fff 0%, #fff6e7 100%);
+}
+
+.parent-code-card h2 {
+  margin: 0;
+  font-size: 25px;
+  line-height: 1.2;
+}
+
+.parent-code-card input {
+  min-height: 54px;
+  border: 2px solid #ffd39a;
+  border-radius: 18px;
+  font-size: 18px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.parent-start-button {
+  min-height: 56px;
+  font-size: 17px;
+}
+
+.admin-login-details {
+  border: 1px dashed var(--line);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.admin-login-details summary {
+  padding: 16px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-login-details > .invite-login-card,
+.admin-login-details > .login-group {
+  margin: 0 12px 12px;
 }
 
 .invite-login-card p,
@@ -1751,6 +1801,18 @@ input {
   .invite-login-card small,
   .role-card small {
     font-size: 14px;
+  }
+
+  .parent-code-card {
+    padding: 20px;
+  }
+
+  .parent-code-card h2 {
+    font-size: 24px;
+  }
+
+  .parent-code-card input {
+    font-size: 17px;
   }
 
   .login-group {
