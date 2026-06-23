@@ -202,6 +202,18 @@ describe("invite code login", () => {
     );
   });
 
+  it("keeps parent visibility limited when restoring with invite code only", () => {
+    const data = createInitialData("2026-06-09");
+    const result = signInParentWithInviteCode(data, {
+      inviteCode: "DK-SEOA-2026"
+    });
+
+    assert.deepEqual(
+      getVisibleChildren(result.data, result.user).map((child) => child.id),
+      ["child-seoa"]
+    );
+  });
+
   it("creates a parent account for an unclaimed invite code", () => {
     const data = createInitialData("2026-06-09");
     const result = signInParentWithInviteCode(data, {

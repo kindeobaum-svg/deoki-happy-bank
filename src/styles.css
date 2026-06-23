@@ -227,22 +227,33 @@ select:focus-visible {
 
 .parent-code-card h2 {
   margin: 0;
-  font-size: 25px;
+  font-size: 28px;
   line-height: 1.2;
 }
 
 .parent-code-card input {
-  min-height: 54px;
+  min-height: 62px;
   border: 2px solid #ffd39a;
   border-radius: 18px;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .parent-start-button {
-  min-height: 56px;
-  font-size: 17px;
+  min-height: 64px;
+  font-size: 19px;
+}
+
+.home-add-button {
+  min-height: 50px;
+  border: 1px solid #ffd39a;
+  border-radius: 18px;
+  padding: 0 14px;
+  color: var(--primary-dark);
+  font-size: 15px;
+  font-weight: 900;
+  background: #fff7e8;
 }
 
 .admin-login-details {
@@ -384,6 +395,11 @@ select:focus-visible {
   padding: 0 18px;
   color: #fff;
   background: var(--primary);
+}
+
+.primary-button.parent-start-button {
+  min-height: 64px;
+  font-size: 19px;
 }
 
 .small-button {
@@ -1808,11 +1824,11 @@ input {
   }
 
   .parent-code-card h2 {
-    font-size: 24px;
+    font-size: 26px;
   }
 
   .parent-code-card input {
-    font-size: 17px;
+    font-size: 19px;
   }
 
   .login-group {

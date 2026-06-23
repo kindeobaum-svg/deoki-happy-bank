@@ -43,6 +43,7 @@ import {
 } from "./state.js";
 
 const app = document.querySelector("#app");
+const SAVED_PARENT_INVITE_KEY = `${SESSION_KEY}-parent-invite`;
 
 const tabs = [
   { id: "home", label: "홈", icon: "🏠" },
@@ -74,6 +75,7 @@ const TEST_ACCOUNTS = {
 };
 
 applyPreviewLoginFromUrl();
+restoreParentSessionFromSavedInvite();
 saveState(state);
 
 function loadState() {
@@ -134,12 +136,43 @@ function applyPreviewLoginFromUrl() {
   saveSession(session);
 }
 
+function restoreParentSessionFromSavedInvite() {
+  if (session.userId) {
+    return;
+  }
+
+  const savedInviteCode = localStorage.getItem(SAVED_PARENT_INVITE_KEY);
+  if (!savedInviteCode) {
+    return;
+  }
+
+  try {
+    const result = signInParentWithInviteCode(state, {
+      inviteCode: savedInviteCode
+    });
+    state = result.data;
+    session = buildLoginSession(result.user);
+    saveState(state);
+    saveSession(session);
+  } catch {
+    localStorage.removeItem(SAVED_PARENT_INVITE_KEY);
+  }
+}
+
 function saveState(nextState = state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
 }
 
 function saveSession(nextSession = session) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
+}
+
+function saveParentInviteCode(inviteCode) {
+  localStorage.setItem(SAVED_PARENT_INVITE_KEY, String(inviteCode ?? "").trim().toUpperCase());
+}
+
+function clearParentInviteCode() {
+  localStorage.removeItem(SAVED_PARENT_INVITE_KEY);
 }
 
 function setToast(message) {
@@ -292,7 +325,7 @@ function renderLogin() {
           </label>
           <button class="primary-button parent-start-button" type="submit">우리 아이 통장 보기</button>
         </form>
-        <small>홈 화면에 추가하면 앱처럼 사용할 수 있습니다.</small>
+        <button class="home-add-button" type="button" data-home-add-guide>홈 화면에 추가하면 앱처럼 사용할 수 있습니다.</button>
       </div>
 
       <details class="login-group admin-login-details">
@@ -1890,6 +1923,12 @@ function renderEmpty(message) {
 }
 
 app.addEventListener("click", (event) => {
+  const homeAddGuideButton = event.target.closest("[data-home-add-guide]");
+  if (homeAddGuideButton) {
+    setToast("Chrome 메뉴(⋮)를 누른 뒤 '홈 화면에 추가'를 선택해주세요.");
+    return;
+  }
+
   const loginButton = event.target.closest("[data-login-user]");
   if (loginButton) {
     const user = getUser(state, loginButton.dataset.loginUser);
@@ -1900,6 +1939,7 @@ app.addEventListener("click", (event) => {
   const logoutButton = event.target.closest("[data-logout]");
   if (logoutButton) {
     session = { userId: null, tab: "home", selectedChildId: "all", detailScreen: null, editMissionId: null };
+    clearParentInviteCode();
     saveSession();
     render();
     return;
@@ -2253,6 +2293,7 @@ app.addEventListener("submit", (event) => {
       loginErrorMessage = "";
       loginFormDraft = { inviteCode: "" };
       session = buildLoginSession(result.user);
+      saveParentInviteCode(inviteCode);
       saveState();
       saveSession();
       setToast(result.isNewUser ? "초대코드 가입이 완료되었습니다." : "학부모로 로그인했습니다.");
