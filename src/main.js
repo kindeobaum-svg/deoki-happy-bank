@@ -81,7 +81,22 @@ saveState(state);
 
 function isAdminRoute() {
   const path = window.location.pathname.replace(/\/+$/, "");
-  return path === "/admin" || path.startsWith("/admin/") || new URLSearchParams(window.location.search).get("admin") === "1";
+  return path === "/admin" || path.startsWith("/admin/") || new URLSearchParams(window.location.search).has("admin");
+}
+
+function getAdminRouteRole() {
+  const path = window.location.pathname.replace(/\/+$/, "");
+  const params = new URLSearchParams(window.location.search);
+
+  if (path === "/admin/director" || params.get("admin") === "director") {
+    return ROLES.DIRECTOR;
+  }
+
+  if (path === "/admin/teacher" || params.get("admin") === "teacher") {
+    return ROLES.TEACHER;
+  }
+
+  return null;
 }
 
 function loadState() {
@@ -305,9 +320,12 @@ function ensureAllowedSelection(user) {
 
 function render() {
   const currentUser = getCurrentUser();
+  const adminRouteRole = getAdminRouteRole();
   const user =
     isAdminRoute() && currentUser?.role === ROLES.PARENT
       ? null
+      : isAdminRoute() && adminRouteRole && currentUser?.role !== adminRouteRole
+        ? null
       : !isAdminRoute() && currentUser && currentUser.role !== ROLES.PARENT
         ? null
         : currentUser;
@@ -371,10 +389,31 @@ function renderLogin() {
 }
 
 function renderAdminLogin() {
+  const adminRouteRole = getAdminRouteRole();
   const roleGroups = [
     { role: ROLES.DIRECTOR, title: "원장 관리자" },
     { role: ROLES.TEACHER, title: "교사 관리자" }
-  ];
+  ].filter((group) => !adminRouteRole || group.role === adminRouteRole);
+  const adminTitle =
+    adminRouteRole === ROLES.DIRECTOR ? "원장 로그인" : adminRouteRole === ROLES.TEACHER ? "교사 로그인" : "관리자 로그인";
+  const adminDescription =
+    adminRouteRole === ROLES.DIRECTOR
+      ? "원장님만 사용하는 전체 관리 화면입니다."
+      : adminRouteRole === ROLES.TEACHER
+        ? "선생님만 사용하는 담당 반 관리 화면입니다."
+        : "원장님과 선생님만 사용하는 관리 화면입니다.";
+  const emailPlaceholder =
+    adminRouteRole === ROLES.DIRECTOR
+      ? "director@test.com"
+      : adminRouteRole === ROLES.TEACHER
+        ? "teacher@test.com"
+        : "director@test.com";
+  const accountHint =
+    adminRouteRole === ROLES.DIRECTOR
+      ? "원장 director@test.com / 123456"
+      : adminRouteRole === ROLES.TEACHER
+        ? "교사 teacher@test.com / 123456"
+        : "원장 director@test.com / 123456 · 교사 teacher@test.com / 123456";
 
   return `
     <section class="login-screen admin-entry-screen">
@@ -382,8 +421,8 @@ function renderAdminLogin() {
         <span class="brand-mark">관리</span>
         <div>
           <p class="eyebrow">덕이킨더바움</p>
-          <h1>관리자 로그인</h1>
-          <p>원장님과 선생님만 사용하는 관리 화면입니다.</p>
+          <h1>${adminTitle}</h1>
+          <p>${adminDescription}</p>
         </div>
       </div>
 
@@ -396,7 +435,7 @@ function renderAdminLogin() {
         <form id="account-login-form">
           <label>
             이메일
-            <input name="email" type="email" placeholder="director@test.com" value="${escapeHtml(accountLoginDraft.email)}" required />
+            <input name="email" type="email" placeholder="${emailPlaceholder}" value="${escapeHtml(accountLoginDraft.email)}" required />
           </label>
           <label>
             비밀번호
@@ -407,7 +446,7 @@ function renderAdminLogin() {
             <button class="ghost-button" type="submit" name="authAction" value="signup">회원가입</button>
           </div>
         </form>
-        <small>원장 director@test.com / 123456 · 교사 teacher@test.com / 123456</small>
+        <small>${accountHint}</small>
       </div>
 
       ${roleGroups
@@ -2480,6 +2519,12 @@ app.addEventListener("submit", (event) => {
 
       if (isAdminRoute() && user.role === ROLES.PARENT) {
         failAccountLogin("학부모님은 기본 링크에서 초대코드로 접속해주세요.");
+        return;
+      }
+
+      const adminRouteRole = getAdminRouteRole();
+      if (isAdminRoute() && adminRouteRole && user.role !== adminRouteRole) {
+        failAccountLogin(adminRouteRole === ROLES.DIRECTOR ? "원장 계정으로 로그인해주세요." : "교사 계정으로 로그인해주세요.");
         return;
       }
 
