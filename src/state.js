@@ -49,43 +49,84 @@ export const STANDARD_MISSIONS = [
 ];
 
 export const GROWTH_STAGES = [
+  { id: "seed", name: "🌱 씨앗", threshold: 0, phase: 1, description: "행복부자 여정을 시작했어요." },
+  { id: "sprout", name: "🌿 새싹", threshold: 5000, phase: 1, description: "좋은 습관이 새싹처럼 올라와요." },
+  { id: "young-tree", name: "🌳 어린나무", threshold: 10000, phase: 1, description: "스스로 해내는 힘이 자라고 있어요." },
+  { id: "big-tree", name: "🌲 큰나무", threshold: 15000, phase: 1, description: "따뜻한 마음이 단단한 나무가 되었어요." },
+  { id: "happy-rich", name: "🏆 행복부자", threshold: 20000, phase: 1, description: "행복을 나누는 멋진 부자가 되었어요." },
   {
-    id: "seed",
-    name: "씨앗 단계",
-    threshold: 0,
-    description: "행복부자 여정을 시작했어요."
-  },
-  {
-    id: "sprout",
-    name: "새싹 단계",
-    threshold: 5000,
-    description: "좋은 습관이 새싹처럼 올라와요."
-  },
-  {
-    id: "young-tree",
-    name: "어린나무 단계",
-    threshold: 10000,
-    description: "스스로 해내는 힘이 자라고 있어요."
-  },
-  {
-    id: "happy-tree",
-    name: "행복나무 단계",
-    threshold: 15000,
-    description: "따뜻한 마음이 단단한 나무가 되었어요."
-  },
-  {
-    id: "forest-keeper",
-    name: "숲지킴이 단계",
-    threshold: 20000,
-    description: "친구와 교실의 행복을 함께 지켜요."
-  },
-  {
-    id: "happy-rich",
-    name: "행복부자 단계",
+    id: "future-bronze",
+    name: "🥉 미래부자 브론즈",
     threshold: 30000,
-    description: "행복을 나누는 멋진 부자가 되었어요."
+    phase: 2,
+    description: "새로운 목표를 향해 꾸준히 도전해요."
+  },
+  {
+    id: "future-silver",
+    name: "🥈 미래부자 실버",
+    threshold: 40000,
+    phase: 2,
+    description: "좋은 습관이 은빛처럼 반짝여요."
+  },
+  {
+    id: "future-gold",
+    name: "🥇 미래부자 골드",
+    threshold: 50000,
+    phase: 2,
+    description: "스스로 해내는 힘이 더 단단해졌어요."
+  },
+  {
+    id: "future-diamond",
+    name: "💎 미래부자 다이아몬드",
+    threshold: 65000,
+    phase: 2,
+    description: "빛나는 마음으로 친구와 함께 성장해요."
+  },
+  {
+    id: "future-master",
+    name: "👑 미래부자 마스터",
+    threshold: 80000,
+    phase: 2,
+    description: "꾸준함을 이끄는 멋진 리더가 되었어요."
+  },
+  {
+    id: "forest-guardian",
+    name: "🌳 행복숲 수호자",
+    threshold: 100000,
+    phase: 3,
+    description: "행복숲을 지키는 따뜻한 마음이 자랐어요."
+  },
+  {
+    id: "forest-leader",
+    name: "🌲 행복숲 리더",
+    threshold: 120000,
+    phase: 3,
+    description: "친구와 교실의 행복을 함께 이끌어요."
+  },
+  {
+    id: "forest-captain",
+    name: "🏆 행복숲 대장",
+    threshold: 145000,
+    phase: 3,
+    description: "도전하는 마음이 행복숲을 크게 키워요."
+  },
+  {
+    id: "forest-hero",
+    name: "💎 행복숲 영웅",
+    threshold: 170000,
+    phase: 3,
+    description: "선한 영향력이 보석처럼 빛나요."
+  },
+  {
+    id: "forest-legend",
+    name: "👑 행복숲 전설",
+    threshold: 200000,
+    phase: 3,
+    description: "멋진 성장 이야기가 다음 도전으로 이어져요."
   }
 ];
+
+const GROWTH_CYCLE_SIZE = GROWTH_STAGES.at(-1).threshold;
 
 export function toDateKey(value = new Date()) {
   if (typeof value === "string") {
@@ -2176,31 +2217,48 @@ export function getVisibleGrowthRecords(data, user, childId = "all") {
 
 export function getGrowthProgress(child) {
   const balance = Math.max(0, Number(child?.balance ?? 0));
+  const cycleIndex = Math.floor(balance / GROWTH_CYCLE_SIZE);
+  const cycleOffset = cycleIndex * GROWTH_CYCLE_SIZE;
+  const nextCycleOffset = (cycleIndex + 1) * GROWTH_CYCLE_SIZE;
   const stages = GROWTH_STAGES.map((stage) => ({
     ...stage,
-    achieved: balance >= stage.threshold,
-    remaining: Math.max(0, stage.threshold - balance)
+    id: cycleIndex ? `${stage.id}-cycle-${cycleIndex + 1}` : stage.id,
+    baseId: stage.id,
+    phase: stage.phase + cycleIndex * 3,
+    threshold: cycleOffset + stage.threshold,
+    achieved: balance >= cycleOffset + stage.threshold,
+    remaining: Math.max(0, cycleOffset + stage.threshold - balance)
   }));
   const achievedStages = stages.filter((stage) => stage.achieved);
   const currentStage = achievedStages.at(-1) ?? stages[0];
-  const nextStage = stages.find((stage) => !stage.achieved) ?? null;
+  const nextStage =
+    stages.find((stage) => !stage.achieved) ?? {
+      ...GROWTH_STAGES[1],
+      id: `${GROWTH_STAGES[1].id}-cycle-${cycleIndex + 2}`,
+      baseId: GROWTH_STAGES[1].id,
+      phase: GROWTH_STAGES[1].phase + (cycleIndex + 1) * 3,
+      threshold: nextCycleOffset + GROWTH_STAGES[1].threshold,
+      achieved: false,
+      remaining: nextCycleOffset + GROWTH_STAGES[1].threshold - balance
+    };
   const previousThreshold = currentStage?.threshold ?? 0;
-  const nextThreshold = nextStage?.threshold ?? previousThreshold;
-  const requiredToNext = nextStage ? nextStage.threshold - balance : 0;
+  const nextThreshold = nextStage.threshold;
+  const requiredToNext = Math.max(0, nextStage.threshold - balance);
   const range = Math.max(1, nextThreshold - previousThreshold);
-  const progressPercent = nextStage
-    ? Math.min(100, Math.max(0, Math.round(((balance - previousThreshold) / range) * 100)))
-    : 100;
+  const progressPercent = Math.min(100, Math.max(0, Math.round(((balance - previousThreshold) / range) * 100)));
+  const completedStageCount = cycleIndex * GROWTH_STAGES.length + achievedStages.length;
 
   return {
     balance,
+    cycle: cycleIndex + 1,
     stages,
     currentStage,
     nextStage,
     requiredToNext,
     progressPercent,
-    completedStageCount: achievedStages.length,
-    totalStageCount: stages.length
+    completedStageCount,
+    totalStageCount: "∞",
+    celebrationMessage: `${currentStage.name}까지 성장했어요! 다음 목표도 계속 도전해요.`
   };
 }
 

@@ -16,6 +16,7 @@ import {
   getChildAccountBalance,
   getChecklistMissionGroup,
   getClass,
+  getGrowthProgress,
   getVisibleChecklistMissions,
   getDefaultChildId,
   getUser,
@@ -629,19 +630,17 @@ function renderHomeGrowthSummary(growthItems) {
 }
 
 function renderGrowthRemainingText(progress) {
-  return progress.nextStage ? `다음 단계까지 ${formatWon(progress.requiredToNext)}` : "모든 단계 달성";
+  return `다음 목표까지 ${formatWon(progress.requiredToNext)}`;
 }
 
 function renderHomeGrowthRow(child, progress) {
-  const nextText = progress.nextStage
-    ? `다음 단계까지 ${formatWon(progress.requiredToNext)}`
-    : "모든 단계 달성";
+  const nextText = `다음 목표 ${escapeHtml(progress.nextStage.name)}까지 ${formatWon(progress.requiredToNext)}`;
 
   return `
     <button class="home-growth-row" type="button" data-open-child="${child.id}">
       <div>
         <strong>${escapeHtml(child.name)}</strong>
-        <span>${escapeHtml(progress.currentStage.name)}</span>
+        <span>${escapeHtml(progress.currentStage.name)} · ${progress.progressPercent}%</span>
       </div>
       <p>${nextText}</p>
     </button>
@@ -1077,9 +1076,9 @@ function renderChildDetail(user, childId) {
         <div class="home-card-heading">
           <div>
             <span>다음 단계</span>
-            <strong>${growthItem.progress.nextStage ? escapeHtml(growthItem.progress.nextStage.name) : "모든 단계 달성"}</strong>
+            <strong>${escapeHtml(growthItem.progress.nextStage.name)}</strong>
           </div>
-          <span class="home-chevron">${growthItem.progress.nextStage ? formatWon(growthItem.progress.requiredToNext) : "완료"}</span>
+          <span class="home-chevron">${formatWon(growthItem.progress.requiredToNext)}</span>
         </div>
       </article>
       <article class="home-mission-card flat">
@@ -1689,16 +1688,21 @@ function renderForest(user) {
 }
 
 function renderForestCard(child) {
-  const percent = Math.min(100, Math.round((child.forest.seeds / child.forest.nextLevelSeeds) * 100));
+  const progress = getGrowthProgress({
+    ...child,
+    balance: getChildAccountBalance(state, child)
+  });
 
   return `
     <article class="forest-card">
       <div class="tree-icon" aria-hidden="true">🌳</div>
       <strong>${escapeHtml(child.name)}의 ${escapeHtml(child.forest.treeName)}</strong>
-      <p>Lv.${child.forest.level} · 씨앗 ${child.forest.seeds}/${child.forest.nextLevelSeeds}</p>
+      <p>현재 단계 : ${escapeHtml(progress.currentStage.name)}</p>
+      <p>다음 목표 : ${escapeHtml(progress.nextStage.name)} · 진행률 ${progress.progressPercent}%</p>
       <div class="progress-bar large">
-        <span style="width: ${percent}%"></span>
+        <span style="width: ${progress.progressPercent}%"></span>
       </div>
+      <small>자기 속도대로 계속 성장하는 행복숲이에요.</small>
     </article>
   `;
 }
@@ -1751,17 +1755,17 @@ function renderGrowth(user) {
 }
 
 function renderGrowthProgressCard(child, progress) {
-  const nextText = progress.nextStage
-    ? `${escapeHtml(progress.nextStage.name)}까지 ${formatMoney(progress.requiredToNext)} 필요`
-    : "모든 성장 단계를 달성했어요";
+  const nextText = `${escapeHtml(progress.nextStage.name)}까지 ${formatMoney(progress.requiredToNext)} 필요`;
 
   return `
     <article class="growth-stage-card">
+      <div class="growth-celebration" role="status">🎉 ${escapeHtml(progress.celebrationMessage)}</div>
       <div class="growth-stage-top">
         <div>
-          <p class="eyebrow">${escapeHtml(child.name)} 성장 단계</p>
-          <h3>${escapeHtml(progress.currentStage.name)}</h3>
+          <p class="eyebrow">${escapeHtml(child.name)} 성장 단계 · ${progress.cycle}회차</p>
+          <h3>현재 단계 : ${escapeHtml(progress.currentStage.name)}</h3>
           <p>현재 잔액 ${formatMoney(progress.balance)} · ${nextText}</p>
+          <p>다음 목표 : ${escapeHtml(progress.nextStage.name)} · 진행률 ${progress.progressPercent}%</p>
         </div>
         <span class="stage-count">${progress.completedStageCount}/${progress.totalStageCount}</span>
       </div>
@@ -1781,7 +1785,7 @@ function renderGrowthStageRow(child, stage) {
       <div class="stage-marker" aria-hidden="true">${stage.achieved ? "✓" : ""}</div>
       <div class="stage-copy">
         <strong>${escapeHtml(stage.name)}</strong>
-        <p>${formatMoney(stage.threshold)} 이상 · ${escapeHtml(stage.description)}</p>
+        <p>${stage.phase}단계 · ${formatMoney(stage.threshold)} 이상 · ${escapeHtml(stage.description)}</p>
       </div>
       <button
         class="stage-button"
@@ -1789,7 +1793,7 @@ function renderGrowthStageRow(child, stage) {
         data-growth-stage="${stage.id}"
         data-growth-child="${child.id}"
       >
-        ${stage.achieved ? "달성 확인" : `${formatMoney(stage.remaining)} 필요`}
+        ${stage.achieved ? "달성 축하" : `${formatMoney(stage.remaining)} 필요`}
       </button>
     </div>
   `;

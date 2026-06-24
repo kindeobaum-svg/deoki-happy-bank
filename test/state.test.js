@@ -1151,18 +1151,30 @@ describe("growth stages", () => {
     const progress = getGrowthProgress({ balance: 12800 });
 
     assert.equal(progress.currentStage.id, "young-tree");
-    assert.equal(progress.nextStage.id, "happy-tree");
+    assert.equal(progress.nextStage.id, "big-tree");
     assert.equal(progress.requiredToNext, 2200);
     assert.equal(progress.stages.find((stage) => stage.id === "sprout").achieved, true);
-    assert.equal(progress.stages.find((stage) => stage.id === "happy-tree").achieved, false);
+    assert.equal(progress.stages.find((stage) => stage.id === "big-tree").achieved, false);
   });
 
   it("automatically marks stages achieved when the balance meets the threshold", () => {
     const progress = getGrowthProgress({ balance: 20000 });
 
-    assert.equal(progress.currentStage.id, "forest-keeper");
-    assert.equal(progress.stages.find((stage) => stage.id === "forest-keeper").achieved, true);
-    assert.equal(progress.stages.find((stage) => stage.id === "happy-rich").remaining, 10000);
+    assert.equal(progress.currentStage.id, "happy-rich");
+    assert.equal(progress.nextStage.id, "future-bronze");
+    assert.equal(progress.stages.find((stage) => stage.id === "happy-rich").achieved, true);
+    assert.equal(progress.stages.find((stage) => stage.id === "future-bronze").remaining, 10000);
+  });
+
+  it("continues into the next growth cycle after the final stage", () => {
+    const progress = getGrowthProgress({ balance: 200000 });
+
+    assert.equal(progress.cycle, 2);
+    assert.equal(progress.currentStage.baseId, "seed");
+    assert.equal(progress.nextStage.baseId, "sprout");
+    assert.equal(progress.nextStage.threshold, 205000);
+    assert.equal(progress.requiredToNext, 5000);
+    assert.equal(progress.totalStageCount, "∞");
   });
 
   it("updates achieved stages after a mission changes the balance", () => {
@@ -1185,9 +1197,9 @@ describe("growth stages", () => {
     )[0];
 
     assert.equal(growthItem.progress.balance, 15200);
-    assert.equal(growthItem.progress.currentStage.id, "happy-tree");
+    assert.equal(growthItem.progress.currentStage.id, "big-tree");
     assert.equal(
-      growthItem.progress.stages.find((stage) => stage.id === "happy-tree").achieved,
+      growthItem.progress.stages.find((stage) => stage.id === "big-tree").achieved,
       true
     );
   });

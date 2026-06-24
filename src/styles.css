@@ -1448,6 +1448,33 @@ input {
   box-shadow: var(--shadow);
 }
 
+.growth-celebration {
+  padding: 12px 14px;
+  border-radius: 18px;
+  color: #8f4c00;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.45;
+  background: linear-gradient(135deg, #fff7d6, #ffe4a8);
+  animation: celebration-pop 1.15s ease-in-out;
+}
+
+@keyframes celebration-pop {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.65;
+  }
+
+  55% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
 .growth-stage-top {
   align-items: flex-start;
 }
