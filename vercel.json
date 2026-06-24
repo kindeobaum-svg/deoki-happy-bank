@@ -16,6 +16,42 @@
     {
       "source": "/admin/:path*",
       "destination": "/"
+    },
+    {
+      "source": "/director",
+      "destination": "/"
+    },
+    {
+      "source": "/director/",
+      "destination": "/"
+    },
+    {
+      "source": "/director/:path*",
+      "destination": "/"
+    },
+    {
+      "source": "/principal",
+      "destination": "/"
+    },
+    {
+      "source": "/principal/",
+      "destination": "/"
+    },
+    {
+      "source": "/principal/:path*",
+      "destination": "/"
+    },
+    {
+      "source": "/teacher",
+      "destination": "/"
+    },
+    {
+      "source": "/teacher/",
+      "destination": "/"
+    },
+    {
+      "source": "/teacher/:path*",
+      "destination": "/"
     }
   ],
   "headers": [
