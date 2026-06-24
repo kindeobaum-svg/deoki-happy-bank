@@ -42,6 +42,7 @@ import {
   updateClassroom,
   updateChecklistMissionGroup
 } from "./state.js";
+import { isAdminPath } from "./routes.js";
 
 const app = document.querySelector("#app");
 const SAVED_PARENT_INVITE_KEY = `${SESSION_KEY}-parent-invite`;
@@ -80,8 +81,7 @@ restoreParentSessionFromSavedInvite();
 saveState(state);
 
 function isAdminRoute() {
-  const path = window.location.pathname.replace(/\/+$/, "");
-  return path === "/admin" || path.startsWith("/admin/") || new URLSearchParams(window.location.search).get("admin") === "1";
+  return isAdminPath(window.location.pathname) || new URLSearchParams(window.location.search).get("admin") === "1";
 }
 
 function loadState() {
