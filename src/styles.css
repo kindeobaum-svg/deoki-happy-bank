@@ -175,6 +175,58 @@ select:focus-visible {
   text-transform: uppercase;
 }
 
+.entry-role-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.entry-role-button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  width: 100%;
+  min-height: 86px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  color: inherit;
+  text-align: left;
+  background: var(--surface);
+  box-shadow: 0 8px 26px rgba(107, 74, 34, 0.08);
+}
+
+.entry-role-button span {
+  grid-row: span 2;
+  display: inline-flex;
+  width: 54px;
+  height: 54px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  color: #fff;
+  font-weight: 950;
+  background: var(--primary);
+}
+
+.entry-role-button strong {
+  font-size: 19px;
+}
+
+.entry-role-button small {
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.entry-role-button.teacher span {
+  background: var(--green);
+}
+
+.entry-role-button.director span {
+  background: var(--blue);
+}
+
 .login-group {
   margin-top: 22px;
 }
