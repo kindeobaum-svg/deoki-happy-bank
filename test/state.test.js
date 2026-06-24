@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   ROLES,
+  buildParentInviteMessage,
   completeMission,
   createClassroom,
   createChecklistMission,
@@ -21,16 +22,19 @@ import {
   getVisibleDailyMissions,
   getVisibleGrowthProgress,
   getVisibleGrowthRecords,
+  getVisibleGuardianInfos,
   getVisibleMissionHistory,
   getVisibleTransactions,
   normalizeDailyMissions,
   normalizeMissionIntegrity,
   normalizeMissionCompletionArtifacts,
   normalizeParentInviteCodes,
+  markParentInviteSent,
   registerChild,
   recordExpense,
   signInParentWithInviteCode,
   updateChild,
+  updateGuardianInfo,
   updateChecklistMissionGroup,
   updateClassroom
 } from "../src/state.js";
@@ -85,6 +89,44 @@ describe("role based access", () => {
     assert.ok(getVisibleGrowthRecords(data, parent).every((item) => item.childId === "child-minjun"));
     assert.ok(getVisibleDailyMissions(data, parent).every((item) => item.childId === "child-minjun"));
     assert.ok(getVisibleMissionHistory(data, parent).every((item) => item.childId === "child-minjun"));
+  });
+});
+
+describe("guardian info access", () => {
+  it("shows guardian info to the director and only the assigned class teacher", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const sunTeacher = getUser(data, "teacher-sun");
+    const parent = getUser(data, "parent-minjun");
+
+    assert.equal(getVisibleGuardianInfos(data, director).length, 4);
+    assert.deepEqual(
+      getVisibleGuardianInfos(data, sunTeacher).map((guardian) => guardian.childId).sort(),
+      ["child-harin", "child-minjun"]
+    );
+    assert.deepEqual(getVisibleGuardianInfos(data, parent), []);
+  });
+
+  it("lets authorized staff update guardian info and blocks other roles/classes", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const parent = getUser(data, "parent-minjun");
+    const updated = updateGuardianInfo(data, teacher, "child-minjun", {
+      name: "민준 보호자",
+      phone: "010-9999-0000"
+    });
+    const guardian = getVisibleGuardianInfos(updated, teacher).find((item) => item.childId === "child-minjun");
+
+    assert.equal(guardian.name, "민준 보호자");
+    assert.equal(guardian.phone, "010-9999-0000");
+    assert.throws(
+      () => updateGuardianInfo(data, teacher, "child-seoa", { name: "서아 보호자", phone: "010-1111-1111" }),
+      /담당 반 아이/
+    );
+    assert.throws(
+      () => updateGuardianInfo(data, parent, "child-minjun", { name: "민준 보호자", phone: "010-9999-0000" }),
+      /원장 또는 교사/
+    );
   });
 });
 
@@ -320,6 +362,37 @@ describe("invite code login", () => {
     assert.throws(() => createParentInviteCode(data, teacher, "child-seoa"), /담당 반 아이의 초대코드만 관리/);
   });
 
+  it("builds selectable Kakao invite messages with child name, invite code, and app link", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const message = buildParentInviteMessage(data, teacher, "child-minjun", "polite", {
+      appLink: "https://example.test"
+    });
+
+    assert.match(message, /김민준/);
+    assert.match(message, /DK-MINJUN-2026/);
+    assert.match(message, /https:\/\/example\.test/);
+    assert.throws(
+      () => buildParentInviteMessage(data, teacher, "child-seoa", "short"),
+      /담당 반 아이/
+    );
+  });
+
+  it("marks Kakao invite sharing as sent with the sent date and time", () => {
+    const data = createInitialData("2026-06-09");
+    const teacher = getUser(data, "teacher-sun");
+    const sent = markParentInviteSent(data, teacher, "child-minjun", new Date("2026-06-24T14:30:00"));
+    const invite = sent.inviteCodes.find((item) => item.childId === "child-minjun" && item.active !== false);
+
+    assert.equal(invite.inviteSent, true);
+    assert.equal(invite.inviteSentAt, "2026-06-24 14:30");
+    assert.equal(invite.inviteSentBy, "teacher-sun");
+    assert.throws(
+      () => markParentInviteSent(data, teacher, "child-seoa", new Date("2026-06-24T14:30:00")),
+      /담당 반 아이/
+    );
+  });
+
   it("reissues invite codes by invalidating the previous active code", () => {
     const data = createInitialData("2026-06-09");
     const director = getUser(data, "director-1");
@@ -331,6 +404,8 @@ describe("invite code login", () => {
     const inactiveInvites = invites.filter((invite) => invite.active === false);
 
     assert.equal(activeInvites.length, 1);
+    assert.equal(activeInvites[0].inviteSent, false);
+    assert.equal(activeInvites[0].inviteSentAt, null);
     assert.ok(inactiveInvites.some((invite) => invite.code === "DK-MINJUN-2026"));
     assert.throws(() => signInParentWithInviteCode(reissued, { inviteCode: "DK-MINJUN-2026" }), /유효하지 않은/);
     assert.deepEqual(
