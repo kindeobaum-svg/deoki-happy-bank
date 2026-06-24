@@ -341,8 +341,16 @@ function renderLogin() {
         <div class="quick-link-list">
           <a class="quick-link-button parent" href="#parent-invite-form">학부모 앱 열기</a>
           <a class="quick-link-button director" href="/admin/director">원장 로그인</a>
+          <button
+            class="quick-link-copy-button"
+            type="button"
+            data-copy-url="https://deoki-happy-bank.vercel.app/admin/director"
+          >
+            원장 로그인 주소 복사
+          </button>
           <a class="quick-link-button teacher" href="/admin/teacher">교사 로그인</a>
         </div>
+        <p class="quick-link-helper">원장님은 원장 로그인 화면을 연 뒤 Chrome 메뉴(⋮)에서 즐겨찾기 또는 홈 화면에 추가를 선택해 주세요.</p>
       </section>
 
       <div class="invite-login-card parent-code-card">
@@ -924,8 +932,12 @@ function getInviteShareText(child, invite) {
 
 async function copyTextToClipboard(text) {
   if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Some mobile browsers block Clipboard API outside secure user gestures.
+    }
   }
 
   const textarea = document.createElement("textarea");
@@ -935,8 +947,9 @@ async function copyTextToClipboard(text) {
   textarea.style.left = "-9999px";
   document.body.append(textarea);
   textarea.select();
-  document.execCommand("copy");
+  const copied = document.execCommand("copy");
   textarea.remove();
+  return copied;
 }
 
 function renderInviteControls(child, invite, classId) {
@@ -2036,6 +2049,14 @@ app.addEventListener("click", async (event) => {
     return;
   }
 
+  const copyUrlButton = event.target.closest("[data-copy-url]");
+  if (copyUrlButton) {
+    const copied = await copyTextToClipboard(copyUrlButton.dataset.copyUrl);
+    setToast(copied ? "원장 로그인 주소가 복사되었습니다." : `원장 주소: ${copyUrlButton.dataset.copyUrl}`);
+    render();
+    return;
+  }
+
   const loginButton = event.target.closest("[data-login-user]");
   if (loginButton) {
     const user = getUser(state, loginButton.dataset.loginUser);
@@ -2217,8 +2238,8 @@ app.addEventListener("click", async (event) => {
 
   const copyInviteButton = event.target.closest("[data-copy-invite-code]");
   if (copyInviteButton) {
-    await copyTextToClipboard(copyInviteButton.dataset.copyInviteCode);
-    setToast("초대코드가 복사되었습니다.");
+    const copied = await copyTextToClipboard(copyInviteButton.dataset.copyInviteCode);
+    setToast(copied ? "초대코드가 복사되었습니다." : `초대코드: ${copyInviteButton.dataset.copyInviteCode}`);
     render();
     return;
   }
@@ -2233,8 +2254,9 @@ app.addEventListener("click", async (event) => {
       return;
     }
 
-    await copyTextToClipboard(getInviteShareText(child, invite));
-    setToast("카카오톡으로 보낼 문구가 복사되었습니다.");
+    const shareText = getInviteShareText(child, invite);
+    const copied = await copyTextToClipboard(shareText);
+    setToast(copied ? "카카오톡으로 보낼 문구가 복사되었습니다." : "카카오톡 문구를 길게 눌러 복사해주세요.");
     render();
     return;
   }

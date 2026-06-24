@@ -254,12 +254,12 @@ select:focus-visible {
 
 .quick-link-button {
   display: flex;
-  min-height: 58px;
+  min-height: 66px;
   align-items: center;
   justify-content: center;
   border-radius: 18px;
   color: #fff;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 950;
   text-decoration: none;
 }
@@ -274,6 +274,24 @@ select:focus-visible {
 
 .quick-link-button.teacher {
   background: var(--green);
+}
+
+.quick-link-copy-button {
+  min-height: 54px;
+  border: 1px solid #cfd7ff;
+  border-radius: 18px;
+  color: #263b9f;
+  font-size: 16px;
+  font-weight: 950;
+  background: #eef2ff;
+}
+
+.quick-link-helper {
+  margin: 12px 0 0 !important;
+  color: var(--muted);
+  font-size: 14px !important;
+  font-weight: 900;
+  line-height: 1.5;
 }
 
 .parent-code-card h2 {
