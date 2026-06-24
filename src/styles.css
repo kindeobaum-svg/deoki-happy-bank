@@ -811,6 +811,11 @@ select:focus-visible {
   background: var(--blue);
 }
 
+.icon-button.kakao {
+  color: #3a2500;
+  background: #fee500;
+}
+
 .child-management-meta {
   display: flex;
   flex-wrap: wrap;
@@ -824,6 +829,83 @@ select:focus-visible {
   color: var(--muted);
   font-size: 12px;
   font-weight: 900;
+}
+
+.invite-summary {
+  line-height: 1.55;
+}
+
+.invite-sent-detail {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.invite-template-picker {
+  display: grid;
+  flex-basis: 100%;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 12px;
+  border: 1px dashed #f0c568;
+  border-radius: 16px;
+  background: #fff8d8;
+}
+
+.invite-template-picker strong {
+  color: #6f4a00;
+  font-size: 13px;
+}
+
+.template-option-button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 12px;
+  color: #3a2500;
+  font-size: 13px;
+  font-weight: 900;
+  background: #fee500;
+}
+
+.guardian-info-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.guardian-info-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.guardian-form-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.guardian-form-heading strong {
+  font-size: 14px;
+}
+
+.guardian-form-heading span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.guardian-save-button {
+  justify-self: end;
 }
 
 .child-class-name {

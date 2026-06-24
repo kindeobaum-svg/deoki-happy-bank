@@ -40,6 +40,29 @@ export const DEFAULT_PARENT_INVITE_CODES = [
   }
 ];
 
+export const APP_INVITE_LINK = "https://deoki-happy-bank.vercel.app";
+
+export const PARENT_INVITE_MESSAGE_TEMPLATES = [
+  {
+    id: "short",
+    label: "짧은 안내문",
+    build: ({ childName, inviteCode, appLink }) =>
+      `${childName} 학부모님, 행복부자 통장에 초대합니다.\n초대코드: ${inviteCode}\n앱 접속: ${appLink}`
+  },
+  {
+    id: "polite",
+    label: "정중한 안내문",
+    build: ({ childName, inviteCode, appLink }) =>
+      `안녕하세요, ${childName} 학부모님.\n덕이킨더바움 행복부자 통장 앱 초대 링크를 안내드립니다.\n아래 링크로 접속하신 뒤 초대코드 ${inviteCode}를 입력해 주세요.\n${appLink}`
+  },
+  {
+    id: "class-event",
+    label: "학부모 참여수업 안내문",
+    build: ({ childName, inviteCode, appLink }) =>
+      `${childName} 학부모님, 학부모 참여수업 안내와 아이의 행복부자 통장 기록을 함께 확인하실 수 있도록 앱 초대 링크를 보내드립니다.\n초대코드: ${inviteCode}\n앱 접속 링크: ${appLink}`
+  }
+];
+
 export const STANDARD_MISSIONS = [
   { key: "greeting", title: "인사하기", point: 500 },
   { key: "brush-teeth", title: "양치하기", point: 500 },
@@ -137,6 +160,22 @@ export function toDateKey(value = new Date()) {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+export function toDateTimeKey(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value ?? "").slice(0, 16).replace("T", " ");
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
 function makeId(prefix) {
@@ -315,6 +354,12 @@ export function createInitialData(today = toDateKey()) {
       }
     ],
     inviteCodes: DEFAULT_PARENT_INVITE_CODES,
+    guardians: [
+      { childId: "child-minjun", name: "김민준 보호자", phone: "010-1111-2222" },
+      { childId: "child-harin", name: "이하린 보호자", phone: "010-3333-4444" },
+      { childId: "child-seoa", name: "박서아 보호자", phone: "010-5555-6666" },
+      { childId: "child-doyun", name: "최도윤 보호자", phone: "010-7777-8888" }
+    ],
     children: [
       {
         id: "child-minjun",
@@ -628,6 +673,26 @@ export function getChild(data, childId) {
   return data.children.find((child) => child.id === childId) ?? null;
 }
 
+export function getGuardianInfo(data, childId) {
+  return (data.guardians ?? []).find((guardian) => guardian.childId === childId) ?? null;
+}
+
+export function getVisibleGuardianInfos(data, user) {
+  if (!user || ![ROLES.DIRECTOR, ROLES.TEACHER].includes(user.role)) {
+    return [];
+  }
+
+  const visibleChildIds = new Set(getVisibleChildren(data, user).map((child) => child.id));
+
+  return (data.guardians ?? [])
+    .filter((guardian) => visibleChildIds.has(guardian.childId))
+    .map((guardian) => ({
+      ...guardian,
+      child: getChild(data, guardian.childId)
+    }))
+    .filter((guardian) => guardian.child);
+}
+
 export function normalizeParentInviteCodes(data) {
   const inviteCodes = Array.isArray(data.inviteCodes) ? data.inviteCodes : [];
   const existingCodes = new Set(inviteCodes.map((invite) => String(invite.code).toUpperCase()));
@@ -722,6 +787,8 @@ export function createParentInviteCode(data, user, childId, options = {}) {
     childId: child.id,
     label: `${child.name} 학부모 초대코드`,
     active: true,
+    inviteSent: false,
+    inviteSentAt: null,
     createdAt: toDateKey(),
     createdBy: user.id
   };
@@ -772,16 +839,67 @@ export function registerChild(data, user, childInput = {}) {
     childId: child.id,
     label: `${name} 학부모 초대코드`,
     active: true,
+    inviteSent: false,
+    inviteSentAt: null,
     createdAt: toDateKey()
   };
+  const guardianName = String(childInput.guardianName ?? "").trim();
+  const guardianPhone = String(childInput.guardianPhone ?? "").trim();
+  const guardian = guardianName || guardianPhone
+    ? {
+        childId: child.id,
+        name: guardianName,
+        phone: guardianPhone
+      }
+    : null;
 
   return normalizeDailyMissions(
     normalizeStandardMissionTemplates({
       ...data,
       children: [...data.children, child],
+      guardians: guardian ? [...(data.guardians ?? []), guardian] : (data.guardians ?? []),
       inviteCodes: [invite, ...(data.inviteCodes ?? [])]
     })
   );
+}
+
+export function updateGuardianInfo(data, user, childId, guardianInput = {}) {
+  if (!user || ![ROLES.DIRECTOR, ROLES.TEACHER].includes(user.role)) {
+    throw new Error("원장 또는 교사만 보호자 정보를 관리할 수 있습니다.");
+  }
+
+  const child = getChild(data, childId);
+  if (!child || !canManageChild(user, child)) {
+    throw new Error("담당 반 아이의 보호자 정보만 관리할 수 있습니다.");
+  }
+
+  const name = String(guardianInput.name ?? "").trim();
+  const phone = String(guardianInput.phone ?? "").trim();
+
+  if (!name) {
+    throw new Error("보호자 이름을 입력해주세요.");
+  }
+
+  if (!phone) {
+    throw new Error("보호자 전화번호를 입력해주세요.");
+  }
+
+  const existingGuardians = data.guardians ?? [];
+  const nextGuardian = {
+    childId: child.id,
+    name,
+    phone,
+    updatedAt: toDateTimeKey(),
+    updatedBy: user.id
+  };
+  const hasGuardian = existingGuardians.some((guardian) => guardian.childId === child.id);
+
+  return {
+    ...data,
+    guardians: hasGuardian
+      ? existingGuardians.map((guardian) => (guardian.childId === child.id ? nextGuardian : guardian))
+      : [...existingGuardians, nextGuardian]
+  };
 }
 
 export function updateChild(data, user, childId, childInput = {}) {
@@ -860,6 +978,7 @@ export function deleteChild(data, user, childId) {
       })
       .filter((item) => item.role !== ROLES.PARENT || (item.childIds ?? []).length > 0),
     inviteCodes: (data.inviteCodes ?? []).filter((invite) => invite.childId !== child.id),
+    guardians: (data.guardians ?? []).filter((guardian) => guardian.childId !== child.id),
     transactions: data.transactions.filter((transaction) => transaction.childId !== child.id),
     growthRecords: data.growthRecords.filter((record) => record.childId !== child.id),
     forestMoments: data.forestMoments.filter((moment) => moment.childId !== child.id),
@@ -941,6 +1060,62 @@ export function signInParentWithInviteCode(data, inviteInput = {}) {
     },
     user,
     isNewUser: true
+  };
+}
+
+export function getParentInviteMessageTemplate(templateId = "short") {
+  return PARENT_INVITE_MESSAGE_TEMPLATES.find((template) => template.id === templateId) ?? PARENT_INVITE_MESSAGE_TEMPLATES[0];
+}
+
+export function buildParentInviteMessage(data, user, childId, templateId = "short", options = {}) {
+  if (!user || ![ROLES.DIRECTOR, ROLES.TEACHER].includes(user.role)) {
+    throw new Error("원장 또는 교사만 초대 문구를 만들 수 있습니다.");
+  }
+
+  const child = getChild(data, childId);
+  if (!child || !canManageChild(user, child)) {
+    throw new Error("담당 반 아이의 초대 문구만 만들 수 있습니다.");
+  }
+
+  const invite = (data.inviteCodes ?? []).find((item) => item.childId === child.id && item.active !== false);
+  if (!invite) {
+    throw new Error("활성 초대코드가 없습니다.");
+  }
+
+  return getParentInviteMessageTemplate(templateId).build({
+    childName: child.name,
+    inviteCode: invite.code,
+    appLink: options.appLink ?? APP_INVITE_LINK
+  });
+}
+
+export function markParentInviteSent(data, user, childId, date = new Date()) {
+  if (!user || ![ROLES.DIRECTOR, ROLES.TEACHER].includes(user.role)) {
+    throw new Error("원장 또는 교사만 초대 발송 상태를 기록할 수 있습니다.");
+  }
+
+  const child = getChild(data, childId);
+  if (!child || !canManageChild(user, child)) {
+    throw new Error("담당 반 아이의 초대 발송 상태만 기록할 수 있습니다.");
+  }
+
+  const activeInvite = (data.inviteCodes ?? []).find((invite) => invite.childId === child.id && invite.active !== false);
+  if (!activeInvite) {
+    throw new Error("발송 처리할 활성 초대코드가 없습니다.");
+  }
+
+  return {
+    ...data,
+    inviteCodes: (data.inviteCodes ?? []).map((invite) =>
+      invite.code === activeInvite.code
+        ? {
+            ...invite,
+            inviteSent: true,
+            inviteSentAt: toDateTimeKey(date),
+            inviteSentBy: user.id
+          }
+        : invite
+    )
   };
 }
 

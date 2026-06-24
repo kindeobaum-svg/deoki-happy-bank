@@ -3,6 +3,8 @@ import {
   ROLES,
   SESSION_KEY,
   STORAGE_KEY,
+  PARENT_INVITE_MESSAGE_TEMPLATES,
+  buildParentInviteMessage,
   canManageChecklistMissionGroup,
   cleanupTodayMissionData,
   completeMission,
@@ -26,6 +28,7 @@ import {
   getVisibleForestMoments,
   getVisibleGrowthProgress,
   getVisibleGrowthRecords,
+  getVisibleGuardianInfos,
   getVisibleMissionHistory,
   getVisibleAccountSummary,
   getVisibleTransactions,
@@ -34,12 +37,14 @@ import {
   normalizeMissionIntegrity,
   normalizeParentInviteCodes,
   normalizeStandardMissionTemplates,
+  markParentInviteSent,
   registerChild,
   recordExpense,
   signInParentWithInviteCode,
   toDateKey,
   updateChild,
   updateClassroom,
+  updateGuardianInfo,
   updateChecklistMissionGroup
 } from "./state.js";
 
@@ -211,6 +216,10 @@ function formatWon(value) {
   return `${Number(value).toLocaleString("ko-KR")}원`;
 }
 
+function getAppInviteLink() {
+  return window.location.origin;
+}
+
 function getCurrentUser() {
   return getUser(state, session.userId);
 }
@@ -244,6 +253,7 @@ function buildLoginSession(user) {
     selectedChildId,
     detailScreen: getRoleStartDetailScreen(user),
     editMissionId: null,
+    inviteTemplateChildId: null,
     showTeacherChildForm: false,
     showAllChildForm: false,
     showClassChildFormClassId: null
@@ -607,6 +617,16 @@ function renderTeacherInlineChildRegistration(user) {
                 아이 이름
                 <input name="name" type="text" placeholder="예: 한지우" required maxlength="20" />
               </label>
+              <div class="form-row">
+                <label>
+                  보호자 이름
+                  <input name="guardianName" type="text" placeholder="예: 한지우 보호자" maxlength="20" />
+                </label>
+                <label>
+                  보호자 전화번호
+                  <input name="guardianPhone" type="tel" placeholder="010-0000-0000" maxlength="20" />
+                </label>
+              </div>
               <button class="primary-button" type="submit">저장</button>
             </form>
           `
@@ -623,6 +643,7 @@ function renderTeacherInlineChildRegistration(user) {
 
 function renderTeacherHomeChildRow(child, classId) {
   const invite = getActiveInviteForChild(child.id);
+  const guardian = getGuardianForChild(child.id);
 
   return `
     <article class="child-management-row">
@@ -637,6 +658,7 @@ function renderTeacherHomeChildRow(child, classId) {
           <button class="icon-button delete" type="button" data-delete-child="${child.id}" data-delete-child-class="${classId}">삭제</button>
         </div>
       </form>
+      ${renderGuardianForm(child, guardian)}
     </article>
   `;
 }
@@ -758,6 +780,16 @@ function renderTeacherChildRegistration(user) {
             아이 이름
             <input name="name" type="text" placeholder="예: 한지우" required maxlength="20" />
           </label>
+          <div class="form-row">
+            <label>
+              보호자 이름
+              <input name="guardianName" type="text" placeholder="예: 한지우 보호자" maxlength="20" />
+            </label>
+            <label>
+              보호자 전화번호
+              <input name="guardianPhone" type="tel" placeholder="010-0000-0000" maxlength="20" />
+            </label>
+          </div>
           <button class="primary-button" type="submit">저장</button>
         </form>
       </section>
@@ -811,6 +843,16 @@ function renderDirectorAllChildManager(user) {
                   아이 이름
                   <input name="name" type="text" placeholder="예: 김민준" required maxlength="20" />
                 </label>
+                <div class="form-row">
+                  <label>
+                    보호자 이름
+                    <input name="guardianName" type="text" placeholder="예: 김민준 보호자" maxlength="20" />
+                  </label>
+                  <label>
+                    보호자 전화번호
+                    <input name="guardianPhone" type="tel" placeholder="010-0000-0000" maxlength="20" />
+                  </label>
+                </div>
                 <label>
                   반
                   <select name="classId" required>
@@ -867,6 +909,16 @@ function renderClassChildManager(user, classId) {
                   아이 이름
                   <input name="name" type="text" placeholder="예: 김민준" required maxlength="20" />
                 </label>
+                <div class="form-row">
+                  <label>
+                    보호자 이름
+                    <input name="guardianName" type="text" placeholder="예: 김민준 보호자" maxlength="20" />
+                  </label>
+                  <label>
+                    보호자 전화번호
+                    <input name="guardianPhone" type="tel" placeholder="010-0000-0000" maxlength="20" />
+                  </label>
+                </div>
                 <button class="primary-button" type="submit">저장</button>
               </form>
             `
@@ -886,6 +938,7 @@ function renderClassChildManager(user, classId) {
 
 function renderClassChildRow(child, classId, classroomName = "") {
   const invite = getActiveInviteForChild(child.id);
+  const guardian = getGuardianForChild(child.id);
 
   return `
     <article class="child-management-row">
@@ -900,6 +953,7 @@ function renderClassChildRow(child, classId, classroomName = "") {
           <button class="icon-button delete" type="button" data-delete-child="${child.id}" data-delete-child-class="${classId}">삭제</button>
         </div>
       </form>
+      ${renderGuardianForm(child, guardian)}
     </article>
   `;
 }
@@ -908,8 +962,53 @@ function getActiveInviteForChild(childId) {
   return (state.inviteCodes ?? []).find((invite) => invite.childId === childId && invite.active !== false) ?? null;
 }
 
-function getInviteShareText(child, invite) {
-  return `${child.name} 학부모님, 행복부자 통장 링크에 접속해 초대코드 ${invite.code}를 입력해주세요.\nhttps://deoki-happy-bank.vercel.app`;
+function getGuardianForChild(childId) {
+  return getVisibleGuardianInfos(state, getCurrentUser()).find((guardian) => guardian.childId === childId) ?? null;
+}
+
+function formatInviteSentStatus(invite) {
+  if (!invite?.inviteSent) {
+    return "초대 발송 여부: 미발송";
+  }
+
+  return `초대 발송 여부: ✅ 발송 완료${invite.inviteSentAt ? ` · ${invite.inviteSentAt}` : ""}`;
+}
+
+function renderGuardianForm(child, guardian) {
+  return `
+    <form class="guardian-info-form" data-child-id="${child.id}">
+      <div class="guardian-form-heading">
+        <strong>보호자 정보 관리</strong>
+        <span>원장 전체 · 교사 담당 반만 확인</span>
+      </div>
+      <div class="form-row">
+        <label>
+          보호자 이름
+          <input name="guardianName" type="text" value="${escapeHtml(guardian?.name ?? "")}" placeholder="예: ${escapeHtml(child.name)} 보호자" required maxlength="20" />
+        </label>
+        <label>
+          보호자 전화번호
+          <input name="guardianPhone" type="tel" value="${escapeHtml(guardian?.phone ?? "")}" placeholder="010-0000-0000" required maxlength="20" />
+        </label>
+      </div>
+      <button class="small-button guardian-save-button" type="submit">보호자 정보 저장</button>
+    </form>
+  `;
+}
+
+function renderInviteTemplatePicker(child) {
+  return `
+    <div class="invite-template-picker">
+      <strong>초대 문구 형식 선택</strong>
+      ${PARENT_INVITE_MESSAGE_TEMPLATES.map(
+        (template) => `
+          <button class="template-option-button" type="button" data-share-invite-template="${child.id}" data-template-id="${template.id}">
+            ${escapeHtml(template.label)}
+          </button>
+        `
+      ).join("")}
+    </div>
+  `;
 }
 
 async function copyTextToClipboard(text) {
@@ -940,14 +1039,15 @@ function renderInviteControls(child, invite, classId) {
   }
 
   return `
-    <span>초대코드: ${escapeHtml(invite.code)}</span>
+    <span class="invite-summary">초대코드: ${escapeHtml(invite.code)}<br />${escapeHtml(formatInviteSentStatus(invite))}</span>
     <button class="icon-button child-manage" type="button" data-copy-invite-code="${escapeHtml(invite.code)}">복사</button>
-    <button class="icon-button child-manage" type="button" data-share-invite="${invite.childId}">카카오톡 문구</button>
+    <button class="icon-button kakao" type="button" data-share-invite="${invite.childId}">카카오톡 초대</button>
     ${
       currentUser?.role === ROLES.DIRECTOR
         ? `<button class="icon-button delete" type="button" data-reissue-invite="${child.id}" data-invite-class="${classId}">재발급</button>`
         : ""
     }
+    ${session.inviteTemplateChildId === child.id ? renderInviteTemplatePicker(child) : ""}
   `;
 }
 
@@ -1055,6 +1155,16 @@ function renderDirectorInviteManager(user) {
               <input name="balance" type="number" min="0" step="100" value="0" />
             </label>
           </div>
+          <div class="form-row">
+            <label>
+              보호자 이름
+              <input name="guardianName" type="text" placeholder="예: 홍길동 보호자" maxlength="20" />
+            </label>
+            <label>
+              보호자 전화번호
+              <input name="guardianPhone" type="tel" placeholder="010-0000-0000" maxlength="20" />
+            </label>
+          </div>
           <button class="primary-button" type="submit">아이 등록 + 초대코드 생성</button>
         </form>
       </section>
@@ -1108,11 +1218,13 @@ function renderInviteCodeRow(invite) {
         child && active
           ? `<div class="invite-row-actions">
               <button class="icon-button child-manage" type="button" data-copy-invite-code="${escapeHtml(invite.code)}">복사</button>
-              <button class="icon-button child-manage" type="button" data-share-invite="${child.id}">카카오톡 문구</button>
+              <button class="icon-button kakao" type="button" data-share-invite="${child.id}">카카오톡 초대</button>
               <button class="icon-button delete" type="button" data-reissue-invite="${child.id}" data-invite-class="${child.classId}">재발급</button>
             </div>`
           : ""
       }
+      <p class="invite-sent-detail">${escapeHtml(formatInviteSentStatus(invite))}</p>
+      ${child && active && session.inviteTemplateChildId === child.id ? renderInviteTemplatePicker(child) : ""}
     </article>
   `;
 }
@@ -2215,7 +2327,20 @@ app.addEventListener("click", async (event) => {
 
   const shareInviteButton = event.target.closest("[data-share-invite]");
   if (shareInviteButton) {
-    const child = getVisibleChildren(state, getCurrentUser()).find((item) => item.id === shareInviteButton.dataset.shareInvite);
+    session.inviteTemplateChildId =
+      session.inviteTemplateChildId === shareInviteButton.dataset.shareInvite
+        ? null
+        : shareInviteButton.dataset.shareInvite;
+    saveSession();
+    render();
+    return;
+  }
+
+  const shareInviteTemplateButton = event.target.closest("[data-share-invite-template]");
+  if (shareInviteTemplateButton) {
+    const child = getVisibleChildren(state, getCurrentUser()).find(
+      (item) => item.id === shareInviteTemplateButton.dataset.shareInviteTemplate
+    );
     const invite = child ? getActiveInviteForChild(child.id) : null;
     if (!child || !invite) {
       setToast("공유할 초대코드를 찾을 수 없습니다.");
@@ -2223,9 +2348,37 @@ app.addEventListener("click", async (event) => {
       return;
     }
 
-    await copyTextToClipboard(getInviteShareText(child, invite));
-    setToast("카카오톡으로 보낼 문구가 복사되었습니다.");
-    render();
+    try {
+      const message = buildParentInviteMessage(
+        state,
+        getCurrentUser(),
+        child.id,
+        shareInviteTemplateButton.dataset.templateId,
+        { appLink: getAppInviteLink() }
+      );
+
+      if (navigator.share) {
+        await navigator.share({
+          title: `${child.name} 학부모 초대`,
+          text: message,
+          url: getAppInviteLink()
+        });
+      } else {
+        await copyTextToClipboard(message);
+      }
+
+      state = markParentInviteSent(state, getCurrentUser(), child.id);
+      session.inviteTemplateChildId = null;
+      saveState();
+      saveSession();
+      setToast(navigator.share ? "카카오톡 초대 공유가 완료되었습니다." : "카카오톡 초대 문구가 복사되고 발송 완료로 기록되었습니다.");
+      render();
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        setToast(error.message);
+        render();
+      }
+    }
     return;
   }
 
@@ -2416,7 +2569,8 @@ app.addEventListener("submit", (event) => {
     ].includes(event.target.id) &&
     !event.target.classList.contains("classroom-edit-form") &&
     !event.target.classList.contains("class-child-edit-form") &&
-    !event.target.classList.contains("teacher-child-edit-form")
+    !event.target.classList.contains("teacher-child-edit-form") &&
+    !event.target.classList.contains("guardian-info-form")
   ) {
     return;
   }
@@ -2526,7 +2680,9 @@ app.addEventListener("submit", (event) => {
         name: formData.get("name"),
         classId: formData.get("classId"),
         birthMonth: formData.get("birthMonth"),
-        balance: formData.get("balance")
+        balance: formData.get("balance"),
+        guardianName: formData.get("guardianName"),
+        guardianPhone: formData.get("guardianPhone")
       });
       setToast("아이 등록과 학부모 초대코드 생성이 완료되었습니다.");
       session.detailScreen = {
@@ -2537,7 +2693,9 @@ app.addEventListener("submit", (event) => {
 
     if (event.target.id === "teacher-child-form") {
       state = registerChild(state, getCurrentUser(), {
-        name: formData.get("name")
+        name: formData.get("name"),
+        guardianName: formData.get("guardianName"),
+        guardianPhone: formData.get("guardianPhone")
       });
       setToast("아이가 등록되고 학부모 초대코드가 자동 생성되었습니다.");
       session.tab = "home";
@@ -2549,7 +2707,9 @@ app.addEventListener("submit", (event) => {
     if (event.target.id === "all-child-form") {
       state = registerChild(state, getCurrentUser(), {
         name: formData.get("name"),
-        classId: formData.get("classId")
+        classId: formData.get("classId"),
+        guardianName: formData.get("guardianName"),
+        guardianPhone: formData.get("guardianPhone")
       });
       setToast("아이가 등록되고 학부모 초대코드가 자동 생성되었습니다.");
       session.detailScreen = {
@@ -2563,7 +2723,9 @@ app.addEventListener("submit", (event) => {
     if (event.target.id === "class-child-form") {
       state = registerChild(state, getCurrentUser(), {
         name: formData.get("name"),
-        classId: event.target.dataset.classId
+        classId: event.target.dataset.classId,
+        guardianName: formData.get("guardianName"),
+        guardianPhone: formData.get("guardianPhone")
       });
       setToast("아이가 등록되고 학부모 초대코드가 자동 생성되었습니다.");
       session.detailScreen = {
@@ -2631,6 +2793,14 @@ app.addEventListener("submit", (event) => {
           childId: null
         };
       }
+    }
+
+    if (event.target.classList.contains("guardian-info-form")) {
+      state = updateGuardianInfo(state, getCurrentUser(), event.target.dataset.childId, {
+        name: formData.get("guardianName"),
+        phone: formData.get("guardianPhone")
+      });
+      setToast("보호자 정보가 저장되었습니다.");
     }
 
     if (event.target.id === "custom-mission-form") {
