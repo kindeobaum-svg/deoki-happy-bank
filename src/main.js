@@ -305,12 +305,7 @@ function ensureAllowedSelection(user) {
 
 function render() {
   const currentUser = getCurrentUser();
-  const user =
-    isAdminRoute() && currentUser?.role === ROLES.PARENT
-      ? null
-      : !isAdminRoute() && currentUser && currentUser.role !== ROLES.PARENT
-        ? null
-        : currentUser;
+  const user = isAdminRoute() && currentUser?.role === ROLES.PARENT ? null : currentUser;
   ensureAllowedSelection(user);
 
   if (!user) {
@@ -329,14 +324,32 @@ function renderLogin() {
         <div>
           <p class="eyebrow">덕이킨더바움</p>
           <h1>행복부자 통장</h1>
-          <p>초대코드를 입력하면 우리 아이 행복부자 통장을 볼 수 있습니다.</p>
+          <p>첫 화면에서 사용할 역할을 선택해 주세요.</p>
         </div>
       </div>
 
       ${toastMessage ? `<div class="toast login-toast" role="status">${escapeHtml(toastMessage)}</div>` : ""}
 
-      <div class="invite-login-card parent-code-card">
-        <h2>우리 아이 통장 보기</h2>
+      <div class="entry-role-actions" aria-label="로그인 역할 선택">
+        <button class="entry-role-button parent" type="button" data-focus-parent-login>
+          <span>학부모</span>
+          <strong>학부모 로그인</strong>
+          <small>초대코드로 우리 아이 통장 보기</small>
+        </button>
+        <button class="entry-role-button teacher" type="button" data-login-user="teacher-sun">
+          <span>교사</span>
+          <strong>교사 로그인</strong>
+          <small>담당 반 아이 관리</small>
+        </button>
+        <button class="entry-role-button director" type="button" data-login-user="director-1">
+          <span>원장</span>
+          <strong>원장 로그인</strong>
+          <small>전체 반과 아이 관리</small>
+        </button>
+      </div>
+
+      <div class="invite-login-card parent-code-card" id="parent-login-card">
+        <h2>학부모 초대코드 로그인</h2>
         <p>카카오톡으로 받은 초대코드를 입력해 주세요.</p>
         ${loginErrorMessage ? `<div class="login-error" role="alert">${escapeHtml(loginErrorMessage)}</div>` : ""}
         <form id="parent-invite-form">
@@ -435,7 +448,7 @@ function renderShell(user) {
           <p class="eyebrow">${escapeHtml(user.title)} · ${escapeHtml(currentClassLabel)}</p>
           <h1>${escapeHtml(displayTitle)}</h1>
         </div>
-        ${user.role === ROLES.PARENT ? "" : `<button class="ghost-button" type="button" data-logout>전환</button>`}
+        <button class="ghost-button" type="button" data-logout>전환</button>
       </header>
 
       ${user.role === ROLES.TEACHER ? renderTeacherInlineChildRegistration(user) : ""}
@@ -2023,6 +2036,14 @@ app.addEventListener("click", async (event) => {
   if (homeAddGuideButton) {
     setToast("Chrome 메뉴(⋮)를 누른 뒤 '홈 화면에 추가'를 선택해주세요.");
     render();
+    return;
+  }
+
+  const parentLoginButton = event.target.closest("[data-focus-parent-login]");
+  if (parentLoginButton) {
+    const parentInviteInput = app.querySelector("#parent-invite-form input[name='inviteCode']");
+    parentInviteInput?.scrollIntoView({ block: "center", behavior: "smooth" });
+    parentInviteInput?.focus();
     return;
   }
 
