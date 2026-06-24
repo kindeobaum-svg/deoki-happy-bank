@@ -19,7 +19,13 @@ if (!appVersion) {
 }
 
 const html = await readFile(resolve(root, "index.html"), "utf8");
-await writeFile(resolve(dist, "index.html"), html.replaceAll("__APP_VERSION__", encodeURIComponent(appVersion)));
+const htmlWithVersion = html.replaceAll("__APP_VERSION__", encodeURIComponent(appVersion));
+await writeFile(resolve(dist, "index.html"), htmlWithVersion);
+await mkdir(resolve(dist, "admin", "director"), { recursive: true });
+await mkdir(resolve(dist, "admin", "teacher"), { recursive: true });
+await writeFile(resolve(dist, "admin", "index.html"), htmlWithVersion);
+await writeFile(resolve(dist, "admin", "director", "index.html"), htmlWithVersion);
+await writeFile(resolve(dist, "admin", "teacher", "index.html"), htmlWithVersion);
 await cp(resolve(root, "src"), resolve(dist, "src"), { recursive: true });
 
 console.log(`Static app built in dist/ (${appVersion})`);

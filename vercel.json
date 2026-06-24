@@ -7,15 +7,31 @@
   "rewrites": [
     {
       "source": "/admin",
-      "destination": "/"
+      "destination": "/admin/index.html"
     },
     {
       "source": "/admin/",
-      "destination": "/"
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/admin/director",
+      "destination": "/admin/director/index.html"
+    },
+    {
+      "source": "/admin/director/",
+      "destination": "/admin/director/index.html"
+    },
+    {
+      "source": "/admin/teacher",
+      "destination": "/admin/teacher/index.html"
+    },
+    {
+      "source": "/admin/teacher/",
+      "destination": "/admin/teacher/index.html"
     },
     {
       "source": "/admin/:path*",
-      "destination": "/"
+      "destination": "/admin/index.html"
     }
   ],
   "headers": [

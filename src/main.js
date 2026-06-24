@@ -358,15 +358,15 @@ function renderLogin() {
         <p>주소를 입력하지 말고 아래 버튼을 눌러주세요.</p>
         <div class="quick-link-list">
           <a class="quick-link-button parent" href="#parent-invite-form">학부모 앱 열기</a>
-          <a class="quick-link-button director" href="/admin/director">원장 로그인</a>
+          <a class="quick-link-button director" href="/admin/director/">원장 로그인</a>
           <button
             class="quick-link-copy-button"
             type="button"
-            data-copy-url="https://deoki-happy-bank.vercel.app/admin/director"
+            data-copy-url="https://deoki-happy-bank.vercel.app/admin/director/"
           >
             원장 로그인 주소 복사
           </button>
-          <a class="quick-link-button teacher" href="/admin/teacher">교사 로그인</a>
+          <a class="quick-link-button teacher" href="/admin/teacher/">교사 로그인</a>
         </div>
         <p class="quick-link-helper">원장님은 원장 로그인 화면을 연 뒤 Chrome 메뉴(⋮)에서 즐겨찾기 또는 홈 화면에 추가를 선택해 주세요.</p>
       </section>
