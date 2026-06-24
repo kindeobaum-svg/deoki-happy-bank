@@ -622,7 +622,7 @@ function renderTeacherInlineChildRegistration(user) {
 }
 
 function renderTeacherHomeChildRow(child, classId) {
-  const invite = getInviteForChild(child.id);
+  const invite = getActiveInviteForChild(child.id);
 
   return `
     <article class="child-management-row">
@@ -632,7 +632,7 @@ function renderTeacherHomeChildRow(child, classId) {
           <input name="name" type="text" value="${escapeHtml(child.name)}" required maxlength="20" />
         </label>
         <div class="child-management-meta">
-          <span>초대코드: ${escapeHtml(invite?.code ?? "자동 생성 대기")}</span>
+          ${renderInviteControls(child, invite, classId)}
           <button class="icon-button edit" type="submit">수정</button>
           <button class="icon-button delete" type="button" data-delete-child="${child.id}" data-delete-child-class="${classId}">삭제</button>
         </div>
@@ -885,7 +885,7 @@ function renderClassChildManager(user, classId) {
 }
 
 function renderClassChildRow(child, classId, classroomName = "") {
-  const invite = getInviteForChild(child.id);
+  const invite = getActiveInviteForChild(child.id);
 
   return `
     <article class="child-management-row">
@@ -895,7 +895,7 @@ function renderClassChildRow(child, classId, classroomName = "") {
           <input name="name" type="text" value="${escapeHtml(child.name)}" required maxlength="20" />
         </label>
         <div class="child-management-meta">
-          <span>초대코드: ${escapeHtml(invite?.code ?? "자동 생성 대기")}</span>
+          ${renderInviteControls(child, invite, classId)}
           <button class="icon-button edit" type="submit">수정</button>
           <button class="icon-button delete" type="button" data-delete-child="${child.id}" data-delete-child-class="${classId}">삭제</button>
         </div>
@@ -904,8 +904,51 @@ function renderClassChildRow(child, classId, classroomName = "") {
   `;
 }
 
-function getInviteForChild(childId) {
-  return (state.inviteCodes ?? []).find((invite) => invite.childId === childId) ?? null;
+function getActiveInviteForChild(childId) {
+  return (state.inviteCodes ?? []).find((invite) => invite.childId === childId && invite.active !== false) ?? null;
+}
+
+function getInviteShareText(child, invite) {
+  return `${child.name} 학부모님, 행복부자 통장 링크에 접속해 초대코드 ${invite.code}를 입력해주세요.\nhttps://deoki-happy-bank.vercel.app`;
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
+}
+
+function renderInviteControls(child, invite, classId) {
+  const currentUser = getCurrentUser();
+
+  if (!invite) {
+    return `
+      <span>초대코드: 생성 필요</span>
+      <button class="icon-button child-manage" type="button" data-generate-invite="${child.id}" data-invite-class="${classId}">생성</button>
+    `;
+  }
+
+  return `
+    <span>초대코드: ${escapeHtml(invite.code)}</span>
+    <button class="icon-button child-manage" type="button" data-copy-invite-code="${escapeHtml(invite.code)}">복사</button>
+    <button class="icon-button child-manage" type="button" data-share-invite="${invite.childId}">카카오톡 문구</button>
+    ${
+      currentUser?.role === ROLES.DIRECTOR
+        ? `<button class="icon-button delete" type="button" data-reissue-invite="${child.id}" data-invite-class="${classId}">재발급</button>`
+        : ""
+    }
+  `;
 }
 
 function renderClassroomManager(user) {
@@ -1019,7 +1062,7 @@ function renderDirectorInviteManager(user) {
         <div class="section-heading">
           <div>
             <p class="eyebrow">초대코드 생성</p>
-            <h2>기존 아이 초대코드 추가 발급</h2>
+            <h2>기존 아이 초대코드 생성</h2>
           </div>
         </div>
         <form id="invite-code-form">
@@ -1050,16 +1093,26 @@ function renderDirectorInviteManager(user) {
 function renderInviteCodeRow(invite) {
   const child = getVisibleChildren(state, getCurrentUser()).find((item) => item.id === invite.childId);
   const claimedUser = invite.claimedBy ? getUser(state, invite.claimedBy) : null;
+  const active = invite.active !== false;
 
   return `
     <article class="invite-code-row">
       <div>
         <strong>${escapeHtml(invite.code)}</strong>
-        <p>${escapeHtml(child?.name ?? "알 수 없는 아이")} · ${invite.active ? "사용 가능" : "비활성"}</p>
+        <p>${escapeHtml(child?.name ?? "알 수 없는 아이")} · ${active ? "사용 가능" : "비활성"}</p>
       </div>
       <span class="status-pill ${claimedUser ? "success" : ""}">
-        ${claimedUser ? "가입됨" : "대기"}
+        ${active ? (claimedUser ? "가입됨" : "대기") : "무효"}
       </span>
+      ${
+        child && active
+          ? `<div class="invite-row-actions">
+              <button class="icon-button child-manage" type="button" data-copy-invite-code="${escapeHtml(invite.code)}">복사</button>
+              <button class="icon-button child-manage" type="button" data-share-invite="${child.id}">카카오톡 문구</button>
+              <button class="icon-button delete" type="button" data-reissue-invite="${child.id}" data-invite-class="${child.classId}">재발급</button>
+            </div>`
+          : ""
+      }
     </article>
   `;
 }
@@ -1965,7 +2018,7 @@ function renderEmpty(message) {
   return `<div class="empty-card">${escapeHtml(message)}</div>`;
 }
 
-app.addEventListener("click", (event) => {
+app.addEventListener("click", async (event) => {
   const homeAddGuideButton = event.target.closest("[data-home-add-guide]");
   if (homeAddGuideButton) {
     setToast("Chrome 메뉴(⋮)를 누른 뒤 '홈 화면에 추가'를 선택해주세요.");
@@ -2100,6 +2153,78 @@ app.addEventListener("click", (event) => {
       childId: null
     };
     saveSession();
+    render();
+    return;
+  }
+
+  const generateInviteButton = event.target.closest("[data-generate-invite]");
+  if (generateInviteButton) {
+    try {
+      state = createParentInviteCode(state, getCurrentUser(), generateInviteButton.dataset.generateInvite);
+      session.detailScreen = session.detailScreen?.type
+        ? session.detailScreen
+        : {
+            type: "class-children",
+            classId: generateInviteButton.dataset.inviteClass
+          };
+      saveState();
+      saveSession();
+      setToast("학부모 초대코드가 생성되었습니다.");
+      render();
+    } catch (error) {
+      setToast(error.message);
+      render();
+    }
+    return;
+  }
+
+  const reissueInviteButton = event.target.closest("[data-reissue-invite]");
+  if (reissueInviteButton) {
+    if (!window.confirm("초대코드를 재발급할까요? 기존 코드는 사용할 수 없게 됩니다.")) {
+      return;
+    }
+
+    try {
+      state = createParentInviteCode(state, getCurrentUser(), reissueInviteButton.dataset.reissueInvite, {
+        reissue: true
+      });
+      session.detailScreen = session.detailScreen?.type
+        ? session.detailScreen
+        : {
+            type: "class-children",
+            classId: reissueInviteButton.dataset.inviteClass
+          };
+      saveState();
+      saveSession();
+      setToast("초대코드가 재발급되고 기존 코드는 무효 처리되었습니다.");
+      render();
+    } catch (error) {
+      setToast(error.message);
+      render();
+    }
+    return;
+  }
+
+  const copyInviteButton = event.target.closest("[data-copy-invite-code]");
+  if (copyInviteButton) {
+    await copyTextToClipboard(copyInviteButton.dataset.copyInviteCode);
+    setToast("초대코드가 복사되었습니다.");
+    render();
+    return;
+  }
+
+  const shareInviteButton = event.target.closest("[data-share-invite]");
+  if (shareInviteButton) {
+    const child = getVisibleChildren(state, getCurrentUser()).find((item) => item.id === shareInviteButton.dataset.shareInvite);
+    const invite = child ? getActiveInviteForChild(child.id) : null;
+    if (!child || !invite) {
+      setToast("공유할 초대코드를 찾을 수 없습니다.");
+      render();
+      return;
+    }
+
+    await copyTextToClipboard(getInviteShareText(child, invite));
+    setToast("카카오톡으로 보낼 문구가 복사되었습니다.");
     render();
     return;
   }

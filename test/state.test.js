@@ -307,6 +307,38 @@ describe("invite code login", () => {
     assert.match(invite.code, /^DK-/);
   });
 
+  it("lets teachers create invite codes only for children in their class", () => {
+    const data = {
+      ...createInitialData("2026-06-09"),
+      inviteCodes: []
+    };
+    const teacher = getUser(data, "teacher-sun");
+    const updated = createParentInviteCode(data, teacher, "child-minjun");
+    const invite = updated.inviteCodes.find((item) => item.childId === "child-minjun" && item.active);
+
+    assert.ok(invite);
+    assert.throws(() => createParentInviteCode(data, teacher, "child-seoa"), /담당 반 아이의 초대코드만 관리/);
+  });
+
+  it("reissues invite codes by invalidating the previous active code", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const reissued = createParentInviteCode(data, director, "child-minjun", {
+      reissue: true
+    });
+    const invites = reissued.inviteCodes.filter((invite) => invite.childId === "child-minjun");
+    const activeInvites = invites.filter((invite) => invite.active !== false);
+    const inactiveInvites = invites.filter((invite) => invite.active === false);
+
+    assert.equal(activeInvites.length, 1);
+    assert.ok(inactiveInvites.some((invite) => invite.code === "DK-MINJUN-2026"));
+    assert.throws(() => signInParentWithInviteCode(reissued, { inviteCode: "DK-MINJUN-2026" }), /유효하지 않은/);
+    assert.deepEqual(
+      getVisibleChildren(signInParentWithInviteCode(reissued, { inviteCode: activeInvites[0].code }).data, getUser(reissued, "parent-minjun")).map((child) => child.id),
+      ["child-minjun"]
+    );
+  });
+
   it("does not create duplicate suffix invite codes for the same child", () => {
     const data = createInitialData("2026-06-09");
     const director = getUser(data, "director-1");
@@ -323,7 +355,7 @@ describe("invite code login", () => {
     assert.equal(invites[0].code, `DK-CHILD-${child.id.replace("child-", "").padStart(6, "0")}`);
   });
 
-  it("removes stale duplicate suffix invite codes for the same child", () => {
+  it("keeps only one active invite code for the same child", () => {
     const data = createInitialData("2026-06-09");
     const director = getUser(data, "director-1");
     const registered = registerChild(data, director, {
@@ -345,9 +377,11 @@ describe("invite code login", () => {
     };
     const normalized = normalizeParentInviteCodes(corrupted);
     const invites = normalized.inviteCodes.filter((invite) => invite.childId === child.id);
+    const activeInvites = invites.filter((invite) => invite.active !== false);
 
-    assert.equal(invites.length, 1);
-    assert.equal(invites[0].code, `DK-CHILD-${child.id.replace("child-", "").padStart(6, "0")}`);
+    assert.equal(invites.length, 2);
+    assert.equal(activeInvites.length, 1);
+    assert.equal(activeInvites[0].code, `DK-CHILD-${child.id.replace("child-", "").padStart(6, "0")}`);
   });
 
   it("keeps existing old-format invite codes for existing children", () => {

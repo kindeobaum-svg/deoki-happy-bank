@@ -218,7 +218,7 @@ function makeUniqueInviteCode(data, child) {
 }
 
 function dedupeParentInviteCodes(data, inviteCodes) {
-  const byChildId = new Map();
+  const byCode = new Map();
 
   for (const invite of inviteCodes) {
     const child = data.children.find((item) => item.id === invite.childId);
@@ -226,17 +226,45 @@ function dedupeParentInviteCodes(data, inviteCodes) {
       continue;
     }
 
-    const existing = byChildId.get(invite.childId);
-    const preferredCode = makeInviteCodeForChild(child).toUpperCase();
-    const inviteIsPreferred = String(invite.code).toUpperCase() === preferredCode;
-    const existingIsPreferred = existing && String(existing.code).toUpperCase() === preferredCode;
-
-    if (!existing || (inviteIsPreferred && !existingIsPreferred)) {
-      byChildId.set(invite.childId, invite);
+    const codeKey = String(invite.code).toUpperCase();
+    if (!byCode.has(codeKey)) {
+      byCode.set(codeKey, invite);
     }
   }
 
-  return [...byChildId.values()];
+  const byChildId = new Map();
+  for (const invite of byCode.values()) {
+    const child = data.children.find((item) => item.id === invite.childId);
+    const invites = byChildId.get(invite.childId) ?? [];
+    invites.push(invite);
+    byChildId.set(invite.childId, invites);
+  }
+
+  const deduped = [];
+  for (const [childId, invites] of byChildId.entries()) {
+    const child = data.children.find((item) => item.id === childId);
+    const preferredCode = makeInviteCodeForChild(child).toUpperCase();
+    const activeInvites = invites.filter((invite) => invite.active !== false);
+    const preferredActiveInvite = activeInvites.find((invite) => String(invite.code).toUpperCase() === preferredCode);
+    const activeInvite = preferredActiveInvite ?? activeInvites[0] ?? null;
+
+    for (const invite of invites) {
+      if (activeInvite && invite.code === activeInvite.code) {
+        deduped.push({
+          ...invite,
+          active: true
+        });
+        continue;
+      }
+
+      deduped.push({
+        ...invite,
+        active: false
+      });
+    }
+  }
+
+  return deduped;
 }
 
 export function createInitialData(today = toDateKey()) {
@@ -603,12 +631,17 @@ export function getChild(data, childId) {
 export function normalizeParentInviteCodes(data) {
   const inviteCodes = Array.isArray(data.inviteCodes) ? data.inviteCodes : [];
   const existingCodes = new Set(inviteCodes.map((invite) => String(invite.code).toUpperCase()));
+  const activeChildIds = new Set(inviteCodes.filter((invite) => invite.active !== false).map((invite) => invite.childId));
   const canonicalInvites = DEFAULT_PARENT_INVITE_CODES.filter(
     (invite) =>
       data.children.some((child) => child.id === invite.childId) &&
+      !activeChildIds.has(invite.childId) &&
       !existingCodes.has(invite.code.toUpperCase())
   );
-  const invitedChildIds = new Set([...inviteCodes, ...canonicalInvites].map((invite) => invite.childId));
+  const invitedChildIds = new Set([
+    ...inviteCodes.filter((invite) => invite.active !== false),
+    ...canonicalInvites
+  ].map((invite) => invite.childId));
   const generatedInvites = data.children
     .filter((child) => !invitedChildIds.has(child.id))
     .map((child) => ({
@@ -620,12 +653,20 @@ export function normalizeParentInviteCodes(data) {
     }));
 
   const dedupedInvites = dedupeParentInviteCodes(data, [...inviteCodes, ...canonicalInvites, ...generatedInvites]);
+  const inviteCodesUnchanged =
+    Array.isArray(data.inviteCodes) &&
+    dedupedInvites.length === data.inviteCodes.length &&
+    dedupedInvites.every(
+      (invite, index) =>
+        invite.code === data.inviteCodes[index]?.code &&
+        invite.childId === data.inviteCodes[index]?.childId &&
+        invite.active === data.inviteCodes[index]?.active
+    );
 
   if (
     !canonicalInvites.length &&
     !generatedInvites.length &&
-    Array.isArray(data.inviteCodes) &&
-    dedupedInvites.length === data.inviteCodes.length
+    inviteCodesUnchanged
   ) {
     return data;
   }
@@ -636,9 +677,9 @@ export function normalizeParentInviteCodes(data) {
   };
 }
 
-export function createParentInviteCode(data, user, childId) {
-  if (!user || user.role !== ROLES.DIRECTOR) {
-    throw new Error("원장만 초대코드를 생성할 수 있습니다.");
+export function createParentInviteCode(data, user, childId, options = {}) {
+  if (!user || ![ROLES.DIRECTOR, ROLES.TEACHER].includes(user.role)) {
+    throw new Error("원장 또는 교사만 초대코드를 생성할 수 있습니다.");
   }
 
   const child = getChild(data, childId);
@@ -646,23 +687,48 @@ export function createParentInviteCode(data, user, childId) {
     throw new Error("초대코드를 생성할 아이를 찾을 수 없습니다.");
   }
 
+  if (!canManageChild(user, child)) {
+    throw new Error("담당 반 아이의 초대코드만 관리할 수 있습니다.");
+  }
+
+  if (options.reissue && user.role !== ROLES.DIRECTOR) {
+    throw new Error("초대코드 재발급은 원장만 할 수 있습니다.");
+  }
+
   const normalizedData = normalizeParentInviteCodes(data);
-  const existingInvite = normalizedData.inviteCodes.find((invite) => invite.childId === child.id);
-  if (existingInvite) {
+  const existingInvite = normalizedData.inviteCodes.find((invite) => invite.childId === child.id && invite.active !== false);
+  if (existingInvite && !options.reissue) {
     return normalizedData;
   }
 
+  const nextData = options.reissue
+    ? {
+        ...normalizedData,
+        inviteCodes: (normalizedData.inviteCodes ?? []).map((invite) =>
+          invite.childId === child.id && invite.active !== false
+            ? {
+                ...invite,
+                active: false,
+                invalidatedAt: toDateKey(),
+                invalidatedBy: user.id
+              }
+            : invite
+        )
+      }
+    : normalizedData;
+
   const invite = {
-    code: makeUniqueInviteCode(normalizedData, child),
+    code: makeUniqueInviteCode(nextData, child),
     childId: child.id,
     label: `${child.name} 학부모 초대코드`,
     active: true,
-    createdAt: toDateKey()
+    createdAt: toDateKey(),
+    createdBy: user.id
   };
 
   return {
-    ...normalizedData,
-    inviteCodes: [invite, ...(normalizedData.inviteCodes ?? [])]
+    ...nextData,
+    inviteCodes: [invite, ...(nextData.inviteCodes ?? [])]
   };
 }
 
