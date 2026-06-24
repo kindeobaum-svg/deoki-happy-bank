@@ -225,6 +225,57 @@ select:focus-visible {
   background: linear-gradient(180deg, #fff 0%, #fff6e7 100%);
 }
 
+.quick-link-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.quick-link-card h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.quick-link-card p {
+  margin: 6px 0 14px;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.45;
+  word-break: keep-all;
+}
+
+.quick-link-list {
+  display: grid;
+  gap: 10px;
+}
+
+.quick-link-button {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.quick-link-button.parent {
+  background: var(--primary);
+}
+
+.quick-link-button.director {
+  background: var(--blue);
+}
+
+.quick-link-button.teacher {
+  background: var(--green);
+}
+
 .parent-code-card h2 {
   margin: 0;
   font-size: 28px;

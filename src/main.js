@@ -335,6 +335,16 @@ function renderLogin() {
 
       ${toastMessage ? `<div class="toast login-toast" role="status">${escapeHtml(toastMessage)}</div>` : ""}
 
+      <section class="quick-link-card" aria-label="바로가기">
+        <h2>바로 열기</h2>
+        <p>주소를 입력하지 말고 아래 버튼을 눌러주세요.</p>
+        <div class="quick-link-list">
+          <a class="quick-link-button parent" href="#parent-invite-form">학부모 앱 열기</a>
+          <a class="quick-link-button director" href="/admin/director">원장 로그인</a>
+          <a class="quick-link-button teacher" href="/admin/teacher">교사 로그인</a>
+        </div>
+      </section>
+
       <div class="invite-login-card parent-code-card">
         <h2>우리 아이 통장 보기</h2>
         <p>카카오톡으로 받은 초대코드를 입력해 주세요.</p>
