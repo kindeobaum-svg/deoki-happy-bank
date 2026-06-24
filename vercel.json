@@ -10,6 +10,10 @@
       "destination": "/"
     },
     {
+      "source": "/admin/",
+      "destination": "/"
+    },
+    {
       "source": "/admin/:path*",
       "destination": "/"
     }

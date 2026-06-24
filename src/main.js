@@ -80,7 +80,8 @@ restoreParentSessionFromSavedInvite();
 saveState(state);
 
 function isAdminRoute() {
-  return window.location.pathname.replace(/\/+$/, "") === "/admin" || new URLSearchParams(window.location.search).get("admin") === "1";
+  const path = window.location.pathname.replace(/\/+$/, "");
+  return path === "/admin" || path.startsWith("/admin/") || new URLSearchParams(window.location.search).get("admin") === "1";
 }
 
 function loadState() {
