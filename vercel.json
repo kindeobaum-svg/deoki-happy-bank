@@ -4,6 +4,16 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "ignoreCommand": "node scripts/vercel-ignore.js",
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

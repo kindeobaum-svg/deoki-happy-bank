@@ -79,6 +79,10 @@ applyPreviewLoginFromUrl();
 restoreParentSessionFromSavedInvite();
 saveState(state);
 
+function isAdminRoute() {
+  return window.location.pathname.replace(/\/+$/, "") === "/admin" || new URLSearchParams(window.location.search).get("admin") === "1";
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -138,6 +142,10 @@ function applyPreviewLoginFromUrl() {
 }
 
 function restoreParentSessionFromSavedInvite() {
+  if (isAdminRoute()) {
+    return;
+  }
+
   if (session.userId) {
     return;
   }
@@ -206,6 +214,14 @@ function getCurrentUser() {
   return getUser(state, session.userId);
 }
 
+function getVisibleTabs(user) {
+  if (user?.role === ROLES.PARENT) {
+    return tabs.filter((tab) => ["bank", "growth", "forest"].includes(tab.id));
+  }
+
+  return tabs;
+}
+
 function getRoleStartDetailScreen(user) {
   if (user.role === ROLES.DIRECTOR) {
     return { type: "all-children", childId: null };
@@ -215,8 +231,11 @@ function getRoleStartDetailScreen(user) {
     return { type: "teacher-children", childId: null };
   }
 
-  const childId = getDefaultChildId(state, user);
-  return { type: "child", childId };
+  return null;
+}
+
+function getRoleStartTab(user) {
+  return user.role === ROLES.PARENT ? "bank" : "home";
 }
 
 function buildLoginSession(user) {
@@ -224,7 +243,7 @@ function buildLoginSession(user) {
 
   return {
     userId: user.id,
-    tab: "home",
+    tab: getRoleStartTab(user),
     selectedChildId,
     detailScreen: getRoleStartDetailScreen(user),
     editMissionId: null,
@@ -271,8 +290,9 @@ function ensureAllowedSelection(user) {
     session.selectedChildId = user.role === ROLES.PARENT ? getDefaultChildId(state, user) : "all";
   }
 
-  if (!tabs.some((tab) => tab.id === session.tab)) {
-    session.tab = "home";
+  const allowedTabs = getVisibleTabs(user);
+  if (!allowedTabs.some((tab) => tab.id === session.tab)) {
+    session.tab = allowedTabs[0]?.id ?? "home";
   }
 
   if (
@@ -287,11 +307,17 @@ function ensureAllowedSelection(user) {
 }
 
 function render() {
-  const user = getCurrentUser();
+  const currentUser = getCurrentUser();
+  const user =
+    isAdminRoute() && currentUser?.role === ROLES.PARENT
+      ? null
+      : !isAdminRoute() && currentUser && currentUser.role !== ROLES.PARENT
+        ? null
+        : currentUser;
   ensureAllowedSelection(user);
 
   if (!user) {
-    app.innerHTML = renderLogin();
+    app.innerHTML = isAdminRoute() ? renderAdminLogin() : renderLogin();
     return;
   }
 
@@ -299,11 +325,6 @@ function render() {
 }
 
 function renderLogin() {
-  const roleGroups = [
-    { role: ROLES.DIRECTOR, title: "원장용 화면" },
-    { role: ROLES.TEACHER, title: "교사용 화면" }
-  ];
-
   return `
     <section class="login-screen parent-entry-screen">
       <div class="brand-card">
@@ -330,54 +351,73 @@ function renderLogin() {
         </form>
         <button class="home-add-button" type="button" data-home-add-guide>홈 화면에 추가하면 앱처럼 사용할 수 있습니다.</button>
       </div>
+    </section>
+  `;
+}
 
-      <details class="login-group admin-login-details">
-        <summary>운영자 테스트 로그인</summary>
-        <div class="invite-login-card account-login-card">
-          <h2>테스트 계정 로그인 / 회원가입</h2>
-          <p>원장/교사용 점검 계정입니다. 학부모님은 초대코드만 입력하면 됩니다.</p>
-          ${accountLoginErrorMessage ? `<div class="login-error" role="alert">${escapeHtml(accountLoginErrorMessage)}</div>` : ""}
-          <form id="account-login-form">
-            <label>
-              이메일
-              <input name="email" type="email" placeholder="director@test.com" value="${escapeHtml(accountLoginDraft.email)}" required />
-            </label>
-            <label>
-              비밀번호
-              <input name="password" type="password" placeholder="123456" value="${escapeHtml(accountLoginDraft.password)}" required />
-            </label>
-            <div class="account-login-actions">
-              <button class="primary-button" type="submit" name="authAction" value="login">로그인</button>
-              <button class="ghost-button" type="submit" name="authAction" value="signup">회원가입</button>
-            </div>
-          </form>
-          <small>원장 director@test.com / 123456 · 교사 teacher@test.com / 123456 · 학부모 parent@test.com / 123456</small>
+function renderAdminLogin() {
+  const roleGroups = [
+    { role: ROLES.DIRECTOR, title: "원장 관리자" },
+    { role: ROLES.TEACHER, title: "교사 관리자" }
+  ];
+
+  return `
+    <section class="login-screen admin-entry-screen">
+      <div class="brand-card">
+        <span class="brand-mark">관리</span>
+        <div>
+          <p class="eyebrow">덕이킨더바움</p>
+          <h1>관리자 로그인</h1>
+          <p>원장님과 선생님만 사용하는 관리 화면입니다.</p>
         </div>
+      </div>
 
-        ${roleGroups
-          .map(
-            (group) => `
-            <div class="login-group">
-              <h2>${group.title}</h2>
-              <div class="role-list">
-                ${state.users
-                  .filter((candidate) => candidate.role === group.role)
-                  .map(
-                    (candidate) => `
-                      <button class="role-card" type="button" data-login-user="${candidate.id}">
-                        <span class="role-badge">${ROLE_LABELS[candidate.role]}</span>
-                        <strong>${escapeHtml(candidate.name)}</strong>
-                        <small>${escapeHtml(candidate.description)}</small>
-                      </button>
-                    `
-                  )
-                  .join("")}
-              </div>
+      ${toastMessage ? `<div class="toast login-toast" role="status">${escapeHtml(toastMessage)}</div>` : ""}
+
+      <div class="invite-login-card account-login-card">
+        <h2>원장/교사 로그인</h2>
+        <p>학부모님은 기본 링크에서 초대코드로 접속해주세요.</p>
+        ${accountLoginErrorMessage ? `<div class="login-error" role="alert">${escapeHtml(accountLoginErrorMessage)}</div>` : ""}
+        <form id="account-login-form">
+          <label>
+            이메일
+            <input name="email" type="email" placeholder="director@test.com" value="${escapeHtml(accountLoginDraft.email)}" required />
+          </label>
+          <label>
+            비밀번호
+            <input name="password" type="password" placeholder="123456" value="${escapeHtml(accountLoginDraft.password)}" required />
+          </label>
+          <div class="account-login-actions">
+            <button class="primary-button" type="submit" name="authAction" value="login">로그인</button>
+            <button class="ghost-button" type="submit" name="authAction" value="signup">회원가입</button>
+          </div>
+        </form>
+        <small>원장 director@test.com / 123456 · 교사 teacher@test.com / 123456</small>
+      </div>
+
+      ${roleGroups
+        .map(
+          (group) => `
+          <div class="login-group">
+            <h2>${group.title}</h2>
+            <div class="role-list">
+              ${state.users
+                .filter((candidate) => candidate.role === group.role)
+                .map(
+                  (candidate) => `
+                    <button class="role-card" type="button" data-login-user="${candidate.id}">
+                      <span class="role-badge">${ROLE_LABELS[candidate.role]}</span>
+                      <strong>${escapeHtml(candidate.name)}</strong>
+                      <small>${escapeHtml(candidate.description)}</small>
+                    </button>
+                  `
+                )
+                .join("")}
             </div>
-          `
-          )
-          .join("")}
-      </details>
+          </div>
+        `
+        )
+        .join("")}
     </section>
   `;
 }
@@ -422,7 +462,7 @@ function renderShell(user) {
       </main>
 
       <nav class="bottom-nav" aria-label="주요 메뉴">
-        ${tabs
+        ${getVisibleTabs(user)
           .map(
             (tab) => `
             <button
@@ -476,7 +516,7 @@ function getRoleDescription(user, visibleChildCount) {
     return `담당 반 ${visibleChildCount}명에 대해서만 조회, 미션 생성, 완료 처리가 가능합니다.`;
   }
 
-  return "다른 아이의 이름, 통장, 성장기록, 미션 수행내역은 화면에 노출되지 않습니다.";
+  return "다른 아이의 이름, 통장, 성장기록, 행복숲 기록은 화면에 노출되지 않습니다.";
 }
 
 function renderActiveTab(user) {
@@ -2281,6 +2321,11 @@ app.addEventListener("submit", (event) => {
       const user = getUser(state, account.userId);
       if (!user) {
         failAccountLogin("계정에 연결된 사용자를 찾을 수 없습니다.");
+        return;
+      }
+
+      if (isAdminRoute() && user.role === ROLES.PARENT) {
+        failAccountLogin("학부모님은 기본 링크에서 초대코드로 접속해주세요.");
         return;
       }
 
