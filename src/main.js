@@ -215,10 +215,6 @@ function getCurrentUser() {
 }
 
 function getVisibleTabs(user) {
-  if (user?.role === ROLES.PARENT) {
-    return tabs.filter((tab) => ["bank", "growth", "forest"].includes(tab.id));
-  }
-
   return tabs;
 }
 
@@ -235,7 +231,7 @@ function getRoleStartDetailScreen(user) {
 }
 
 function getRoleStartTab(user) {
-  return user.role === ROLES.PARENT ? "bank" : "home";
+  return "home";
 }
 
 function buildLoginSession(user) {
