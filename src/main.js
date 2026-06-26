@@ -860,6 +860,19 @@ function renderDirectorAllChildManager(user) {
         <h2>전체 아이관리</h2>
       </div>
       <section class="director-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">원장 운영 기능</p>
+            <h2>반 등록 · 교사 초대</h2>
+          </div>
+        </div>
+        <div class="director-action-grid">
+          <button class="primary-button" type="button" data-open-detail="classes">+ 반 등록</button>
+          <button class="ghost-button director-action-button" type="button" data-open-detail="classes">교사 초대</button>
+        </div>
+        <p class="helper-text">반 추가, 반 이름 수정/삭제, 교사 초대와 반 배정은 반 관리 화면에서 진행합니다.</p>
+      </section>
+      <section class="director-card">
         <button class="primary-button" type="button" data-toggle-all-child-form>+ 아이 등록</button>
         ${
           session.showAllChildForm
