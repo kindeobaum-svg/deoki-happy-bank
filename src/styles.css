@@ -868,6 +868,12 @@ select:focus-visible {
   gap: 10px;
 }
 
+.assigned-teacher {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .classroom-actions {
   display: flex;
   align-items: center;

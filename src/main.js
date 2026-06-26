@@ -29,6 +29,7 @@ import {
   getVisibleMissionHistory,
   getVisibleAccountSummary,
   getVisibleTransactions,
+  inviteTeacherToClass,
   normalizeBankAccounts,
   normalizeDailyMissions,
   normalizeMissionIntegrity,
@@ -1040,6 +1041,30 @@ function renderClassroomManager(user) {
         </form>
         <p class="helper-text">예: 숲속향기반, 하얀 구름반, 파란하늘반, 푸른새</p>
       </section>
+      <section class="director-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">교사 초대</p>
+            <h2>교사를 반에 배정</h2>
+          </div>
+        </div>
+        <form id="teacher-invite-form">
+          <label>
+            교사 이름
+            <input name="name" type="text" placeholder="예: 김하늘 선생님" required maxlength="20" />
+          </label>
+          <label>
+            배정할 반
+            <select name="classId" required>
+              ${state.classes
+                .map((classroom) => `<option value="${classroom.id}">${escapeHtml(classroom.name)}</option>`)
+                .join("")}
+            </select>
+          </label>
+          <button class="primary-button" type="submit">교사 초대 / 반 배정</button>
+        </form>
+        <p class="helper-text">교사는 배정된 한 반 아이만 조회하고 관리할 수 있습니다.</p>
+      </section>
       <section class="card-section compact">
         <div class="section-heading">
           <h2>등록된 반</h2>
@@ -1053,6 +1078,7 @@ function renderClassroomManager(user) {
 
 function renderClassroomRow(classroom) {
   const childCount = state.children.filter((child) => child.classId === classroom.id).length;
+  const teacher = state.users.find((item) => item.role === ROLES.TEACHER && item.classId === classroom.id);
 
   return `
     <article class="classroom-row">
@@ -1060,6 +1086,7 @@ function renderClassroomRow(classroom) {
         <label>
           반 이름
           <input name="name" type="text" value="${escapeHtml(classroom.name)}" required maxlength="30" />
+          <small class="assigned-teacher">담당 교사: ${escapeHtml(teacher?.name ?? "미배정")}</small>
         </label>
         <div class="classroom-actions">
           <span class="mini-badge">${childCount}명</span>
@@ -2483,7 +2510,8 @@ app.addEventListener("submit", (event) => {
       "class-child-form",
       "teacher-child-form",
       "invite-code-form",
-      "classroom-form"
+      "classroom-form",
+      "teacher-invite-form"
     ].includes(event.target.id) &&
     !event.target.classList.contains("classroom-edit-form") &&
     !event.target.classList.contains("class-child-edit-form") &&
@@ -2665,6 +2693,18 @@ app.addEventListener("submit", (event) => {
         name: formData.get("name")
       });
       setToast("반이 추가되었습니다.");
+      session.detailScreen = {
+        type: "classes",
+        childId: null
+      };
+    }
+
+    if (event.target.id === "teacher-invite-form") {
+      state = inviteTeacherToClass(state, getCurrentUser(), {
+        name: formData.get("name"),
+        classId: formData.get("classId")
+      });
+      setToast("교사가 초대되고 반에 배정되었습니다.");
       session.detailScreen = {
         type: "classes",
         childId: null

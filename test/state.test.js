@@ -23,6 +23,7 @@ import {
   getVisibleGrowthRecords,
   getVisibleMissionHistory,
   getVisibleTransactions,
+  inviteTeacherToClass,
   normalizeDailyMissions,
   normalizeMissionIntegrity,
   normalizeMissionCompletionArtifacts,
@@ -121,6 +122,31 @@ describe("classroom management", () => {
     const director = getUser(data, "director-1");
 
     assert.throws(() => deleteClassroom(data, director, "sun"), /아이들이 등록된 반/);
+  });
+
+  it("lets the director invite a teacher to a selected classroom", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const updated = inviteTeacherToClass(data, director, {
+      name: "정다정 선생님",
+      classId: "sun"
+    });
+    const teacher = updated.users.find((user) => user.role === ROLES.TEACHER && user.classId === "sun");
+
+    assert.equal(teacher.name, "정다정 선생님");
+    assert.deepEqual(
+      getVisibleChildren(updated, teacher).map((child) => child.classId),
+      ["sun", "sun"]
+    );
+    assert.equal(getVisibleChildren(updated, teacher).some((child) => child.classId === "star"), false);
+    assert.throws(
+      () =>
+        inviteTeacherToClass(data, getUser(data, "teacher-sun"), {
+          name: "권한 없음",
+          classId: "star"
+        }),
+      /원장만 교사를 초대/
+    );
   });
 });
 

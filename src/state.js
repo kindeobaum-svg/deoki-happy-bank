@@ -596,6 +596,58 @@ export function updateClassroom(data, user, classId, classInput = {}) {
   };
 }
 
+export function inviteTeacherToClass(data, user, teacherInput = {}) {
+  if (!user || user.role !== ROLES.DIRECTOR) {
+    throw new Error("원장만 교사를 초대할 수 있습니다.");
+  }
+
+  const name = String(teacherInput.name ?? "").trim();
+  if (!name) {
+    throw new Error("교사 이름을 입력해주세요.");
+  }
+
+  const classId = String(teacherInput.classId ?? "").trim();
+  const classroom = getClass(data, classId);
+  if (!classroom) {
+    throw new Error("교사를 배정할 반을 선택해주세요.");
+  }
+
+  const existingTeacher = data.users.find((item) => item.role === ROLES.TEACHER && item.classId === classId);
+  const existingUserIds = new Set(data.users.map((item) => item.id));
+  let teacherId = existingTeacher?.id ?? `teacher-${classId}`;
+  let suffix = 2;
+  while (!existingTeacher && existingUserIds.has(teacherId)) {
+    teacherId = `teacher-${classId}-${suffix}`;
+    suffix += 1;
+  }
+
+  const teacher = {
+    id: teacherId,
+    role: ROLES.TEACHER,
+    name,
+    classId,
+    title: "교사용",
+    description: `${classroom.name} 아이만 조회하고 미션을 생성합니다.`,
+    invitedAt: toDateKey(),
+    invitedBy: user.id
+  };
+
+  return {
+    ...data,
+    classes: data.classes.map((item) =>
+      item.id === classId
+        ? {
+            ...item,
+            teacherId
+          }
+        : item
+    ),
+    users: existingTeacher
+      ? data.users.map((item) => (item.id === existingTeacher.id ? { ...item, ...teacher } : item))
+      : [...data.users, teacher]
+  };
+}
+
 export function deleteClassroom(data, user, classId) {
   if (!user || user.role !== ROLES.DIRECTOR) {
     throw new Error("원장만 반을 삭제할 수 있습니다.");
