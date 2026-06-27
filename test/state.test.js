@@ -228,6 +228,35 @@ describe("invite code login", () => {
     );
   });
 
+  it("accepts invite codes with extra spaces and mobile dash variants", () => {
+    const data = createInitialData("2026-06-09");
+    const result = signInParentWithInviteCode(data, {
+      inviteCode: " dk–minjun–2026 "
+    });
+
+    assert.equal(result.user.id, "parent-minjun");
+  });
+
+  it("repairs missing generated invite records when the child exists", () => {
+    const data = createInitialData("2026-06-09");
+    const director = getUser(data, "director-1");
+    const registered = registerChild(data, director, {
+      name: "한지우",
+      classId: "sun"
+    });
+    const child = registered.children.find((item) => item.name === "한지우");
+    const missingInviteData = {
+      ...registered,
+      inviteCodes: registered.inviteCodes.filter((invite) => invite.childId !== child.id)
+    };
+    const result = signInParentWithInviteCode(missingInviteData, {
+      inviteCode: `DK-CHILD-${child.id.replace("child-", "").padStart(6, "0")}`
+    });
+
+    assert.deepEqual(result.user.childIds, [child.id]);
+    assert.ok(result.data.inviteCodes.some((invite) => invite.childId === child.id && invite.active));
+  });
+
   it("keeps parent visibility limited when restoring with invite code only", () => {
     const data = createInitialData("2026-06-09");
     const result = signInParentWithInviteCode(data, {
@@ -358,7 +387,7 @@ describe("invite code login", () => {
 
     assert.equal(activeInvites.length, 1);
     assert.ok(inactiveInvites.some((invite) => invite.code === "DK-MINJUN-2026"));
-    assert.throws(() => signInParentWithInviteCode(reissued, { inviteCode: "DK-MINJUN-2026" }), /유효하지 않은/);
+    assert.throws(() => signInParentWithInviteCode(reissued, { inviteCode: "DK-MINJUN-2026" }), /새 초대코드/);
     assert.deepEqual(
       getVisibleChildren(signInParentWithInviteCode(reissued, { inviteCode: activeInvites[0].code }).data, getUser(reissued, "parent-minjun")).map((child) => child.id),
       ["child-minjun"]

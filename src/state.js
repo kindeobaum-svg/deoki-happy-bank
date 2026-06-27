@@ -199,17 +199,25 @@ function makeInviteCodeForChild(child) {
   return `DK-CHILD-${getChildInviteCodePart(child.id)}`;
 }
 
+function normalizeInviteCode(value = "") {
+  return String(value)
+    .trim()
+    .replace(/[‐‑‒–—―]/g, "-")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+}
+
 function makeUniqueInviteCode(data, child) {
   const base = makeInviteCodeForChild(child);
-  const existingCodes = new Set((data.inviteCodes ?? []).map((invite) => String(invite.code).toUpperCase()));
+  const existingCodes = new Set((data.inviteCodes ?? []).map((invite) => normalizeInviteCode(invite.code)));
 
-  if (!existingCodes.has(base.toUpperCase())) {
+  if (!existingCodes.has(normalizeInviteCode(base))) {
     return base;
   }
 
   let suffix = 2;
   let code = `${base}-${suffix}`;
-  while (existingCodes.has(code.toUpperCase())) {
+  while (existingCodes.has(normalizeInviteCode(code))) {
     suffix += 1;
     code = `${base}-${suffix}`;
   }
@@ -226,7 +234,7 @@ function dedupeParentInviteCodes(data, inviteCodes) {
       continue;
     }
 
-    const codeKey = String(invite.code).toUpperCase();
+    const codeKey = normalizeInviteCode(invite.code);
     if (!byCode.has(codeKey)) {
       byCode.set(codeKey, invite);
     }
@@ -243,9 +251,9 @@ function dedupeParentInviteCodes(data, inviteCodes) {
   const deduped = [];
   for (const [childId, invites] of byChildId.entries()) {
     const child = data.children.find((item) => item.id === childId);
-    const preferredCode = makeInviteCodeForChild(child).toUpperCase();
+    const preferredCode = normalizeInviteCode(makeInviteCodeForChild(child));
     const activeInvites = invites.filter((invite) => invite.active !== false);
-    const preferredActiveInvite = activeInvites.find((invite) => String(invite.code).toUpperCase() === preferredCode);
+    const preferredActiveInvite = activeInvites.find((invite) => normalizeInviteCode(invite.code) === preferredCode);
     const activeInvite = preferredActiveInvite ?? activeInvites[0] ?? null;
 
     for (const invite of invites) {
@@ -682,13 +690,13 @@ export function getChild(data, childId) {
 
 export function normalizeParentInviteCodes(data) {
   const inviteCodes = Array.isArray(data.inviteCodes) ? data.inviteCodes : [];
-  const existingCodes = new Set(inviteCodes.map((invite) => String(invite.code).toUpperCase()));
+  const existingCodes = new Set(inviteCodes.map((invite) => normalizeInviteCode(invite.code)));
   const activeChildIds = new Set(inviteCodes.filter((invite) => invite.active !== false).map((invite) => invite.childId));
   const canonicalInvites = DEFAULT_PARENT_INVITE_CODES.filter(
     (invite) =>
       data.children.some((child) => child.id === invite.childId) &&
       !activeChildIds.has(invite.childId) &&
-      !existingCodes.has(invite.code.toUpperCase())
+      !existingCodes.has(normalizeInviteCode(invite.code))
   );
   const invitedChildIds = new Set([
     ...inviteCodes.filter((invite) => invite.active !== false),
@@ -928,17 +936,42 @@ export function deleteChild(data, user, childId) {
 }
 
 export function signInParentWithInviteCode(data, inviteInput = {}) {
-  const code = String(inviteInput.inviteCode ?? "")
-    .trim()
-    .toUpperCase();
+  const code = normalizeInviteCode(inviteInput.inviteCode);
   const inputName = String(inviteInput.parentName ?? "").trim();
-  const invite = data.inviteCodes?.find((item) => item.active && item.code.toUpperCase() === code);
+  let workingData = normalizeParentInviteCodes(data);
+  let invite = workingData.inviteCodes?.find(
+    (item) => item.active !== false && normalizeInviteCode(item.code) === code
+  );
 
   if (!invite) {
-    throw new Error("유효하지 않은 초대코드입니다.");
+    const inactiveInvite = workingData.inviteCodes?.find(
+      (item) => item.active === false && normalizeInviteCode(item.code) === code
+    );
+    if (inactiveInvite) {
+      throw new Error("재발급된 초대코드입니다. 새 초대코드를 입력해주세요.");
+    }
+
+    const childIdPart = /^DK-CHILD-(\d{6})(?:-\d+)?$/.exec(code)?.[1];
+    const childId = childIdPart ? `child-${String(Number(childIdPart)).padStart(3, "0")}` : null;
+    const childFromCode = childId ? getChild(workingData, childId) : null;
+    if (!childFromCode) {
+      throw new Error("유효하지 않은 초대코드입니다.");
+    }
+
+    invite = {
+      code,
+      childId: childFromCode.id,
+      label: `${childFromCode.name} 학부모 초대코드`,
+      active: true,
+      createdAt: toDateKey()
+    };
+    workingData = {
+      ...workingData,
+      inviteCodes: [invite, ...(workingData.inviteCodes ?? [])]
+    };
   }
 
-  const child = getChild(data, invite.childId);
+  const child = getChild(workingData, invite.childId);
   if (!child) {
     throw new Error("초대코드에 연결된 아이를 찾을 수 없습니다.");
   }
@@ -947,13 +980,13 @@ export function signInParentWithInviteCode(data, inviteInput = {}) {
     throw new Error("학부모 이름과 초대코드가 일치하지 않습니다.");
   }
 
-  const existingParent = data.users.find(
+  const existingParent = workingData.users.find(
     (user) => user.role === ROLES.PARENT && Array.isArray(user.childIds) && user.childIds.includes(child.id)
   );
 
   if (existingParent) {
     return {
-      data,
+      data: workingData,
       user: existingParent,
       isNewUser: false
     };
@@ -972,9 +1005,9 @@ export function signInParentWithInviteCode(data, inviteInput = {}) {
 
   return {
     data: {
-      ...data,
-      users: [...data.users, user],
-      children: data.children.map((item) =>
+      ...workingData,
+      users: [...workingData.users, user],
+      children: workingData.children.map((item) =>
         item.id === child.id
           ? {
               ...item,
@@ -982,8 +1015,8 @@ export function signInParentWithInviteCode(data, inviteInput = {}) {
             }
           : item
       ),
-      inviteCodes: data.inviteCodes.map((item) =>
-        item.code === invite.code
+      inviteCodes: workingData.inviteCodes.map((item) =>
+        normalizeInviteCode(item.code) === normalizeInviteCode(invite.code)
           ? {
               ...item,
               claimedBy: user.id
