@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { DAYCARE_NAME } from "@/lib/branding";
+import { clearAppClientStorage } from "@/lib/clientStorage";
 import { getDemoAccount } from "@/lib/demoAccess";
 import type {
   AppState,
@@ -88,11 +89,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dailyReports: data.dailyReports,
       attendances: data.attendances ?? [],
       praiseRecords: (data.praiseRecords ?? []).map(normalizePraise),
-      selectedChildId:
-        prev.selectedChildId &&
-        data.children.some((c: { id: string }) => c.id === prev.selectedChildId)
-          ? prev.selectedChildId
-          : data.selectedChildId,
+      selectedChildId: data.selectedChildId,
     }));
   }, []);
 
@@ -130,6 +127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST" });
+    clearAppClientStorage();
     setState(EMPTY);
   }, []);
 

@@ -28,8 +28,25 @@ export async function createSessionToken(user: SessionUser) {
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("8h")
     .sign(getSecret());
+}
+
+/** 브라우저를 닫으면 만료되는 세션 쿠키 (maxAge 없음) */
+export function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+  };
+}
+
+export function clearSessionCookieOptions() {
+  return {
+    ...sessionCookieOptions(),
+    maxAge: 0,
+  };
 }
 
 export async function verifySessionToken(token: string): Promise<SessionUser | null> {

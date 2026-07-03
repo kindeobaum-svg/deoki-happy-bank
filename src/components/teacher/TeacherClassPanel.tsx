@@ -6,6 +6,7 @@ import {
   bootstrapClassesFromChildren,
   deleteTeacherClass,
   loadTeacherClasses,
+  mergeClassesWithChildren,
   type TeacherClass,
   updateTeacherClass,
 } from "@/lib/teacherClasses";
@@ -24,7 +25,9 @@ export function TeacherClassPanel({ children = [], onClassRenamed }: TeacherClas
   const [editName, setEditName] = useState("");
 
   function reload() {
-    setClasses(loadTeacherClasses());
+    const stored = loadTeacherClasses();
+    const childClassNames = children.map((c) => c.className);
+    setClasses(mergeClassesWithChildren(stored, childClassNames));
   }
 
   useEffect(() => {
@@ -32,7 +35,7 @@ export function TeacherClassPanel({ children = [], onClassRenamed }: TeacherClas
     const onUpdate = () => reload();
     window.addEventListener("teacher-classes-updated", onUpdate);
     return () => window.removeEventListener("teacher-classes-updated", onUpdate);
-  }, []);
+  }, [children]);
 
   function handleAdd() {
     const entry = addTeacherClass(name);
@@ -128,8 +131,14 @@ export function TeacherClassPanel({ children = [], onClassRenamed }: TeacherClas
                   <button
                     type="button"
                     onClick={() => handleDelete(cls.id)}
-                    disabled={childCount > 0}
-                    title={childCount > 0 ? "원아가 있는 반은 삭제할 수 없어요" : undefined}
+                    disabled={childCount > 0 || cls.id.startsWith("cls-db-")}
+                    title={
+                      childCount > 0
+                        ? "원아가 있는 반은 삭제할 수 없어요"
+                        : cls.id.startsWith("cls-db-")
+                          ? "원아가 등록된 반은 자동으로 표시돼요"
+                          : undefined
+                    }
                     className="teacher-mini-btn danger disabled:opacity-40"
                   >
                     삭제

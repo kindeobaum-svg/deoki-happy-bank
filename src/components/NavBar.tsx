@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { APP_NAME, DAYCARE_NAME, APP_PROJECT_LABEL } from "@/lib/branding";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useApp } from "@/hooks/useAppStore";
+import { LogoutButton } from "@/components/LogoutButton";
 import type { Role } from "@/lib/types";
 
 const staffLinks: { href: string; label: string; emoji: string; roles: Role[] }[] = [
@@ -16,8 +17,7 @@ const staffLinks: { href: string; label: string; emoji: string; roles: Role[] }[
 
 export function NavBar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { state, logout } = useApp();
+  const { state } = useApp();
   const user = state.user;
   const isParent = user?.role === "PARENT";
 
@@ -27,12 +27,6 @@ export function NavBar() {
     ? staffLinks.filter((l) => l.roles.includes(user.role))
     : [];
 
-  async function handleLogout() {
-    await logout();
-    router.push("/login");
-    router.refresh();
-  }
-
   if (isParent) {
     return (
       <header className="parent-topbar sticky top-0 z-40">
@@ -41,9 +35,7 @@ export function NavBar() {
             <span className="parent-logo-badge">🌲</span>
             <span className="font-title text-base text-white">{APP_NAME}</span>
           </Link>
-          <button type="button" onClick={handleLogout} className="parent-logout-btn">
-            나가기
-          </button>
+          <LogoutButton className="parent-logout-btn">로그아웃</LogoutButton>
         </div>
       </header>
     );
@@ -65,9 +57,7 @@ export function NavBar() {
         </Link>
         <div className="flex items-center gap-2">
           {user ? (
-            <button type="button" onClick={handleLogout} className="btn-soft px-3 py-1.5 text-xs">
-              나가기
-            </button>
+            <LogoutButton className="btn-soft px-3 py-1.5 text-xs">로그아웃</LogoutButton>
           ) : (
             <Link href="/login/parent" className="btn-primary px-3 py-1.5 text-xs">
               시작하기

@@ -757,6 +757,10 @@ body:has(.parent-main) {
   cursor: pointer;
   text-decoration: none;
   user-select: none;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  width: 100%;
 }
 
 .bottom-nav-item:active:not(.active) {

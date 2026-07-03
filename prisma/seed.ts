@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/db";
 
 async function main() {
+  await prisma.inviteCode.deleteMany();
   await prisma.pushSubscription.deleteMany();
   await prisma.praiseRecord.deleteMany();
   await prisma.attendance.deleteMany();

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { COOKIE_NAME, createSessionToken } from "@/lib/auth";
+import { COOKIE_NAME, createSessionToken, sessionCookieOptions } from "@/lib/auth";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -50,13 +50,7 @@ export async function POST(request: Request) {
     },
   });
 
-  response.cookies.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+  response.cookies.set(COOKIE_NAME, token, sessionCookieOptions());
 
   return response;
 }

@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { PassbookLink } from "@/components/HappinessPassbook";
-import { DAYCARE_NAME } from "@/lib/branding";
+import { ParentHero } from "@/components/parent/ParentHero";
+import { StatBubble } from "@/components/parent/EmotionCard";
+import { EmotionCard } from "@/components/parent/EmotionCard";
+import { InviteTeacherPanel } from "@/components/admin/InviteTeacherPanel";
+import { ChildProfileAvatar } from "@/components/ChildProfileAvatar";
+import { useRequireRole } from "@/hooks/useRequireRole";
+import { DAYCARE_NAME, PASSBOOK_NAME } from "@/lib/branding";
 import { getTreeStage, TREE_LABELS } from "@/lib/tree";
 
 type AdminStats = {
@@ -33,6 +38,7 @@ type AdminStats = {
 };
 
 export default function AdminPage() {
+  useRequireRole("DIRECTOR");
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,116 +50,118 @@ export default function AdminPage() {
   }, []);
 
   if (loading) {
-    return <p className="text-center text-green-700">관리 현황 불러오는 중...</p>;
+    return (
+      <div className="parent-page">
+        <ParentHero greeting="원장 관리" childName={DAYCARE_NAME} childAvatar="🏫" subtitle="현황 불러오는 중..." />
+        <p className="py-8 text-center text-sm text-white/80">관리 현황 불러오는 중...</p>
+      </div>
+    );
   }
 
   if (!stats) {
-    return <p className="text-center text-red-600">데이터를 불러올 수 없습니다.</p>;
+    return (
+      <div className="parent-page">
+        <ParentHero greeting="원장 관리" childName={DAYCARE_NAME} childAvatar="🏫" />
+        <p className="py-8 text-center text-sm text-red-600">데이터를 불러올 수 없습니다.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-5">
-      <header>
-        <p className="text-sm font-semibold text-green-600">원장 관리자</p>
-        <h1
-          className="mt-1 text-2xl font-bold text-green-900"
-          style={{ fontFamily: "var(--font-jua)" }}
-        >
-          {DAYCARE_NAME} 현황
-        </h1>
-      </header>
+    <div className="parent-page">
+      <ParentHero
+        greeting="원장 관리"
+        childName={DAYCARE_NAME}
+        childAvatar="🏫"
+        subtitle="전체 원아 · 반 · 초대 · 적립 한눈에"
+      />
 
-      <section className="grid grid-cols-2 gap-3">
-        <StatCard label="전체 원아" value={`${stats.totalChildren}명`} emoji="👶" />
-        <StatCard label="총 적립액" value={`${stats.totalSaved.toLocaleString()}원`} emoji="💰" />
-        <StatCard label="오늘 적립" value={`${stats.todaySaves}건`} emoji="✨" />
-        <StatCard label="학부모·교사" value={`${stats.parentCount}·${stats.teacherCount}`} emoji="👥" />
+      <div className="forest-stat-row animate-card-enter animate-card-enter-delay-1">
+        <StatBubble label="전체 원아" value={`${stats.totalChildren}명`} emoji="👶" variant="green" />
+        <StatBubble
+          label="총 적립액"
+          value={stats.totalSaved.toLocaleString()}
+          emoji="💰"
+          variant="gold"
+        />
+        <StatBubble label="오늘 적립" value={`${stats.todaySaves}건`} emoji="✨" variant="peach" />
+      </div>
+
+      <section className="forest-card animate-card-enter animate-card-enter-delay-2">
+        <div className="forest-card-body py-3 text-center">
+          <p className="text-xs font-bold text-[var(--sage-600)]">학부모 · 교사</p>
+          <p className="mt-1 font-display text-xl font-bold text-[var(--sage-800)]">
+            {stats.parentCount} · {stats.teacherCount}
+          </p>
+        </div>
       </section>
 
-      <section className="card-warm rounded-3xl p-5">
-        <p className="text-sm font-bold text-green-800">원아별 행복 적립 통장</p>
-        <ul className="mt-3 space-y-3">
+      <div className="animate-card-enter animate-card-enter-delay-2">
+        <InviteTeacherPanel />
+      </div>
+
+      <section className="forest-card forest-card-ledger animate-card-enter animate-card-enter-delay-3">
+        <div className="forest-card-header">
+          <div className="parent-section-title">
+            <span className="text-2xl">📒</span>
+            원아별 {PASSBOOK_NAME}
+          </div>
+          <span className="text-xs font-semibold text-[var(--sage-600)]">전체 반 · 전체 원아</span>
+        </div>
+        <div className="forest-card-body space-y-2 pt-2">
           {stats.children.map((child) => {
             const stage = getTreeStage(child.points);
             return (
-              <li
-                key={child.id}
-                className="rounded-2xl bg-white px-4 py-3"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{child.avatar}</span>
-                    <div>
-                      <p className="font-semibold text-green-900">{child.name}</p>
-                      <p className="text-xs text-green-600">
-                        {child.className} · {child.accountNumber}
-                      </p>
-                      <p className="text-xs text-green-500">{TREE_LABELS[stage]}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-green-800">
-                      {child.totalSaved.toLocaleString()}원
-                    </p>
-                    <PassbookLink childId={child.id} label="통장" />
-                  </div>
+              <div key={child.id} className="forest-praise-item">
+                <ChildProfileAvatar avatar={child.avatar} name={child.name} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="forest-praise-text">{child.name}</p>
+                  <p className="mt-0.5 text-xs text-[var(--ink-soft)]">
+                    {child.className} · {child.accountNumber}
+                  </p>
+                  <p className="text-[10px] font-semibold text-[var(--sage-600)]">{TREE_LABELS[stage]}</p>
                 </div>
-              </li>
+                <div className="shrink-0 text-right">
+                  <p className="font-bold text-[var(--sage-800)]">
+                    {child.totalSaved.toLocaleString()}원
+                  </p>
+                  <Link href={`/passbook?child=${child.id}`} className="forest-link-btn mt-1 inline-block text-xs">
+                    통장 →
+                  </Link>
+                </div>
+              </div>
             );
           })}
-        </ul>
+        </div>
       </section>
 
-      <section className="card-warm rounded-3xl p-5">
-        <p className="text-sm font-bold text-green-800">최근 적립 활동</p>
-        <ul className="mt-3 space-y-2">
+      <section className="forest-card animate-card-enter animate-card-enter-delay-4">
+        <div className="forest-card-header">
+          <div className="parent-section-title">
+            <span className="text-2xl">✨</span>
+            최근 적립 활동
+          </div>
+        </div>
+        <div className="forest-card-body space-y-2 pt-2">
           {stats.recentSaves.map((save) => (
-            <li key={save.id} className="rounded-2xl bg-white px-4 py-3 text-sm">
-              <span className="font-semibold text-green-900">
-                {save.childAvatar} {save.childName}
-              </span>
-              {" · "}
-              {save.message}
-              <span className="float-right font-bold text-green-600">
+            <div key={save.id} className="forest-praise-item">
+              <span className="forest-praise-emoji">{save.childAvatar}</span>
+              <div className="min-w-0 flex-1">
+                <p className="forest-praise-text">{save.childName}</p>
+                <p className="mt-0.5 text-xs text-[var(--ink-soft)]">{save.message}</p>
+              </div>
+              <span className="shrink-0 font-bold text-[var(--sage-600)]">
                 +{save.amount.toLocaleString()}원
               </span>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3">
-        <Link
-          href="/teacher"
-          className="card-warm rounded-2xl p-4 text-center text-sm font-semibold text-green-800"
-        >
-          👩‍🏫 교사 관리
-        </Link>
-        <Link
-          href="/passbook"
-          className="card-warm rounded-2xl p-4 text-center text-sm font-semibold text-green-800"
-        >
-          📒 통장 전체
-        </Link>
+      <section className="space-y-2.5 animate-card-enter animate-card-enter-delay-4">
+        <EmotionCard href="/teacher" emoji="👩‍🏫" title="교사 관리" desc="반 · 원아 · 미션 적립" />
+        <EmotionCard href="/passbook" emoji="📒" title={`${PASSBOOK_NAME} 전체`} desc="원아별 통장 보기" variant="peach" />
       </section>
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  emoji,
-}: {
-  label: string;
-  value: string;
-  emoji: string;
-}) {
-  return (
-    <div className="card-warm rounded-2xl p-4 text-center">
-      <span className="text-2xl">{emoji}</span>
-      <p className="mt-1 text-xs text-green-600">{label}</p>
-      <p className="text-lg font-bold text-green-900">{value}</p>
     </div>
   );
 }

@@ -55,6 +55,26 @@ export function findClassName(classes: TeacherClass[], classId: string): string 
   return classes.find((c) => c.id === classId)?.name ?? "";
 }
 
+/** localStorage 반 목록과 DB 원아 반 이름을 합쳐 모두 표시 (원장·교사 공통) */
+export function mergeClassesWithChildren(
+  stored: TeacherClass[],
+  childClassNames: string[],
+): TeacherClass[] {
+  const byName = new Map<string, TeacherClass>();
+  for (const cls of stored) {
+    byName.set(cls.name, cls);
+  }
+  for (const name of childClassNames) {
+    const trimmed = name.trim();
+    if (!trimmed || byName.has(trimmed)) continue;
+    byName.set(trimmed, {
+      id: `cls-db-${trimmed}`,
+      name: trimmed,
+    });
+  }
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+}
+
 export function bootstrapClassesFromChildren(classNames: string[]) {
   if (loadTeacherClasses().length > 0) return;
   const unique = [...new Set(classNames.filter(Boolean))];

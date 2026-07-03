@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Child } from "@/lib/types";
-import { loadTeacherClasses, type TeacherClass } from "@/lib/teacherClasses";
+import { loadTeacherClasses, mergeClassesWithChildren, type TeacherClass } from "@/lib/teacherClasses";
 import { ChildProfileAvatar } from "@/components/ChildProfileAvatar";
 import { ChildPhotoChangeButton } from "@/components/ChildPhotoChangeButton";
+import { InviteParentButton } from "@/components/teacher/InviteParentButton";
 
 type TeacherChildPanelProps = {
   children: Child[];
@@ -31,14 +32,16 @@ export function TeacherChildPanel({
 
   useEffect(() => {
     function reload() {
-      const loaded = loadTeacherClasses();
-      setClasses(loaded);
-      setSelectedClass((prev) => prev || loaded[0]?.name || "");
+      const stored = loadTeacherClasses();
+      const childClassNames = children.map((c) => c.className);
+      const merged = mergeClassesWithChildren(stored, childClassNames);
+      setClasses(merged);
+      setSelectedClass((prev) => prev || merged[0]?.name || "");
     }
     reload();
     window.addEventListener("teacher-classes-updated", reload);
     return () => window.removeEventListener("teacher-classes-updated", reload);
-  }, []);
+  }, [children]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Child[]>();
@@ -160,6 +163,7 @@ export function TeacherChildPanel({
                               onPhotoChange={handlePhotoChange}
                               compact
                             />
+                            <InviteParentButton childId={child.id} childName={child.name} />
                           </>
                         )}
                       </div>

@@ -1,8 +1,8 @@
-const CACHE = "haengbok-v1";
-const ASSETS = ["/", "/login", "/child", "/parent", "/teacher", "/manifest.webmanifest"];
+const CACHE = "haengbok-v2";
+const PRECACHE = ["/manifest.webmanifest", "/icons/icon-192.svg"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
   self.skipWaiting();
 });
 
@@ -15,19 +15,38 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+function isNavigationRequest(request) {
+  return (
+    request.mode === "navigate" ||
+    request.headers.get("accept")?.includes("text/html")
+  );
+}
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.pathname.startsWith("/api")) return;
+  if (url.pathname.startsWith("/_next/")) return;
+
+  // HTML/페이지는 항상 네트워크 우선 — 예전 UI 캐시 방지
+  if (isNavigationRequest(event.request)) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request)),
+    );
+    return;
+  }
 
   event.respondWith(
-    fetch(event.request)
-      .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request).then((res) => {
+        if (res.ok && url.pathname.startsWith("/icons/")) {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        }
         return res;
-      })
-      .catch(() => caches.match(event.request)),
+      });
+    }),
   );
 });
 

@@ -20,6 +20,11 @@ enum AttendanceStatus {
   ABSENT
 }
 
+enum InviteTargetRole {
+  PARENT
+  TEACHER
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -30,6 +35,8 @@ model User {
   child        Child?   @relation(fields: [childId], references: [id])
   createdAt    DateTime @default(now())
   pushSubs     PushSubscription[]
+  invitesCreated InviteCode[] @relation("InviteCreatedBy")
+  invitesUsed    InviteCode[] @relation("InviteUsedBy")
 }
 
 model Child {
@@ -45,6 +52,24 @@ model Child {
   dailyReports DailyReport[]
   attendances  Attendance[]
   praiseRecords PraiseRecord[]
+  inviteCodes  InviteCode[]
+}
+
+model InviteCode {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  targetRole  InviteTargetRole
+  childId     String?
+  child       Child?           @relation(fields: [childId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User             @relation("InviteCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  usedAt      DateTime?
+  usedById    String?
+  usedBy      User?            @relation("InviteUsedBy", fields: [usedById], references: [id])
+  createdAt   DateTime         @default(now())
+
+  @@index([childId])
+  @@index([createdById])
 }
 
 model SaveRecord {

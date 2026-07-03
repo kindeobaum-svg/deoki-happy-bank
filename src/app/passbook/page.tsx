@@ -2,12 +2,31 @@
 
 import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { HappinessPassbook } from "@/components/HappinessPassbook";
 import { LocalPassbookView } from "@/components/LocalPassbookView";
 import { ParentHero } from "@/components/parent/ParentHero";
 import { PASSBOOK_NAME, PASSBOOK_TAGLINE } from "@/lib/branding";
 import { useApp } from "@/hooks/useAppStore";
 import { useLocalPassbook } from "@/hooks/useLocalPassbook";
+import { buildPassbookEntries } from "@/lib/passbook";
+import type { LocalPassbookEntry } from "@/lib/localPassbook";
+
+function recordsToForestEntries(
+  childId: string,
+  childName: string,
+  records: { id: string; childId: string; amount: number; message: string; createdAt: string }[],
+): LocalPassbookEntry[] {
+  const entries = buildPassbookEntries(records);
+  return entries.map((entry) => ({
+    id: entry.id,
+    childId,
+    childName,
+    date: entry.date,
+    item: entry.message,
+    amount: entry.amount,
+    cumulative: entry.balance,
+    type: "deposit" as const,
+  }));
+}
 
 function PassbookContent() {
   const { state, selectedChild, selectChild } = useApp();
@@ -78,8 +97,41 @@ function PassbookContent() {
   }
 
   return (
-    <div className="space-y-4 pt-1">
-      <HappinessPassbook child={child} records={records} />
+    <div className="parent-page">
+      <ParentHero
+        greeting={PASSBOOK_NAME}
+        childName={child.name}
+        childAvatar={child.avatar}
+        subtitle={`${child.className} · ${PASSBOOK_TAGLINE}`}
+      />
+
+      {state.children.length > 1 && (
+        <section className="forest-card -mt-2 animate-card-enter">
+          <div className="forest-card-body py-3">
+            <p className="mb-2 text-xs font-semibold text-[var(--sage-600)]">{PASSBOOK_NAME} 선택</p>
+            <div className="forest-child-picker">
+              {state.children.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => selectChild(c.id)}
+                  className={`forest-child-chip tap-scale ${child.id === c.id ? "active" : ""}`}
+                >
+                  <span>{c.avatar}</span>
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <div className="animate-card-enter animate-card-enter-delay-1">
+        <LocalPassbookView
+          child={child}
+          entries={recordsToForestEntries(child.id, child.name, records)}
+        />
+      </div>
     </div>
   );
 }

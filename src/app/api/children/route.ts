@@ -3,9 +3,14 @@ import type { Role } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { pickChildAvatar } from "@/lib/childAvatars";
+import { generateUniqueChildInviteCode } from "@/lib/childInviteCode";
 
 function canManageChildren(role: Role) {
   return role === "TEACHER" || role === "DIRECTOR";
+}
+
+async function generateUniqueAccountNumber(): Promise<string> {
+  return generateUniqueChildInviteCode(prisma);
 }
 
 export async function POST(request: Request) {
@@ -23,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "원아 이름과 반을 입력해 주세요." }, { status: 400 });
   }
 
-  const accountNumber = `HB-${Date.now().toString(36).toUpperCase()}`;
+  const accountNumber = await generateUniqueAccountNumber();
 
   const child = await prisma.child.create({
     data: {
