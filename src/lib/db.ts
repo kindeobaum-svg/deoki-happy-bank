@@ -1,54 +1,19 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
+import { getVercelSqliteUrl } from "@/lib/demoDb";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
-function resolveBundledDemoDbPath(): string | null {
-  const relative = path.join("prisma", "demo.db");
-  const legacyRelative = path.join("prisma", "prisma", "demo.db");
-  let root = process.cwd();
-
-  for (let depth = 0; depth < 8; depth++) {
-    for (const rel of [relative, legacyRelative]) {
-      const candidate = path.join(root, rel);
-      if (fs.existsSync(candidate)) return candidate;
-    }
-    const parent = path.dirname(root);
-    if (parent === root) break;
-    root = parent;
-  }
-
-  return null;
-}
-
-function copyBundledSqliteToTmp(): string | null {
-  const bundledPath = resolveBundledDemoDbPath();
-  if (!bundledPath) return null;
-
-  const tmpPath = path.join(os.tmpdir(), "haengbok-demo.db");
-
-  try {
-    if (!fs.existsSync(tmpPath)) {
-      fs.copyFileSync(bundledPath, tmpPath);
-    }
-    return `file:${tmpPath}`;
-  } catch (error) {
-    console.error("Failed to prepare SQLite database on Vercel:", error);
-    return null;
-  }
-}
-
 function resolveSqliteUrl(): string {
-  const vercelTmpUrl = process.env.VERCEL ? copyBundledSqliteToTmp() : null;
-  if (vercelTmpUrl) return vercelTmpUrl;
+  if (process.env.VERCEL) {
+    const vercelUrl = getVercelSqliteUrl();
+    if (vercelUrl) return vercelUrl;
+  }
 
   const configured = process.env.DATABASE_URL;
   if (configured?.startsWith("file:")) return configured;
 
-  return "file:./prisma/dev.db";
+  return "file:./dev.db";
 }
 
 function createPrismaClient(): PrismaClient {
