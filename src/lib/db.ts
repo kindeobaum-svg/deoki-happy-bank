@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
@@ -6,20 +7,30 @@ import { PrismaLibSql } from "@prisma/adapter-libsql";
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 function resolveBundledDemoDbPath(): string | null {
-  const candidates = [
-    path.join(process.cwd(), "prisma", "demo.db"),
-    // legacy mis-path from DATABASE_URL=file:./prisma/demo.db (relative to schema dir)
-    path.join(process.cwd(), "prisma", "prisma", "demo.db"),
-  ];
-  return candidates.find((candidate) => fs.existsSync(candidate)) ?? null;
+  const relative = path.join("prisma", "demo.db");
+  const legacyRelative = path.join("prisma", "prisma", "demo.db");
+  let root = process.cwd();
+
+  for (let depth = 0; depth < 8; depth++) {
+    for (const rel of [relative, legacyRelative]) {
+      const candidate = path.join(root, rel);
+      if (fs.existsSync(candidate)) return candidate;
+    }
+    const parent = path.dirname(root);
+    if (parent === root) break;
+    root = parent;
+  }
+
+  return null;
 }
 
 function copyBundledSqliteToTmp(): string | null {
-  const tmpPath = "/tmp/haengbok-demo.db";
   const bundledPath = resolveBundledDemoDbPath();
+  if (!bundledPath) return null;
+
+  const tmpPath = path.join(os.tmpdir(), "haengbok-demo.db");
 
   try {
-    if (!bundledPath) return null;
     if (!fs.existsSync(tmpPath)) {
       fs.copyFileSync(bundledPath, tmpPath);
     }
