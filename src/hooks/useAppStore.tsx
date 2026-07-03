@@ -63,34 +63,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const meRes = await fetch("/api/auth/me");
-    if (!meRes.ok) {
-      setState(EMPTY);
-      return;
-    }
-    const { user } = (await meRes.json()) as { user: User | null };
-    if (!user) {
-      setState(EMPTY);
-      return;
-    }
+    try {
+      const meRes = await fetch("/api/auth/me");
+      if (!meRes.ok) {
+        setState(EMPTY);
+        return;
+      }
+      const { user } = (await meRes.json()) as { user: User | null };
+      if (!user) {
+        setState(EMPTY);
+        return;
+      }
 
-    const dataRes = await fetch("/api/data");
-    if (!dataRes.ok) {
-      setState({ ...EMPTY, user });
-      return;
-    }
+      const dataRes = await fetch("/api/data");
+      if (!dataRes.ok) {
+        setState({ ...EMPTY, user });
+        return;
+      }
 
-    const data = await dataRes.json();
-    setState((prev) => ({
-      user,
-      children: data.children.map(normalizeChild),
-      saveRecords: data.saveRecords.map(normalizeRecord),
-      announcements: data.announcements.map(normalizeAnnouncement),
-      dailyReports: data.dailyReports,
-      attendances: data.attendances ?? [],
-      praiseRecords: (data.praiseRecords ?? []).map(normalizePraise),
-      selectedChildId: data.selectedChildId,
-    }));
+      const data = await dataRes.json();
+      setState((prev) => ({
+        user,
+        children: data.children.map(normalizeChild),
+        saveRecords: data.saveRecords.map(normalizeRecord),
+        announcements: data.announcements.map(normalizeAnnouncement),
+        dailyReports: data.dailyReports,
+        attendances: data.attendances ?? [],
+        praiseRecords: (data.praiseRecords ?? []).map(normalizePraise),
+        selectedChildId: data.selectedChildId,
+      }));
+    } catch {
+      setState(EMPTY);
+    }
   }, []);
 
   useEffect(() => {
@@ -278,14 +282,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteChild,
     ],
   );
-
-  if (loading) {
-    return (
-      <div className="loading-screen flex min-h-full items-center justify-center">
-        <p className="text-lg text-green-700">{DAYCARE_NAME} 불러오는 중...</p>
-      </div>
-    );
-  }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

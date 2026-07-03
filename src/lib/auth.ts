@@ -12,9 +12,11 @@ export type SessionUser = {
 
 const COOKIE_NAME = "haengbok-session";
 
+/** .env.example 과 동일 — Vercel에 AUTH_SECRET 미설정 시에도 데모 세션 서명에 사용 */
+const DEFAULT_AUTH_SECRET = "change-me-in-production-use-long-random-string";
+
 function getSecret() {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) throw new Error("AUTH_SECRET is not set");
+  const secret = process.env.AUTH_SECRET || DEFAULT_AUTH_SECRET;
   return new TextEncoder().encode(secret);
 }
 

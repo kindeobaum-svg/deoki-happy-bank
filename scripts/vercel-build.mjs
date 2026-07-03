@@ -6,11 +6,15 @@ const hasTurso =
   process.env.TURSO_DATABASE_URL?.startsWith("libsql:") &&
   Boolean(process.env.TURSO_AUTH_TOKEN);
 
+const demoDbEnv = { ...process.env, DATABASE_URL: "file:./prisma/demo.db" };
+
 if (hasTurso) {
   console.log("Turso detected — running prisma migrate deploy");
   execSync("prisma migrate deploy", { stdio: "inherit" });
 } else {
-  console.log("Using bundled SQLite (demo mode) — skipping migrate deploy");
+  console.log("Building bundled SQLite demo database (prisma/demo.db)...");
+  execSync("prisma migrate deploy", { stdio: "inherit", env: demoDbEnv });
+  execSync("npm run db:seed", { stdio: "inherit", env: demoDbEnv });
 }
 
 execSync("next build", { stdio: "inherit" });

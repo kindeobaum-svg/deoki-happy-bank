@@ -27,7 +27,7 @@ export function QuickRoleEnter({
   redirect,
   autoEnter = false,
 }: QuickRoleEnterProps) {
-  const { state, loading: appLoading, enterAsRole } = useApp();
+  const { state, enterAsRole } = useApp();
   const router = useRouter();
   const [entering, setEntering] = useState(false);
   const [error, setError] = useState("");
@@ -36,7 +36,7 @@ export function QuickRoleEnter({
   const target = redirect ?? demo.redirect;
 
   const enter = useCallback(async () => {
-    if (entering || appLoading) return;
+    if (entering) return;
 
     if (state.user?.role === role) {
       router.push(target);
@@ -56,20 +56,20 @@ export function QuickRoleEnter({
 
     router.push(target);
     router.refresh();
-  }, [appLoading, entering, enterAsRole, role, router, state.user?.role, target]);
+  }, [entering, enterAsRole, role, router, state.user?.role, target]);
 
   useEffect(() => {
-    if (!autoEnter || appLoading || started.current) return;
+    if (!autoEnter || started.current) return;
     started.current = true;
     void enter();
-  }, [autoEnter, appLoading, enter]);
+  }, [autoEnter, enter]);
 
   if (autoEnter) {
     return (
       <div className="quick-enter-loading">
         <p className="quick-enter-loading-emoji float-gentle">{emoji}</p>
         <p className="mt-4 font-title text-base text-[var(--passbook-navy-deep)]">
-          {entering || appLoading ? `${demo.label}의 통장을 여는 중...` : title}
+          {entering ? `${demo.label}의 통장을 여는 중...` : title}
         </p>
         {error && (
           <p className="mt-3 rounded-xl bg-red-50 px-4 py-2 text-center text-sm text-red-600">
@@ -80,7 +80,7 @@ export function QuickRoleEnter({
     );
   }
 
-  const busy = entering || appLoading;
+  const busy = entering;
 
   return (
     <button
