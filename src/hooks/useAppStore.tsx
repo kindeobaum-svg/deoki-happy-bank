@@ -65,11 +65,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const meRes = await fetch("/api/auth/me");
-      if (!meRes.ok) {
+      const meBody = (await meRes.json().catch(() => ({}))) as { user?: User | null };
+      if (!meRes.ok && meBody.user === undefined) {
         setState(EMPTY);
         return;
       }
-      const { user } = (await meRes.json()) as { user: User | null };
+      const user = meBody.user ?? null;
       if (!user) {
         setState(EMPTY);
         return;

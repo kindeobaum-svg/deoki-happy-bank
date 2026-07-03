@@ -7,8 +7,9 @@ const hasTurso =
   process.env.TURSO_DATABASE_URL?.startsWith("libsql:") &&
   Boolean(process.env.TURSO_AUTH_TOKEN);
 
+// Prisma resolves file: paths relative to schema.prisma (prisma/), so use ./demo.db
 const demoDbPath = "prisma/demo.db";
-const demoDbEnv = { ...process.env, DATABASE_URL: "file:./prisma/demo.db" };
+const demoDbEnv = { ...process.env, DATABASE_URL: "file:./demo.db" };
 
 if (hasTurso) {
   console.log("Turso detected — running prisma migrate deploy");

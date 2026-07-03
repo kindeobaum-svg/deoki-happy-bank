@@ -46,8 +46,12 @@ export function QuickRoleEnter({
 
     setEntering(true);
     setError("");
-    const result = await enterAsRole(role);
-    setEntering(false);
+    let result: { error?: string; user?: { role: Role } };
+    try {
+      result = await enterAsRole(role);
+    } finally {
+      setEntering(false);
+    }
 
     if (result.error) {
       setError(result.error);

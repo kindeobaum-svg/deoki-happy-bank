@@ -5,12 +5,21 @@ import { PrismaLibSql } from "@prisma/adapter-libsql";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
+function resolveBundledDemoDbPath(): string | null {
+  const candidates = [
+    path.join(process.cwd(), "prisma", "demo.db"),
+    // legacy mis-path from DATABASE_URL=file:./prisma/demo.db (relative to schema dir)
+    path.join(process.cwd(), "prisma", "prisma", "demo.db"),
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? null;
+}
+
 function copyBundledSqliteToTmp(): string | null {
   const tmpPath = "/tmp/haengbok-demo.db";
-  const bundledPath = path.join(process.cwd(), "prisma", "demo.db");
+  const bundledPath = resolveBundledDemoDbPath();
 
   try {
-    if (!fs.existsSync(bundledPath)) return null;
+    if (!bundledPath) return null;
     if (!fs.existsSync(tmpPath)) {
       fs.copyFileSync(bundledPath, tmpPath);
     }

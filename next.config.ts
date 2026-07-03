@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Vercel serverless: include SQLite built at deploy time for API routes
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./prisma/demo.db"],
+  },
 };
 
 export default nextConfig;
