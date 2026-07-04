@@ -18,7 +18,7 @@ export default function ParentGrowthPage() {
   if (!child) {
     return (
       <div className="parent-page">
-        <p className="py-12 text-center text-white/80">성장 기록을 불러올 수 없어요.</p>
+        <p className="simple-empty-page">성장 기록을 불러올 수 없어요.</p>
       </div>
     );
   }
@@ -36,15 +36,15 @@ export default function ParentGrowthPage() {
       />
 
       {state.children.length > 1 && (
-        <section className="forest-card -mt-2">
-          <div className="forest-card-body py-3">
-            <div className="forest-child-picker">
+        <section className="simple-card compact">
+          <div className="simple-card-body">
+            <div className="simple-child-picker">
               {state.children.map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => selectChild(c.id)}
-                  className={`forest-child-chip ${child.id === c.id ? "active" : ""}`}
+                  className={`simple-child-chip tap-scale ${child.id === c.id ? "active" : ""}`}
                 >
                   <span>{c.avatar}</span>
                   {c.name}
@@ -61,14 +61,14 @@ export default function ParentGrowthPage() {
         totalSaved={localTotal}
       />
 
-      <section className="forest-card">
-        <div className="forest-card-header">
-          <p className="parent-section-title">
-            <span className="text-xl">🗺️</span>
+      <section className="simple-card">
+        <div className="simple-card-header">
+          <p className="simple-section-title">
+            <span aria-hidden>🗺️</span>
             성장 타임라인
           </p>
         </div>
-        <ul className="forest-card-body space-y-2.5 pt-2">
+        <ul className="simple-card-body space-y-3">
           {TREE_LABELS.map((label, i) => {
             const reached = i <= stage;
             const threshold = SAVINGS_STAGE_THRESHOLDS[i];
@@ -79,19 +79,15 @@ export default function ParentGrowthPage() {
               >
                 <span className="text-2xl">{STAGE_ICONS[i]}</span>
                 <div className="flex-1">
-                  <p className="font-display text-base font-bold text-[var(--forest-deep)]">
-                    {label}
-                  </p>
-                  <p className="text-xs text-[var(--ink-soft)]">
-                    {threshold.toLocaleString()}원 이상 적립
+                  <p className="simple-list-title">{label}</p>
+                  <p className="simple-list-desc">
+                    {threshold.toLocaleString()}원 이상
                   </p>
                 </div>
                 {reached ? (
-                  <span className="rounded-full bg-[var(--sage-500)] px-2.5 py-1 text-[10px] font-bold text-white">
-                    달성 ✓
-                  </span>
+                  <span className="simple-badge">달성 ✓</span>
                 ) : (
-                  <span className="text-[10px] font-bold text-[var(--ink-soft)]">대기</span>
+                  <span className="simple-hint">대기</span>
                 )}
               </li>
             );

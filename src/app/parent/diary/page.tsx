@@ -20,7 +20,7 @@ export default function ParentDiaryPage() {
   if (!child) {
     return (
       <div className="parent-page">
-        <p className="py-12 text-center text-white/80">알림장을 불러올 수 없어요.</p>
+        <p className="simple-empty-page">알림장을 불러올 수 없어요.</p>
       </div>
     );
   }
@@ -46,15 +46,15 @@ export default function ParentDiaryPage() {
       />
 
       {state.children.length > 1 && (
-        <section className="forest-card">
-          <div className="forest-card-body py-3">
-            <div className="forest-child-picker">
+        <section className="simple-card compact">
+          <div className="simple-card-body">
+            <div className="simple-child-picker">
               {state.children.map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => selectChild(c.id)}
-                  className={`forest-child-chip ${child.id === c.id ? "active" : ""}`}
+                  className={`simple-child-chip tap-scale ${child.id === c.id ? "active" : ""}`}
                 >
                   <span>{c.avatar}</span>
                   {c.name}
@@ -67,7 +67,7 @@ export default function ParentDiaryPage() {
 
       {todayAttendance && (
         <div
-          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ring-2 ${ATTENDANCE_COLORS[todayAttendance.status]}`}
+          className={`simple-attendance-badge ${ATTENDANCE_COLORS[todayAttendance.status]}`}
         >
           {ATTENDANCE_EMOJI[todayAttendance.status]} 오늘{" "}
           {ATTENDANCE_LABELS[todayAttendance.status]}
@@ -91,13 +91,11 @@ export default function ParentDiaryPage() {
           attendanceStatus={todayAttendance?.status}
         />
       ) : (
-        <section className="forest-card">
-          <div className="forest-empty-state">
-            <p className="float-gentle text-5xl">📝</p>
-            <p className="mt-4 font-display text-lg font-bold text-[var(--forest-deep)]">
-              알림장을 준비하고 있어요
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--ink-soft)]">
+        <section className="simple-card">
+          <div className="simple-empty-hint">
+            <p className="text-5xl">📝</p>
+            <p className="simple-list-title mt-4">알림장을 준비하고 있어요</p>
+            <p className="simple-hint mt-2">
               선생님이 오늘 하루를 정리 중이에요.
               <br />
               도착하면 알림으로 알려드릴게요.
@@ -107,25 +105,25 @@ export default function ParentDiaryPage() {
       )}
 
       {pastReports.length > 0 && (
-        <section className="forest-card">
-          <div className="forest-card-header">
-            <p className="parent-section-title">
-              <span className="text-xl">📚</span>
+        <section className="simple-card">
+          <div className="simple-card-header">
+            <p className="simple-section-title">
+              <span aria-hidden>📚</span>
               지난 알림장
             </p>
           </div>
-          <ul className="forest-card-body space-y-3 pt-2">
+          <ul className="simple-card-body space-y-4">
             {pastReports.map((report) => (
-              <li key={report.id} className="forest-announce-item">
-                <p className="text-xs font-bold text-[var(--sage-600)]">{report.date}</p>
-                <p className="mt-1 text-sm leading-relaxed text-[var(--ink)]">{report.note}</p>
+              <li key={report.id} className="simple-announce">
+                <p className="simple-badge">{report.date}</p>
+                <p className="simple-announce-body mt-2">{report.note}</p>
               </li>
             ))}
           </ul>
         </section>
       )}
 
-      <Link href="/parent" className="forest-link-btn mx-auto block w-fit">
+      <Link href="/parent" className="simple-link mx-auto block w-fit text-center">
         ← 홈으로
       </Link>
     </div>
