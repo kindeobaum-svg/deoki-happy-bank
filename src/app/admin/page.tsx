@@ -76,6 +76,21 @@ export default function AdminPage() {
         subtitle="전체 원아 · 반 · 초대 · 적립 한눈에"
       />
 
+      <RoleQuickNav
+        className="animate-card-enter animate-card-enter-delay-1"
+        items={[
+          { href: "/teacher#classes", emoji: "🏫", title: "반 관리", desc: "반 · 원아 · 미션 적립" },
+          { href: "/admin#invite", emoji: "✉️", title: "반 초대", desc: "교사 초대코드 만들기" },
+          {
+            href: "/admin#overview",
+            emoji: "📊",
+            title: "전체 현황 보기",
+            desc: "원아 · 적립 · 활동 통계",
+            variant: "peach",
+          },
+        ]}
+      />
+
       <div id="overview" className="forest-stat-row animate-card-enter animate-card-enter-delay-1 scroll-target">
         <StatBubble label="전체 원아" value={`${stats.totalChildren}명`} emoji="👶" variant="green" />
         <StatBubble
