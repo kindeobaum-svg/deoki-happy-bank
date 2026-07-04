@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { COOKIE_NAME, createSessionToken, sessionCookieOptions } from "@/lib/auth";
+import { getTursoConfig } from "@/lib/tursoConfig";
 
 export async function POST(request: Request) {
   try {
@@ -11,12 +12,19 @@ export async function POST(request: Request) {
     const password = String(body.password ?? "");
     const expectedRole = body.expectedRole as Role | undefined;
 
+    console.log("[auth/login] request", {
+      email,
+      expectedRole: expectedRole ?? null,
+      db: getTursoConfig() ? "turso" : process.env.VERCEL ? "vercel-sqlite" : "sqlite",
+    });
+
     if (!email || !password) {
       return NextResponse.json({ error: "이메일과 비밀번호를 입력해 주세요." }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+      console.warn("[auth/login] rejected", { email, userFound: Boolean(user) });
       return NextResponse.json({ error: "이메일 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });
     }
 
@@ -53,6 +61,7 @@ export async function POST(request: Request) {
 
     response.cookies.set(COOKIE_NAME, token, sessionCookieOptions());
 
+    console.log("[auth/login] success", { email, role: user.role });
     return response;
   } catch (error) {
     console.error("POST /api/auth/login failed:", error);

@@ -4,7 +4,16 @@ import path from "node:path";
 
 const TMP_DB = path.join(os.tmpdir(), "haengbok-demo.db");
 
+const EXPLICIT_BUNDLED_PATHS = [
+  "/var/task/prisma/demo.db",
+  path.join(/* turbopackIgnore: true */ process.cwd(), "prisma", "demo.db"),
+];
+
 function resolveBundledDemoDbPath(): string | null {
+  for (const candidate of EXPLICIT_BUNDLED_PATHS) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
   const relative = path.join("prisma", "demo.db");
   const legacyRelative = path.join("prisma", "prisma", "demo.db");
   const searchRoots = new Set<string>([process.cwd(), "/var/task"]);
@@ -41,6 +50,7 @@ export function warmDemoDatabase(): string | null {
 
   try {
     fs.copyFileSync(bundledPath, TMP_DB);
+    console.log("Vercel demo DB warmed:", bundledPath, "->", TMP_DB);
     return TMP_DB;
   } catch (error) {
     console.error("Failed to warm demo.db on Vercel:", error);

@@ -1,13 +1,22 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { getVercelSqliteUrl } from "@/lib/demoDb";
+import { PrismaLibSQL } from "@prisma/adapter-libsql";
+import { getVercelSqliteUrl, warmDemoDatabase } from "@/lib/demoDb";
+import { getTursoConfig } from "@/lib/tursoConfig";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 function resolveSqliteUrl(): string {
   if (process.env.VERCEL) {
+    warmDemoDatabase();
     const vercelUrl = getVercelSqliteUrl();
     if (vercelUrl) return vercelUrl;
+
+    const configured = process.env.DATABASE_URL;
+    if (configured?.startsWith("file:")) return configured;
+
+    throw new Error(
+      "Vercel demo database unavailable. Bundle prisma/demo.db or set Turso env (DATABASE_URL with authToken, or TURSO_*).",
+    );
   }
 
   const configured = process.env.DATABASE_URL;
@@ -17,13 +26,12 @@ function resolveSqliteUrl(): string {
 }
 
 function createPrismaClient(): PrismaClient {
-  const tursoUrl = process.env.TURSO_DATABASE_URL ?? "";
-  const tursoToken = process.env.TURSO_AUTH_TOKEN;
+  const turso = getTursoConfig();
 
-  if (tursoUrl.startsWith("libsql:") && tursoToken) {
-    const adapter = new PrismaLibSql({
-      url: tursoUrl,
-      authToken: tursoToken,
+  if (turso) {
+    const adapter = new PrismaLibSQL({
+      url: turso.url,
+      authToken: turso.authToken,
     });
     return new PrismaClient({
       adapter,
