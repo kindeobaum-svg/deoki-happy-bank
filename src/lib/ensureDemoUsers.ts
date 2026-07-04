@@ -1,17 +1,22 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 
-let ensured = false;
+let ensurePromise: Promise<void> | null = null;
 
 /** 로그인 데모 계정이 없을 때 최소 시드 (Vercel 빈 Turso/SQLite 대응) */
-export async function ensureDemoUsers(): Promise<void> {
-  if (ensured) return;
-
-  const count = await prisma.user.count();
-  if (count > 0) {
-    ensured = true;
-    return;
+export function ensureDemoUsers(): Promise<void> {
+  if (!ensurePromise) {
+    ensurePromise = seedIfEmpty().catch((error) => {
+      ensurePromise = null;
+      throw error;
+    });
   }
+  return ensurePromise;
+}
+
+async function seedIfEmpty(): Promise<void> {
+  const count = await prisma.user.count();
+  if (count > 0) return;
 
   console.log("[auth] seeding demo users (database was empty)");
   const passwordHash = await bcrypt.hash("1234", 10);
@@ -58,6 +63,5 @@ export async function ensureDemoUsers(): Promise<void> {
     ],
   });
 
-  ensured = true;
   console.log("[auth] demo users ready");
 }
