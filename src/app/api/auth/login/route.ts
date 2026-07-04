@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import type { Role } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { prisma, getDatabaseMode } from "@/lib/db";
 import { COOKIE_NAME, createSessionToken, sessionCookieOptions } from "@/lib/auth";
-import { getTursoConfig } from "@/lib/tursoConfig";
 
 export async function POST(request: Request) {
   try {
@@ -15,7 +14,7 @@ export async function POST(request: Request) {
     console.log("[auth/login] request", {
       email,
       expectedRole: expectedRole ?? null,
-      db: getTursoConfig() ? "turso" : process.env.VERCEL ? "vercel-sqlite" : "sqlite",
+      db: getDatabaseMode(),
     });
 
     if (!email || !password) {

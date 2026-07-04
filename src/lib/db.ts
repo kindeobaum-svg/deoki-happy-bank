@@ -25,8 +25,18 @@ function resolveSqliteUrl(): string {
   return "file:./dev.db";
 }
 
-function createPrismaClient(): PrismaClient {
+function shouldUseTurso(): boolean {
   const turso = getTursoConfig();
+  if (!turso) return false;
+  // Vercel 원터치 데모: TURSO_DATABASE_URL이 없으면 번들 SQLite 사용
+  if (process.env.VERCEL && !process.env.TURSO_DATABASE_URL?.startsWith("libsql:")) {
+    return false;
+  }
+  return true;
+}
+
+function createPrismaClient(): PrismaClient {
+  const turso = shouldUseTurso() ? getTursoConfig() : null;
 
   if (turso) {
     const adapter = new PrismaLibSQL({
@@ -44,6 +54,12 @@ function createPrismaClient(): PrismaClient {
     datasources: { db: { url: sqliteUrl } },
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
+}
+
+export function getDatabaseMode(): "turso" | "vercel-sqlite" | "sqlite" {
+  if (shouldUseTurso()) return "turso";
+  if (process.env.VERCEL) return "vercel-sqlite";
+  return "sqlite";
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
