@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useApp } from "@/hooks/useAppStore";
+import { useRequireRole } from "@/hooks/useRequireRole";
 import { PageHeader } from "@/components/PageHeader";
+import { RoleQuickNav } from "@/components/RoleQuickNav";
 import { TeacherClassPanel, useTeacherClassesBootstrap } from "@/components/teacher/TeacherClassPanel";
 import { TeacherChildPanel } from "@/components/teacher/TeacherChildPanel";
 import { TeacherQuickPassbookPanel } from "@/components/teacher/TeacherQuickPassbookPanel";
 
 export default function TeacherPage() {
+  useRequireRole("TEACHER", "DIRECTOR");
   const { state, addPraise, addChild, updateChild, deleteChild } = useApp();
 
   const classNames = useMemo(
@@ -31,23 +34,43 @@ export default function TeacherPage() {
         subtitle="반 · 원아 · 미션 적립"
       />
 
-      <TeacherClassPanel
-        children={state.children}
-        onClassRenamed={handleClassRenamed}
+      <RoleQuickNav
+        items={[
+          { href: "/teacher#invite-parent", emoji: "💌", title: "학부모 초대", desc: "초대코드 만들기" },
+          { href: "/teacher#missions", emoji: "🎯", title: "미션 확인", desc: "오늘의 미션 현황" },
+          {
+            href: "/teacher#missions",
+            emoji: "💰",
+            title: "통장 입금",
+            desc: "30초 미션 적립",
+            variant: "peach",
+          },
+        ]}
       />
 
-      <TeacherChildPanel
-        children={state.children}
-        onAddChild={addChild}
-        onUpdateChild={updateChild}
-        onDeleteChild={deleteChild}
-      />
+      <div id="classes" className="scroll-target">
+        <TeacherClassPanel
+          children={state.children}
+          onClassRenamed={handleClassRenamed}
+        />
+      </div>
 
-      <TeacherQuickPassbookPanel
-        children={state.children}
-        praiseRecords={state.praiseRecords}
-        onAddPraise={addPraise}
-      />
+      <div id="invite-parent" className="scroll-target">
+        <TeacherChildPanel
+          children={state.children}
+          onAddChild={addChild}
+          onUpdateChild={updateChild}
+          onDeleteChild={deleteChild}
+        />
+      </div>
+
+      <div id="missions" className="scroll-target">
+        <TeacherQuickPassbookPanel
+          children={state.children}
+          praiseRecords={state.praiseRecords}
+          onAddPraise={addPraise}
+        />
+      </div>
     </div>
   );
 }

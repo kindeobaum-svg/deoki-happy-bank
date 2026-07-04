@@ -128,7 +128,9 @@ export function HappinessForestPassbook({
         </div>
       </section>
 
-      <MissionPanel child={child} onCompleted={handleTransactionComplete} compact />
+      <div id="missions" className="scroll-target">
+        <MissionPanel child={child} onCompleted={handleTransactionComplete} compact />
+      </div>
 
       <section className="forest-card">
         <div className="forest-card-body space-y-3">

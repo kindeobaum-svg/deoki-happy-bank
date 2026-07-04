@@ -6,6 +6,7 @@ import { HappinessTreeCard } from "@/components/parent/HappinessTreeCard";
 import { TodayPraiseCard } from "@/components/parent/TodayPraiseCard";
 import { RecentPassbookList } from "@/components/parent/RecentPassbookList";
 import { MissionPanel } from "@/components/parent/MissionPanel";
+import { RoleQuickNav } from "@/components/RoleQuickNav";
 import { useApp } from "@/hooks/useAppStore";
 import { useLocalPassbook } from "@/hooks/useLocalPassbook";
 import { getChildTotalSaved } from "@/lib/localPassbook";
@@ -43,6 +44,20 @@ export default function ParentPage() {
         childName={child.name}
         childAvatar={child.avatar}
         subtitle={`${child.className} · 따뜻한 하루를 함께해요`}
+      />
+
+      <RoleQuickNav
+        className="animate-card-enter animate-card-enter-delay-1"
+        items={[
+          { href: "/passbook#missions", emoji: "🎯", title: "미션 확인", desc: "오늘의 미션 하기" },
+          {
+            href: "/passbook",
+            emoji: "📒",
+            title: "아이 통장 보기",
+            desc: `${PASSBOOK_NAME} 열기`,
+            variant: "peach",
+          },
+        ]}
       />
 
       <div className="forest-stat-row animate-card-enter animate-card-enter-delay-1">
@@ -95,7 +110,7 @@ export default function ParentPage() {
       />
 
       {hydrated && (
-        <div className="animate-card-enter animate-card-enter-delay-2">
+        <div id="missions" className="animate-card-enter animate-card-enter-delay-2 scroll-target">
           <MissionPanel child={child} onCompleted={refresh} />
         </div>
       )}
