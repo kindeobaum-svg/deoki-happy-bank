@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ParentHero } from "@/components/parent/ParentHero";
 import { StatBubble } from "@/components/parent/EmotionCard";
 import { InviteTeacherPanel } from "@/components/admin/InviteTeacherPanel";
-import { RoleQuickNav } from "@/components/RoleQuickNav";
+import { SimpleTabBar } from "@/components/SimpleTabBar";
 import { ChildProfileAvatar } from "@/components/ChildProfileAvatar";
 import { useRequireRole } from "@/hooks/useRequireRole";
 import { DAYCARE_NAME, PASSBOOK_NAME } from "@/lib/branding";
@@ -37,10 +37,19 @@ type AdminStats = {
   }[];
 };
 
+const ADMIN_TABS = [
+  { id: "overview", emoji: "📊", label: "현황" },
+  { id: "invite", emoji: "✉️", label: "초대" },
+  { id: "children", emoji: "📒", label: "통장" },
+] as const;
+
+type AdminTab = (typeof ADMIN_TABS)[number]["id"];
+
 export default function AdminPage() {
   useRequireRole("DIRECTOR");
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
 
   useEffect(() => {
     fetch("/api/admin/stats")
@@ -52,8 +61,8 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div className="parent-page">
-        <ParentHero greeting="원장 관리" childName={DAYCARE_NAME} childAvatar="🏫" subtitle="현황 불러오는 중..." />
-        <p className="py-8 text-center text-sm text-white/80">관리 현황 불러오는 중...</p>
+        <ParentHero greeting="원장" childName={DAYCARE_NAME} childAvatar="🏫" subtitle="현황 불러오는 중..." />
+        <p className="simple-empty-page">관리 현황 불러오는 중...</p>
       </div>
     );
   }
@@ -61,8 +70,8 @@ export default function AdminPage() {
   if (!stats) {
     return (
       <div className="parent-page">
-        <ParentHero greeting="원장 관리" childName={DAYCARE_NAME} childAvatar="🏫" />
-        <p className="py-8 text-center text-sm text-red-600">데이터를 불러올 수 없습니다.</p>
+        <ParentHero greeting="원장" childName={DAYCARE_NAME} childAvatar="🏫" />
+        <p className="simple-empty-page error">데이터를 불러올 수 없습니다.</p>
       </div>
     );
   }
@@ -70,108 +79,101 @@ export default function AdminPage() {
   return (
     <div className="parent-page">
       <ParentHero
-        greeting="원장 관리"
+        greeting="원장"
         childName={DAYCARE_NAME}
         childAvatar="🏫"
-        subtitle="전체 원아 · 반 · 초대 · 적립 한눈에"
+        subtitle="전체 원아 · 반 · 초대"
       />
 
-      <RoleQuickNav
-        className="animate-card-enter animate-card-enter-delay-1"
-        items={[
-          { href: "/teacher#classes", emoji: "🏫", title: "반 관리", desc: "반 · 원아 · 미션 적립" },
-          { href: "/admin#invite", emoji: "✉️", title: "반 초대", desc: "교사 초대코드 만들기" },
-          {
-            href: "/admin#overview",
-            emoji: "📊",
-            title: "전체 현황 보기",
-            desc: "원아 · 적립 · 활동 통계",
-            variant: "peach",
-          },
-        ]}
+      <SimpleTabBar
+        tabs={[...ADMIN_TABS]}
+        activeId={activeTab}
+        onChange={(id) => setActiveTab(id as AdminTab)}
       />
 
-      <div id="overview" className="forest-stat-row animate-card-enter animate-card-enter-delay-1 scroll-target">
-        <StatBubble label="전체 원아" value={`${stats.totalChildren}명`} emoji="👶" variant="green" />
-        <StatBubble
-          label="총 적립액"
-          value={stats.totalSaved.toLocaleString()}
-          emoji="💰"
-          variant="gold"
-        />
-        <StatBubble label="오늘 적립" value={`${stats.todaySaves}건`} emoji="✨" variant="peach" />
-      </div>
-
-      <section className="forest-card animate-card-enter animate-card-enter-delay-2">
-        <div className="forest-card-body py-3 text-center">
-          <p className="text-xs font-bold text-[var(--sage-600)]">학부모 · 교사</p>
-          <p className="mt-1 font-display text-xl font-bold text-[var(--sage-800)]">
-            {stats.parentCount} · {stats.teacherCount}
-          </p>
-        </div>
-      </section>
-
-      <div id="invite" className="animate-card-enter animate-card-enter-delay-2 scroll-target">
-        <InviteTeacherPanel />
-      </div>
-
-      <section className="forest-card forest-card-ledger animate-card-enter animate-card-enter-delay-3">
-        <div className="forest-card-header">
-          <div className="parent-section-title">
-            <span className="text-2xl">📒</span>
-            원아별 {PASSBOOK_NAME}
+      {activeTab === "overview" && (
+        <div id="overview" className="space-y-5 scroll-target">
+          <div className="simple-stat-row">
+            <StatBubble label="원아" value={`${stats.totalChildren}명`} emoji="👶" variant="green" />
+            <StatBubble
+              label="총 적립"
+              value={stats.totalSaved.toLocaleString()}
+              emoji="💰"
+              variant="gold"
+            />
+            <StatBubble label="오늘" value={`${stats.todaySaves}건`} emoji="✨" variant="peach" />
           </div>
-          <span className="text-xs font-semibold text-[var(--sage-600)]">전체 반 · 전체 원아</span>
-        </div>
-        <div className="forest-card-body space-y-2 pt-2">
-          {stats.children.map((child) => {
-            const stage = getTreeStage(child.points);
-            return (
-              <div key={child.id} className="forest-praise-item">
-                <ChildProfileAvatar avatar={child.avatar} name={child.name} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <p className="forest-praise-text">{child.name}</p>
-                  <p className="mt-0.5 text-xs text-[var(--ink-soft)]">
-                    {child.className} · {child.accountNumber}
-                  </p>
-                  <p className="text-[10px] font-semibold text-[var(--sage-600)]">{TREE_LABELS[stage]}</p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="font-bold text-[var(--sage-800)]">
-                    {child.totalSaved.toLocaleString()}원
-                  </p>
-                  <Link href={`/passbook?child=${child.id}`} className="forest-link-btn mt-1 inline-block text-xs">
-                    통장 →
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
 
-      <section className="forest-card animate-card-enter animate-card-enter-delay-4">
-        <div className="forest-card-header">
-          <div className="parent-section-title">
-            <span className="text-2xl">✨</span>
-            최근 적립 활동
-          </div>
-        </div>
-        <div className="forest-card-body space-y-2 pt-2">
-          {stats.recentSaves.map((save) => (
-            <div key={save.id} className="forest-praise-item">
-              <span className="forest-praise-emoji">{save.childAvatar}</span>
-              <div className="min-w-0 flex-1">
-                <p className="forest-praise-text">{save.childName}</p>
-                <p className="mt-0.5 text-xs text-[var(--ink-soft)]">{save.message}</p>
-              </div>
-              <span className="shrink-0 font-bold text-[var(--sage-600)]">
-                +{save.amount.toLocaleString()}원
-              </span>
+          <section className="simple-card">
+            <div className="simple-card-body text-center py-6">
+              <p className="simple-hint">학부모 · 교사</p>
+              <p className="simple-big-number">
+                {stats.parentCount} · {stats.teacherCount}
+              </p>
             </div>
-          ))}
+          </section>
+
+          <section className="simple-card">
+            <div className="simple-card-header">
+              <p className="simple-section-title">
+                <span aria-hidden>✨</span>
+                최근 적립
+              </p>
+            </div>
+            <div className="simple-card-body space-y-3">
+              {stats.recentSaves.map((save) => (
+                <div key={save.id} className="simple-list-item">
+                  <span className="simple-list-emoji">{save.childAvatar}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="simple-list-title">{save.childName}</p>
+                    <p className="simple-list-desc">{save.message}</p>
+                  </div>
+                  <span className="simple-list-amount">+{save.amount.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
-      </section>
+      )}
+
+      {activeTab === "invite" && (
+        <div id="invite" className="scroll-target">
+          <InviteTeacherPanel />
+        </div>
+      )}
+
+      {activeTab === "children" && (
+        <section className="simple-card">
+          <div className="simple-card-header">
+            <p className="simple-section-title">
+              <span aria-hidden>📒</span>
+              원아별 {PASSBOOK_NAME}
+            </p>
+          </div>
+          <div className="simple-card-body space-y-3">
+            {stats.children.map((child) => {
+              const stage = getTreeStage(child.points);
+              return (
+                <div key={child.id} className="simple-list-item">
+                  <ChildProfileAvatar avatar={child.avatar} name={child.name} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="simple-list-title">{child.name}</p>
+                    <p className="simple-list-desc">
+                      {child.className} · {TREE_LABELS[stage]}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="simple-list-amount">{child.totalSaved.toLocaleString()}원</p>
+                    <Link href={`/passbook?child=${child.id}`} className="simple-link">
+                      보기
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

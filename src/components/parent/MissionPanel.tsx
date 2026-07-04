@@ -10,6 +10,8 @@ import {
   type Mission,
 } from "@/lib/missions";
 
+const PAGE_SIZE = 4;
+
 type MissionPanelProps = {
   child: Child;
   onCompleted?: () => void;
@@ -21,6 +23,7 @@ export function MissionPanel({ child, onCompleted, compact = false }: MissionPan
   const [activeMissionId, setActiveMissionId] = useState<string | null>(null);
   const [completedFlash, setCompletedFlash] = useState<string | null>(null);
   const [doneToday, setDoneToday] = useState<Set<string>>(() => new Set());
+  const [page, setPage] = useState(0);
 
   const syncDone = useCallback(() => {
     setDoneToday(new Set(getTodayCompletedMissionIds(child.id)));
@@ -45,6 +48,8 @@ export function MissionPanel({ child, onCompleted, compact = false }: MissionPan
 
   const doneCount = doneToday.size;
   const totalCount = MISSIONS.length;
+  const totalPages = Math.ceil(MISSIONS.length / PAGE_SIZE);
+  const visibleMissions = MISSIONS.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   function handleMission(mission: Mission) {
     setActiveMissionId(mission.id);
@@ -70,22 +75,24 @@ export function MissionPanel({ child, onCompleted, compact = false }: MissionPan
 
   return (
     <>
-      <section className={`forest-card forest-mission-panel ${compact ? "forest-mission-compact" : ""}`}>
-        <div className="forest-card-header">
-          <p className="parent-section-title">
-            <span className="text-xl">🎯</span>
+      <section className={`simple-card simple-mission-panel ${compact ? "compact" : ""}`}>
+        <div className="simple-card-header">
+          <p className="simple-section-title">
+            <span aria-hidden>🎯</span>
             오늘의 미션
           </p>
-          <span className="forest-mission-badge">
-            {doneCount}/{totalCount} · 자동 적립
+          <span className="simple-badge">
+            {doneCount}/{totalCount}
           </span>
         </div>
-        <div className="forest-card-body space-y-3 pt-2">
-          <p className="text-sm text-[var(--ink-soft)]">
-            미션을 완료하면 {child.name}의 행복숲 통장에 자동으로 적립돼요
-          </p>
-          <ul className="forest-mission-list space-y-2.5">
-            {MISSIONS.map((mission) => {
+        <div className="simple-card-body">
+          {!compact && (
+            <p className="simple-hint">
+              미션을 완료하면 {child.name}의 통장에 자동 적립돼요
+            </p>
+          )}
+          <ul className="simple-mission-list">
+            {visibleMissions.map((mission) => {
               const isDone = doneToday.has(mission.id);
               const isLoading = activeMissionId === mission.id;
               const justDone = completedFlash === mission.id;
@@ -96,25 +103,22 @@ export function MissionPanel({ child, onCompleted, compact = false }: MissionPan
                     type="button"
                     disabled={isLoading || isDone}
                     onClick={() => handleMission(mission)}
-                    className={`forest-mission-btn tap-scale w-full ${isDone ? "done" : ""} ${justDone ? "just-done" : ""}`}
+                    className={`simple-mission-btn tap-scale ${isDone ? "done" : ""} ${justDone ? "just-done" : ""}`}
                   >
-                    <span className="forest-mission-emoji">{mission.emoji}</span>
+                    <span className="simple-mission-emoji">{mission.emoji}</span>
                     <div className="min-w-0 flex-1 text-left">
-                      <p className="forest-mission-name">{mission.name}</p>
+                      <p className="simple-mission-name">{mission.name}</p>
                       {!compact && (
-                        <p className="forest-mission-desc">{mission.description}</p>
+                        <p className="simple-mission-desc">{mission.description}</p>
                       )}
                     </div>
-                    <div className="forest-mission-reward shrink-0 text-right">
+                    <div className="simple-mission-reward">
                       {isDone ? (
-                        <span className="forest-mission-done-label">완료 ✓</span>
+                        <span className="simple-mission-done">완료</span>
                       ) : isLoading ? (
-                        <span className="forest-mission-loading">적립 중...</span>
+                        <span className="simple-mission-loading">...</span>
                       ) : (
-                        <>
-                          <span className="forest-mission-amount">+{mission.amount.toLocaleString()}원</span>
-                          <span className="forest-mission-cta">미션하기</span>
-                        </>
+                        <span className="simple-mission-amount">+{mission.amount.toLocaleString()}</span>
                       )}
                     </div>
                   </button>
@@ -122,13 +126,39 @@ export function MissionPanel({ child, onCompleted, compact = false }: MissionPan
               );
             })}
           </ul>
+
+          {totalPages > 1 && (
+            <div className="simple-mission-pager">
+              <button
+                type="button"
+                disabled={page === 0}
+                onClick={() => setPage((p) => p - 1)}
+                className="simple-pager-btn tap-scale"
+                aria-label="이전 미션"
+              >
+                ←
+              </button>
+              <span className="simple-pager-label">
+                {page + 1} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage((p) => p + 1)}
+                className="simple-pager-btn tap-scale"
+                aria-label="다음 미션"
+              >
+                →
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
       {toast && (
-        <div className="forest-praise-toast" role="status" aria-live="polite">
-          <span className="forest-praise-toast-emoji">⭐</span>
-          <p className="forest-praise-toast-text">{toast}</p>
+        <div className="simple-toast" role="status" aria-live="polite">
+          <span aria-hidden>⭐</span>
+          <p>{toast}</p>
         </div>
       )}
     </>

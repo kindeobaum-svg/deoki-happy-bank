@@ -2,7 +2,7 @@
 
 import { ParentHero } from "@/components/parent/ParentHero";
 import { PASSBOOK_NAME } from "@/lib/branding";
-import { EmotionCard } from "@/components/parent/EmotionCard";
+import { SimpleIconGrid } from "@/components/SimpleIconGrid";
 import { useApp } from "@/hooks/useAppStore";
 import { useLocalPassbook } from "@/hooks/useLocalPassbook";
 import { getChildTotalSaved } from "@/lib/localPassbook";
@@ -23,7 +23,7 @@ export default function ParentChildPage() {
   if (!child) {
     return (
       <div className="parent-page">
-        <p className="py-12 text-center text-white/80">우리 아이 정보를 불러올 수 없어요.</p>
+        <p className="simple-empty-page">우리 아이 정보를 불러올 수 없어요.</p>
       </div>
     );
   }
@@ -43,19 +43,19 @@ export default function ParentChildPage() {
         greeting="우리 아이"
         childName={child.name}
         childAvatar={child.avatar}
-        subtitle={`${child.className} · ${child.name}를 응원해요`}
+        subtitle={child.className}
       />
 
       {state.children.length > 1 && (
-        <section className="forest-card -mt-2">
-          <div className="forest-card-body py-3">
-            <div className="forest-child-picker">
+        <section className="simple-card compact">
+          <div className="simple-card-body">
+            <div className="simple-child-picker">
               {state.children.map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => selectChild(c.id)}
-                  className={`forest-child-chip ${child.id === c.id ? "active" : ""}`}
+                  className={`simple-child-chip tap-scale ${child.id === c.id ? "active" : ""}`}
                 >
                   <span>{c.avatar}</span>
                   {c.name}
@@ -66,66 +66,44 @@ export default function ParentChildPage() {
         </section>
       )}
 
-      <section className="forest-profile-card">
-        <ChildProfileAvatar avatar={child.avatar} name={child.name} size="xl" className="float-gentle" />
-        <p className="mt-4 font-display text-2xl font-bold text-[var(--forest-deep)]">
-          {child.name}
-        </p>
-        <p className="mt-1 text-sm text-[var(--ink-soft)]">{child.className}</p>
+      <section className="simple-profile-card">
+        <ChildProfileAvatar avatar={child.avatar} name={child.name} size="xl" />
+        <p className="simple-profile-name">{child.name}</p>
+        <p className="simple-profile-class">{child.className}</p>
 
         {todayAttendance && (
           <div
-            className={`mx-auto mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ring-2 ${ATTENDANCE_COLORS[todayAttendance.status]}`}
+            className={`simple-attendance-badge ${ATTENDANCE_COLORS[todayAttendance.status]}`}
           >
-            {ATTENDANCE_EMOJI[todayAttendance.status]} 오늘{" "}
-            {ATTENDANCE_LABELS[todayAttendance.status]}
+            {ATTENDANCE_EMOJI[todayAttendance.status]} {ATTENDANCE_LABELS[todayAttendance.status]}
           </div>
         )}
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-[var(--sage-50)] p-4 ring-2 ring-[var(--sage-200)]">
-            <p className="text-[10px] font-bold text-[var(--sage-600)]">💰 {PASSBOOK_NAME}</p>
-            <p className="mt-1 font-display text-xl font-bold text-[var(--forest-deep)]">
-              {localTotal.toLocaleString()}
-              <span className="text-sm">원</span>
-            </p>
+        <div className="simple-profile-stats">
+          <div className="simple-profile-stat">
+            <p className="simple-profile-stat-label">💰 {PASSBOOK_NAME}</p>
+            <p className="simple-profile-stat-value">{localTotal.toLocaleString()}원</p>
           </div>
-          <div className="rounded-2xl bg-[#fff9e6] p-4 ring-2 ring-[#ffe082]">
-            <p className="text-[10px] font-bold text-[#8d6e63]">⭐ 오늘 칭찬</p>
-            <p className="mt-1 font-display text-xl font-bold text-[var(--forest-deep)]">
-              {todayPraises.length}
-              <span className="text-sm">개</span>
-            </p>
+          <div className="simple-profile-stat gold">
+            <p className="simple-profile-stat-label">⭐ 오늘 칭찬</p>
+            <p className="simple-profile-stat-value">{todayPraises.length}개</p>
           </div>
         </div>
       </section>
 
-      <section className="space-y-3">
-        <EmotionCard
-          href="/parent/diary"
-          emoji="📝"
-          title="오늘의 알림장"
-          desc={
-            hasDiary
-              ? "선생님의 따뜻한 한마디가 도착했어요"
-              : "알림장을 기다리고 있어요"
-          }
-          badge={hasDiary ? "NEW" : undefined}
-          variant="peach"
-        />
-        <EmotionCard
-          href="/passbook"
-          emoji="📒"
-          title={PASSBOOK_NAME}
-          desc={`지금까지 ${localTotal.toLocaleString()}원 모았어요`}
-        />
-        <EmotionCard
-          href="/parent/growth"
-          emoji="🌳"
-          title="성장기록"
-          desc="나무가 자라온 과정을 볼 수 있어요"
-        />
-      </section>
+      <SimpleIconGrid
+        items={[
+          {
+            href: "/parent/diary",
+            emoji: "📝",
+            label: "알림장",
+            badge: hasDiary ? "NEW" : undefined,
+          },
+          { href: "/passbook", emoji: "📒", label: PASSBOOK_NAME },
+          { href: "/parent/growth", emoji: "🌳", label: "성장기록" },
+          { href: "/passbook#missions", emoji: "🎯", label: "미션" },
+        ]}
+      />
     </div>
   );
 }

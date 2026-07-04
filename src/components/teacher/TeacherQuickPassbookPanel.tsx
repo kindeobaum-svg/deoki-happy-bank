@@ -22,27 +22,31 @@ export function TeacherQuickPassbookPanel({
   onAddPraise,
 }: TeacherQuickPassbookPanelProps) {
   const { entries, refresh } = useLocalPassbook();
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(
+    children[0]?.id ?? null,
+  );
   const [flashKey, setFlashKey] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const today = todayStr();
 
   const todayPraiseCount = praiseRecords.filter((p) => p.date === today).length;
-
   const todayDepositCount = useMemo(
-    () =>
-      entries.filter((e) => e.date === today && e.type === "deposit").length,
+    () => entries.filter((e) => e.date === today && e.type === "deposit").length,
     [entries, today],
   );
 
-  async function handleQuickAction(child: Child, actionId: string) {
+  const selectedChild = children.find((c) => c.id === selectedChildId) ?? children[0];
+
+  async function handleQuickAction(actionId: string) {
+    if (!selectedChild) return;
     const action = TEACHER_HABIT_QUICK_ACTIONS.find((a) => a.id === actionId);
     if (!action || busyKey) return;
 
-    const key = `${child.id}-${actionId}`;
+    const key = `${selectedChild.id}-${actionId}`;
     setBusyKey(key);
 
-    addDepositEntry(child.id, child.name, action.label, action.amount);
-    await onAddPraise(child.id, action.praise, action.emoji);
+    addDepositEntry(selectedChild.id, selectedChild.name, action.label, action.amount);
+    await onAddPraise(selectedChild.id, action.praise, action.emoji);
     refresh();
 
     setFlashKey(key);
@@ -50,83 +54,105 @@ export function TeacherQuickPassbookPanel({
     setBusyKey(null);
   }
 
+  if (children.length === 0) {
+    return (
+      <section className="simple-card">
+        <p className="simple-empty-hint">원아를 등록하면 미션 적립을 시작할 수 있어요.</p>
+      </section>
+    );
+  }
+
+  const balance = selectedChild ? getChildTotalSaved(selectedChild.id) : 0;
+  const stage = selectedChild ? getTreeStage(selectedChild.points) : 0;
+  const childTodayPraises = selectedChild
+    ? praiseRecords.filter((p) => p.childId === selectedChild.id && p.date === today).length
+    : 0;
+
   return (
-    <div className="teacher-quick space-y-4">
-      <section className="teacher-quick-hero">
-        <p className="teacher-quick-hero-badge">30초 모드</p>
-        <h2 className="teacher-quick-hero-title">미션 적립</h2>
-        <p className="teacher-quick-hero-sub">
-          {PASSBOOK_NAME} · 탭 한 번 = 칭찬 + 입금
-        </p>
-        <div className="teacher-quick-stats">
-          <span>오늘 칭찬 {todayPraiseCount}건</span>
-          <span className="teacher-quick-stats-dot" aria-hidden />
-          <span>성장 입금 {todayDepositCount}건</span>
+    <div className="teacher-quick space-y-5">
+      <section className="simple-card">
+        <div className="simple-card-header">
+          <p className="simple-section-title">
+            <span aria-hidden>⭐</span>
+            미션 적립
+          </p>
+        </div>
+        <div className="simple-card-body">
+          <p className="simple-hint">
+            {PASSBOOK_NAME} · 탭 한 번 = 칭찬 + 입금
+          </p>
+          <div className="simple-teacher-stats">
+            <span>오늘 칭찬 {todayPraiseCount}건</span>
+            <span>입금 {todayDepositCount}건</span>
+          </div>
         </div>
       </section>
 
-      {children.length === 0 ? (
-        <p className="teacher-panel-empty mt-3 rounded-2xl bg-white/60 px-4 py-6 text-center">
-          원아를 등록하면 미션 적립을 시작할 수 있어요.
-        </p>
-      ) : (
-      <ul className="teacher-quick-list space-y-3">
-        {children.map((child) => {
-          const balance = getChildTotalSaved(child.id);
-          const stage = getTreeStage(child.points);
-          const childTodayPraises = praiseRecords.filter(
-            (p) => p.childId === child.id && p.date === today,
-          ).length;
-
-          return (
-            <li key={child.id} className="teacher-quick-card">
-              <div className="teacher-quick-card-head">
-                <div className="flex items-center gap-3 min-w-0">
-                  <ChildProfileAvatar avatar={child.avatar} name={child.name} size="md" />
-                  <div className="min-w-0">
-                    <p className="teacher-quick-name">{child.name}</p>
-                    <p className="teacher-quick-meta">
-                      {child.className} · {TREE_LABELS[stage]}
-                      {childTodayPraises > 0 && ` · 오늘 칭찬 ${childTodayPraises}`}
-                    </p>
-                  </div>
+      <section className="simple-card">
+        <div className="simple-card-header">
+          <p className="simple-section-title">
+            <span aria-hidden>👶</span>
+            원아 선택
+          </p>
+        </div>
+        <div className="simple-card-body">
+          <div className="simple-child-picker vertical">
+            {children.map((child) => (
+              <button
+                key={child.id}
+                type="button"
+                onClick={() => setSelectedChildId(child.id)}
+                className={`simple-child-select tap-scale ${selectedChildId === child.id ? "active" : ""}`}
+              >
+                <ChildProfileAvatar avatar={child.avatar} name={child.name} size="md" />
+                <div className="min-w-0 flex-1 text-left">
+                  <p className="simple-child-select-name">{child.name}</p>
+                  <p className="simple-child-select-meta">{child.className}</p>
                 </div>
-                <div className="teacher-quick-balance text-right shrink-0">
-                  <p className="teacher-quick-balance-label">잔액</p>
-                  <p className="teacher-quick-balance-amount">{balance.toLocaleString()}원</p>
-                </div>
-              </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              <div className="teacher-quick-actions">
-                {TEACHER_HABIT_QUICK_ACTIONS.map((action) => {
-                  const key = `${child.id}-${action.id}`;
-                  const isFlash = flashKey === key;
-                  const isBusy = busyKey === key;
-
-                  return (
-                    <button
-                      key={action.id}
-                      type="button"
-                      disabled={!!busyKey}
-                      onClick={() => void handleQuickAction(child, action.id)}
-                      className={`teacher-quick-chip tap-scale ${isFlash ? "done" : ""} ${isBusy ? "busy" : ""}`}
-                    >
-                      <span className="text-base">{isFlash ? "✓" : action.emoji}</span>
-                      <span className="teacher-quick-chip-label">{action.label}</span>
-                      <span className="teacher-quick-chip-amount">+{action.amount}</span>
-                    </button>
-                  );
-                })}
+      {selectedChild && (
+        <section className="simple-card">
+          <div className="simple-card-body space-y-5">
+            <div className="simple-teacher-child-summary">
+              <ChildProfileAvatar avatar={selectedChild.avatar} name={selectedChild.name} size="lg" />
+              <div>
+                <p className="simple-teacher-child-name">{selectedChild.name}</p>
+                <p className="simple-teacher-child-meta">
+                  {TREE_LABELS[stage]}
+                  {childTodayPraises > 0 && ` · 오늘 칭찬 ${childTodayPraises}`}
+                </p>
+                <p className="simple-teacher-balance">{balance.toLocaleString()}원</p>
               </div>
-            </li>
-          );
-        })}
-      </ul>
+            </div>
+
+            <div className="simple-icon-grid simple-icon-grid-4">
+              {TEACHER_HABIT_QUICK_ACTIONS.map((action) => {
+                const key = `${selectedChild.id}-${action.id}`;
+                const isFlash = flashKey === key;
+                const isBusy = busyKey === key;
+
+                return (
+                  <button
+                    key={action.id}
+                    type="button"
+                    disabled={!!busyKey}
+                    onClick={() => void handleQuickAction(action.id)}
+                    className={`simple-icon-item tap-scale ${isFlash ? "active" : ""} ${isBusy ? "busy" : ""}`}
+                  >
+                    <span className="simple-icon-emoji">{isFlash ? "✓" : action.emoji}</span>
+                    <span className="simple-icon-label">{action.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
       )}
-
-      <p className="teacher-quick-footnote">
-        생활습관 칭찬이 {PASSBOOK_NAME} 성장 기록과 학부모 알림으로 연결돼요 🌳
-      </p>
     </div>
   );
 }

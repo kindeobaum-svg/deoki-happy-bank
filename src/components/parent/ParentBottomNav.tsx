@@ -4,13 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { LogoutButton } from "@/components/LogoutButton";
 
 const tabs = [
   { href: "/parent", label: "홈", emoji: "🏠", match: ["/parent"] },
-  { href: "/passbook", label: "행복숲", emoji: "📒", match: ["/passbook"] },
+  { href: "/passbook", label: "통장", emoji: "📒", match: ["/passbook"] },
   { href: "/parent/growth", label: "성장", emoji: "🌳", match: ["/parent/growth"] },
-  { href: "/parent/child", label: "우리아이", emoji: "💚", match: ["/parent/child"] },
+  { href: "/parent/child", label: "우리아이", emoji: "💚", match: ["/parent/child", "/parent/diary"] },
 ];
 
 export function ParentBottomNav() {
@@ -23,7 +22,7 @@ export function ParentBottomNav() {
 
   const nav = (
     <nav className="bottom-nav" aria-label="하단 메뉴">
-      <div className="bottom-nav-inner bottom-nav-inner-5">
+      <div className="bottom-nav-inner bottom-nav-inner-4">
         {tabs.map((tab) => {
           const active = tab.match.some((m) =>
             m === "/parent" ? pathname === "/parent" : pathname.startsWith(m),
@@ -32,7 +31,7 @@ export function ParentBottomNav() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`bottom-nav-item bottom-nav-item-5 tap-scale ${active ? "active" : ""}`}
+              className={`bottom-nav-item bottom-nav-item-4 tap-scale ${active ? "active" : ""}`}
               aria-current={active ? "page" : undefined}
             >
               <span className="bottom-nav-icon" aria-hidden>
@@ -43,12 +42,6 @@ export function ParentBottomNav() {
             </Link>
           );
         })}
-        <LogoutButton className="bottom-nav-item bottom-nav-item-5 tap-scale">
-          <span className="bottom-nav-icon" aria-hidden>
-            🚪
-          </span>
-          <span className="bottom-nav-label">로그아웃</span>
-        </LogoutButton>
       </div>
     </nav>
   );
