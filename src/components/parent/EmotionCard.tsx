@@ -20,6 +20,7 @@ export function EmotionCard({
   return (
     <Link
       href={href}
+      scroll={!href.includes("#")}
       className={`forest-action-card ${variant === "peach" ? "card-peach" : ""}`}
     >
       <span className="forest-action-emoji float-gentle">{emoji}</span>

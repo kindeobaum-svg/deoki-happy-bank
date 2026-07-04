@@ -1745,10 +1745,18 @@ body:has(.parent-main) {
     0 0 0 6px var(--sage-200);
 }
 
+.scroll-target {
+  scroll-margin-top: 5.5rem;
+}
+
 .forest-action-card {
   display: flex;
   align-items: center;
   gap: 1rem;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  text-decoration: none;
+  color: inherit;
   padding: 1.25rem 1.375rem;
   border-radius: 1.375rem;
   background: white;
@@ -2764,6 +2772,10 @@ body:has(.parent-main) {
   display: flex;
   align-items: center;
   gap: 1rem;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  text-decoration: none;
+  color: inherit;
   padding: 1rem 1.125rem;
   border-radius: 0 1rem 1rem 0;
   margin-left: 8px;

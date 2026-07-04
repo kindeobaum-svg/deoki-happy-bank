@@ -19,5 +19,5 @@ export function useRequireRole(...allowedRoles: Array<"DIRECTOR" | "TEACHER" | "
     if (!allowedRoles.includes(state.user.role)) {
       router.replace(getHomeForRole(state.user.role));
     }
-  }, [allowedRoles, loading, rolesKey, router, state.user]);
+  }, [loading, rolesKey, router, state.user, allowedRoles]);
 }

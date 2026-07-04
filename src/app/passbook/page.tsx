@@ -4,6 +4,7 @@ import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { LocalPassbookView } from "@/components/LocalPassbookView";
 import { ParentHero } from "@/components/parent/ParentHero";
+import { RoleQuickNav } from "@/components/RoleQuickNav";
 import { PASSBOOK_NAME, PASSBOOK_TAGLINE } from "@/lib/branding";
 import { useApp } from "@/hooks/useAppStore";
 import { useLocalPassbook } from "@/hooks/useLocalPassbook";
@@ -60,6 +61,20 @@ function PassbookContent() {
           childName={child.name}
           childAvatar={child.avatar}
           subtitle={PASSBOOK_TAGLINE}
+        />
+
+        <RoleQuickNav
+          className="animate-card-enter"
+          items={[
+            { href: "/passbook#missions", emoji: "🎯", title: "미션 확인", desc: "오늘의 미션 하기" },
+            {
+              href: "/passbook",
+              emoji: "📒",
+              title: "아이 통장 보기",
+              desc: `${PASSBOOK_NAME} 보기`,
+              variant: "peach",
+            },
+          ]}
         />
 
         {state.children.length > 1 && (
