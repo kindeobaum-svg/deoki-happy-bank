@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import type { Role } from "@prisma/client";
 import { prisma, getDatabaseMode } from "@/lib/db";
 import { COOKIE_NAME, createSessionToken, sessionCookieOptions } from "@/lib/auth";
+import { ensureDemoUsers } from "@/lib/ensureDemoUsers";
 
 export async function POST(request: Request) {
   try {
@@ -20,6 +21,8 @@ export async function POST(request: Request) {
     if (!email || !password) {
       return NextResponse.json({ error: "이메일과 비밀번호를 입력해 주세요." }, { status: 400 });
     }
+
+    await ensureDemoUsers();
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
