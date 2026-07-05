@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   await notifyParentsOfChild(childId, {
     title: "📝 알림장 도착",
     body: `${child.name}님의 오늘 알림장이 등록되었어요.`,
-    url: "/parent/diary",
+    url: "/parent",
   });
 
   return NextResponse.json({ report });

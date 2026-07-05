@@ -16,19 +16,11 @@ export function PassbookSummaryCard({ summary, childName }: PassbookSummaryCardP
           {childName}의 행복숲 통장
         </p>
       )}
-      <div className="passbook-summary-grid">
+      <div className="passbook-summary-grid passbook-summary-grid-2">
         <div className="passbook-summary-item">
           <p className="passbook-summary-label">총 입금</p>
           <p className="passbook-summary-value deposit">
             +{summary.totalDeposits.toLocaleString()}
-            <span className="passbook-summary-unit">원</span>
-          </p>
-        </div>
-        <div className="passbook-summary-divider" aria-hidden />
-        <div className="passbook-summary-item">
-          <p className="passbook-summary-label">총 지출</p>
-          <p className="passbook-summary-value withdrawal">
-            -{summary.totalWithdrawals.toLocaleString()}
             <span className="passbook-summary-unit">원</span>
           </p>
         </div>

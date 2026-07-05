@@ -42,7 +42,7 @@ export async function POST(
   await notifyParentsOfChild(id, {
     title: "🌳 행복 적립!",
     body: `${child.name}님이 "${message}" — ${SAVE_AMOUNT}원 적립`,
-    url: "/parent/diary",
+    url: "/parent",
   });
 
   return NextResponse.json({ child: updated, record });
