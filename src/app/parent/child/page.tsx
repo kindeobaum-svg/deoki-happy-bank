@@ -32,9 +32,6 @@ export default function ParentChildPage() {
   const todayPraises = state.praiseRecords.filter(
     (p) => p.childId === child.id && p.date === today,
   );
-  const hasDiary = state.dailyReports.some(
-    (r) => r.childId === child.id && r.date === today,
-  );
   const localTotal = hydrated ? getChildTotalSaved(child.id) : child.totalSaved;
 
   return (
@@ -101,18 +98,6 @@ export default function ParentChildPage() {
       </section>
 
       <section className="space-y-3">
-        <EmotionCard
-          href="/parent/diary"
-          emoji="📝"
-          title="오늘의 알림장"
-          desc={
-            hasDiary
-              ? "선생님의 따뜻한 한마디가 도착했어요"
-              : "알림장을 기다리고 있어요"
-          }
-          badge={hasDiary ? "NEW" : undefined}
-          variant="peach"
-        />
         <EmotionCard
           href="/passbook"
           emoji="📒"

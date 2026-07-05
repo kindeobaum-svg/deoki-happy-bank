@@ -13,7 +13,6 @@ import {
 } from "@/lib/localPassbook";
 import { PASSBOOK_NAME, PASSBOOK_TAGLINE, DAYCARE_NAME } from "@/lib/branding";
 import { MissionPanel } from "@/components/parent/MissionPanel";
-import { ExpensePanel } from "@/components/parent/ExpensePanel";
 import { PassbookSummaryCard } from "@/components/parent/PassbookSummaryCard";
 import { PassbookTransactionList } from "@/components/parent/PassbookTransactionList";
 import { todayStr } from "@/lib/attendance";
@@ -37,7 +36,7 @@ export function HappinessForestPassbook({
   const today = todayStr();
   const childEntries = entries.filter((e) => e.childId === child.id);
   const summary = getChildPassbookSummary(child.id);
-  const todayDeposits = childEntries.filter((e) => e.date === today && e.type === "deposit");
+  const todayDeposits = childEntries.filter((e) => e.date === today);
   const todayDepositAmount = todayDeposits.reduce((sum, e) => sum + e.amount, 0);
   const ledgerEntries = sortPassbookEntriesNewestFirst(childEntries);
 
@@ -161,8 +160,6 @@ export function HappinessForestPassbook({
           </p>
         </div>
       </section>
-
-      <ExpensePanel child={child} onCompleted={handleTransactionComplete} />
 
       <section className="forest-card forest-card-ledger passbook-ledger-section">
         <div className="forest-card-header">

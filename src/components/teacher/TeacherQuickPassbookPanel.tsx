@@ -29,8 +29,7 @@ export function TeacherQuickPassbookPanel({
   const todayPraiseCount = praiseRecords.filter((p) => p.date === today).length;
 
   const todayDepositCount = useMemo(
-    () =>
-      entries.filter((e) => e.date === today && e.type === "deposit").length,
+    () => entries.filter((e) => e.date === today).length,
     [entries, today],
   );
 
