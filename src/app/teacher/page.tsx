@@ -1,10 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useApp } from "@/hooks/useAppStore";
 import { useRequireRole } from "@/hooks/useRequireRole";
 import { PageHeader } from "@/components/PageHeader";
-import { RoleQuickNav } from "@/components/RoleQuickNav";
+import {
+  TeacherSectionMenu,
+  TEACHER_SECTION_LABELS,
+  type TeacherSection,
+} from "@/components/teacher/TeacherSectionMenu";
 import { TeacherClassPanel, useTeacherClassesBootstrap } from "@/components/teacher/TeacherClassPanel";
 import { TeacherChildPanel } from "@/components/teacher/TeacherChildPanel";
 import { TeacherQuickPassbookPanel } from "@/components/teacher/TeacherQuickPassbookPanel";
@@ -12,6 +16,7 @@ import { TeacherQuickPassbookPanel } from "@/components/teacher/TeacherQuickPass
 export default function TeacherPage() {
   useRequireRole("TEACHER", "DIRECTOR");
   const { state, addPraise, addChild, updateChild, deleteChild } = useApp();
+  const [activeSection, setActiveSection] = useState<TeacherSection | null>(null);
 
   const classNames = useMemo(
     () => state.children.map((c) => c.className),
@@ -27,50 +32,75 @@ export default function TeacherPage() {
   }
 
   return (
-    <div className="space-y-4 pb-2">
+    <div className="teacher-page space-y-4 pb-2">
       <PageHeader
         badge="교사 모드"
         title="행복숲 · 30초 관리"
-        subtitle="반 · 원아 · 미션 적립"
+        subtitle="메뉴를 선택해 주세요"
       />
 
-      <RoleQuickNav
-        items={[
-          { href: "/teacher#invite-parent", emoji: "💌", title: "학부모 초대", desc: "초대코드 만들기" },
-          { href: "/teacher#missions", emoji: "🎯", title: "미션 확인", desc: "오늘의 미션 현황" },
-          {
-            href: "/teacher#missions",
-            emoji: "💰",
-            title: "통장 입금",
-            desc: "30초 미션 적립",
-            variant: "peach",
-          },
-        ]}
-      />
+      <TeacherSectionMenu active={activeSection} onSelect={setActiveSection} />
 
-      <div id="classes" className="scroll-target">
-        <TeacherClassPanel
-          children={state.children}
-          onClassRenamed={handleClassRenamed}
-        />
-      </div>
+      {activeSection && (
+        <div className="teacher-section-panel">
+          <button
+            type="button"
+            onClick={() => setActiveSection(null)}
+            className="teacher-section-back tap-scale"
+          >
+            ← 메뉴로
+          </button>
+          <p className="teacher-section-title">{TEACHER_SECTION_LABELS[activeSection]}</p>
+        </div>
+      )}
 
-      <div id="invite-parent" className="scroll-target">
-        <TeacherChildPanel
-          children={state.children}
-          onAddChild={addChild}
-          onUpdateChild={updateChild}
-          onDeleteChild={deleteChild}
-        />
-      </div>
+      {activeSection === "classes" && (
+        <div id="classes" className="scroll-target">
+          <TeacherClassPanel
+            children={state.children}
+            onClassRenamed={handleClassRenamed}
+          />
+        </div>
+      )}
 
-      <div id="missions" className="scroll-target">
-        <TeacherQuickPassbookPanel
-          children={state.children}
-          praiseRecords={state.praiseRecords}
-          onAddPraise={addPraise}
-        />
-      </div>
+      {activeSection === "invite" && (
+        <div id="invite-parent" className="scroll-target">
+          <TeacherChildPanel
+            children={state.children}
+            onAddChild={addChild}
+            onUpdateChild={updateChild}
+            onDeleteChild={deleteChild}
+          />
+        </div>
+      )}
+
+      {activeSection === "missions" && (
+        <div id="missions" className="scroll-target">
+          <TeacherQuickPassbookPanel
+            children={state.children}
+            praiseRecords={state.praiseRecords}
+            onAddPraise={addPraise}
+            panelTitle="미션 확인"
+            panelSubtitle="오늘의 미션 현황과 적립"
+          />
+        </div>
+      )}
+
+      {activeSection === "deposit" && (
+        <div id="missions-deposit" className="scroll-target">
+          <TeacherQuickPassbookPanel
+            children={state.children}
+            praiseRecords={state.praiseRecords}
+            onAddPraise={addPraise}
+            panelTitle="통장 입금"
+            panelSubtitle="탭 한 번 = 칭찬 + 입금"
+          />
+        </div>
+      )}
+
+      {!activeSection && (
+        <p className="teacher-page-hint">위 메뉴 4개 중 하나를 선택하세요.</p>
+      )}
     </div>
   );
 }
