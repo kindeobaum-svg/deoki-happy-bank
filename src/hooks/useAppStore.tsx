@@ -15,7 +15,6 @@ import { getDemoAccount } from "@/lib/demoAccess";
 import type {
   AppState,
   AttendanceStatus,
-  DailyReport,
   Role,
   User,
 } from "@/lib/types";
@@ -31,10 +30,6 @@ type AppContextValue = {
   accumulate: (childId: string, message?: string) => Promise<void>;
   selectChild: (childId: string) => void;
   addAnnouncement: (title: string, content: string, author: string) => Promise<void>;
-  addDailyReport: (
-    childId: string,
-    report: Omit<DailyReport, "id" | "childId" | "date">,
-  ) => Promise<void>;
   setAttendance: (childId: string, status: AttendanceStatus) => Promise<void>;
   addPraise: (childId: string, message: string, emoji: string) => Promise<void>;
   addChild: (name: string, className: string) => Promise<{ error?: string }>;
@@ -165,21 +160,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
-  const addDailyReport = useCallback(
-    async (
-      childId: string,
-      report: Omit<DailyReport, "id" | "childId" | "date">,
-    ) => {
-      await fetch("/api/daily-reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ childId, ...report }),
-      });
-      await refresh();
-    },
-    [refresh],
-  );
-
   const setAttendance = useCallback(
     async (childId: string, status: AttendanceStatus) => {
       await fetch("/api/attendance", {
@@ -257,7 +237,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       accumulate,
       selectChild,
       addAnnouncement,
-      addDailyReport,
       setAttendance,
       addPraise,
       addChild,
@@ -275,7 +254,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       accumulate,
       selectChild,
       addAnnouncement,
-      addDailyReport,
       setAttendance,
       addPraise,
       addChild,

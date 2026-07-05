@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { formatInviteCode } from "@/lib/inviteCodeUtils";
 
 export function InviteTeacherPanel() {
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   async function createInvite() {
     setLoading(true);
     setError("");
+    setCopyState("idle");
     try {
       const res = await fetch("/api/invites", {
         method: "POST",
@@ -32,12 +35,13 @@ export function InviteTeacherPanel() {
 
   async function copyCode() {
     if (!code) return;
-    try {
-      await navigator.clipboard.writeText(code);
-    } catch {
-      // ignore clipboard errors
-    }
+    const ok = await copyTextToClipboard(code);
+    setCopyState(ok ? "copied" : "failed");
+    window.setTimeout(() => setCopyState("idle"), 2500);
   }
+
+  const copyLabel =
+    copyState === "copied" ? "복사됨 ✓" : copyState === "failed" ? "복사 실패" : "복사";
 
   return (
     <section className="forest-card">
@@ -70,10 +74,21 @@ export function InviteTeacherPanel() {
             <button
               type="button"
               onClick={() => void copyCode()}
-              className="forest-link-btn mt-2 inline-block"
+              className={`forest-link-btn mt-2 inline-block ${copyState === "copied" ? "font-bold text-[var(--sage-800)]" : ""}`}
+              aria-live="polite"
             >
-              복사
+              {copyLabel}
             </button>
+            {copyState === "copied" && (
+              <p className="mt-1 text-xs font-semibold text-[var(--sage-700)]" role="status">
+                초대코드가 복사되었어요
+              </p>
+            )}
+            {copyState === "failed" && (
+              <p className="mt-1 text-xs font-semibold text-red-600" role="alert">
+                복사에 실패했어요. 코드를 길게 눌러 직접 복사해 주세요.
+              </p>
+            )}
           </div>
         )}
         {error && <p className="mt-2 text-xs text-red-600">{error}</p>}

@@ -1250,6 +1250,10 @@ body:has(.parent-main) {
   gap: 0.5rem;
 }
 
+.passbook-summary-grid-2 {
+  grid-template-columns: 1fr auto 1.15fr;
+}
+
 .passbook-summary-item {
   text-align: center;
   min-width: 0;
