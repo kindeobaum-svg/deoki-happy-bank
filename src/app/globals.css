@@ -1289,8 +1289,8 @@ body:has(.parent-main) {
   color: #a5d6a7;
 }
 
-.passbook-summary-value.withdrawal {
-  color: #ffcc80;
+.passbook-summary-grid-2 {
+  grid-template-columns: 1fr auto 1fr;
 }
 
 .passbook-summary-value.balance {
@@ -1305,7 +1305,7 @@ body:has(.parent-main) {
   opacity: 0.88;
 }
 
-/* ── Real passbook ledger (입금/지출) ── */
+/* ── Real passbook ledger (적립 내역) ── */
 .passbook-ledger-section {
   background: var(--passbook-paper) !important;
   border-color: rgba(255, 209, 102, 0.35) !important;
@@ -1369,10 +1369,6 @@ body:has(.parent-main) {
   background: linear-gradient(90deg, rgba(165, 214, 167, 0.12) 0%, transparent 75%);
 }
 
-.real-passbook-row.withdrawal {
-  background: linear-gradient(90deg, rgba(255, 204, 128, 0.14) 0%, transparent 75%);
-}
-
 .real-passbook-row.today {
   box-shadow: inset 3px 0 0 var(--passbook-gold);
 }
@@ -1410,11 +1406,6 @@ body:has(.parent-main) {
   background: rgba(129, 199, 132, 0.22);
 }
 
-.real-passbook-type.type-withdrawal {
-  color: #e65100;
-  background: rgba(255, 183, 77, 0.28);
-}
-
 .real-passbook-detail {
   min-width: 0;
   display: flex;
@@ -1447,10 +1438,6 @@ body:has(.parent-main) {
   color: #2e7d32;
 }
 
-.real-passbook-amount.amount-minus {
-  color: #e65100;
-}
-
 .real-passbook-balance {
   font-size: 0.625rem;
   font-weight: 700;
@@ -1458,86 +1445,6 @@ body:has(.parent-main) {
   text-align: right;
   white-space: nowrap;
   line-height: 1.3;
-}
-
-/* ── Expense panel ── */
-.forest-expense-panel .forest-card-header {
-  align-items: center;
-}
-
-.forest-expense-balance {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: var(--forest-deep);
-  padding: 0.25rem 0.625rem;
-  border-radius: 999px;
-  background: rgba(129, 199, 132, 0.15);
-}
-
-.forest-expense-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.75rem 0.5rem;
-  border-radius: 1rem;
-  border: 2px solid var(--sage-100);
-  background: #fff;
-  transition: all 0.2s ease;
-}
-
-.forest-expense-chip.active {
-  border-color: #ffb74d;
-  background: linear-gradient(180deg, #fff8e1 0%, #fff 100%);
-  box-shadow: 0 3px 10px rgba(255, 152, 0, 0.15);
-}
-
-.forest-expense-chip-name {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--ink);
-  text-align: center;
-  line-height: 1.3;
-}
-
-.forest-expense-chip-amount {
-  font-size: 0.6875rem;
-  font-weight: 800;
-  color: #e65100;
-}
-
-.forest-expense-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.875rem 1rem;
-  border-radius: 1rem;
-  font-size: 0.9375rem;
-  font-weight: 800;
-  color: #fff;
-  background: linear-gradient(180deg, #ffb74d 0%, #f57c00 100%);
-  box-shadow: 0 4px 14px rgba(245, 124, 0, 0.25);
-  transition: all 0.2s ease;
-}
-
-.forest-expense-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.forest-expense-btn.done {
-  background: linear-gradient(180deg, #81c784 0%, #43a047 100%);
-  box-shadow: 0 4px 14px rgba(67, 160, 71, 0.25);
-}
-
-.forest-expense-btn-amount {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
 }
 
 .forest-sparkle {
@@ -2383,85 +2290,7 @@ body:has(.parent-main) {
   font-weight: 600;
 }
 
-/* ── Diary & passbook ── */
-.diary-card {
-  display: block;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  border-radius: 1.5rem;
-  border: 1.5px solid var(--sage-200);
-  background: none;
-  font: inherit;
-  color: inherit;
-  box-shadow: 0 8px 28px rgba(61, 79, 61, 0.08);
-  text-align: left;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-.diary-card--tappable {
-  transition:
-    transform 0.2s cubic-bezier(0.34, 1.2, 0.64, 1),
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.diary-card--tappable:active:not(:disabled) {
-  transform: scale(0.985);
-}
-
-.diary-card--tappable:disabled {
-  cursor: wait;
-}
-
-.diary-card--saved {
-  animation: diary-save-pulse 0.45s ease;
-}
-
-.diary-card--deposited {
-  border-color: #a5d6a7;
-  box-shadow: 0 8px 28px rgba(76, 175, 80, 0.14);
-}
-
-.diary-card-footer-hint {
-  color: var(--ink-soft);
-  font-weight: 600;
-}
-
-.diary-card-footer-done {
-  color: #2e7d32;
-  font-weight: 700;
-}
-
-@keyframes diary-save-pulse {
-  0% { box-shadow: 0 8px 28px rgba(61, 79, 61, 0.08); }
-  50% { box-shadow: 0 12px 36px rgba(255, 193, 7, 0.28); }
-  100% { box-shadow: 0 8px 28px rgba(76, 175, 80, 0.14); }
-}
-
-.diary-card-header {
-  background: linear-gradient(135deg, #5a9e5a 0%, #8ecf8e 100%);
-}
-
-.diary-card-body {
-  background: linear-gradient(180deg, var(--cream) 0%, var(--sage-50) 100%);
-}
-
-.diary-card-footer {
-  background: var(--sage-50);
-  border-top: 1px dashed var(--sage-200);
-  color: var(--ink-soft);
-}
-
-.diary-note {
-  background: white;
-  border-left: 4px solid var(--sage-400);
-  box-shadow: 0 2px 12px rgba(61, 79, 61, 0.05);
-}
-
+/* ── Passbook ── */
 .praise-item {
   background: linear-gradient(135deg, var(--cream-warm) 0%, var(--peach-soft) 100%);
   border: 1px solid rgba(255, 200, 150, 0.3);

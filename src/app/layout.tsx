@@ -27,7 +27,7 @@ const noto = Noto_Sans_KR({
 
 export const metadata: Metadata = {
   title: `${APP_NAME} | ${DAYCARE_NAME}`,
-  description: `학부모와 함께하는 따뜻한 ${DAYCARE_NAME} — 알림장, 행복숲 통장, 우리 아이의 하루`,
+  description: `좋은 습관을 만들고 행복씨앗을 모으는 ${APP_NAME} — ${DAYCARE_NAME}`,
   applicationName: APP_NAME,
   manifest: "/manifest.webmanifest",
   appleWebApp: {

@@ -29,8 +29,7 @@ export function TeacherQuickPassbookPanel({
   const todayPraiseCount = praiseRecords.filter((p) => p.date === today).length;
 
   const todayDepositCount = useMemo(
-    () =>
-      entries.filter((e) => e.date === today && e.type === "deposit").length,
+    () => entries.filter((e) => e.date === today).length,
     [entries, today],
   );
 
@@ -125,7 +124,7 @@ export function TeacherQuickPassbookPanel({
       )}
 
       <p className="teacher-quick-footnote">
-        생활습관 칭찬이 {PASSBOOK_NAME} 성장 기록과 학부모 알림으로 연결돼요 🌳
+        생활습관 칭찬이 {PASSBOOK_NAME} 적립과 학부모 통장으로 연결돼요 🌳
       </p>
     </div>
   );
