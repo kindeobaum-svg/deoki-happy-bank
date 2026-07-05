@@ -24,6 +24,21 @@ describe("isPathAllowedForRole", () => {
   it("allows parent on /parent paths", () => {
     expect(isPathAllowedForRole("/parent", "PARENT")).toBe(true);
     expect(isPathAllowedForRole("/parent/diary", "PARENT")).toBe(true);
+    expect(isPathAllowedForRole("/parent", "TEACHER")).toBe(false);
+  });
+
+  it("blocks parent on /teacher paths", () => {
+    expect(isPathAllowedForRole("/teacher", "PARENT")).toBe(false);
+  });
+
+  it("blocks director on /passbook and /parent paths", () => {
+    expect(isPathAllowedForRole("/passbook", "DIRECTOR")).toBe(false);
+    expect(isPathAllowedForRole("/parent", "DIRECTOR")).toBe(false);
+    expect(isPathAllowedForRole("/parent/diary", "DIRECTOR")).toBe(false);
+  });
+
+  it("allows director on /teacher for class management", () => {
+    expect(isPathAllowedForRole("/teacher", "DIRECTOR")).toBe(true);
   });
 
   it("blocks parent on /director paths", () => {

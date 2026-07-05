@@ -22,15 +22,6 @@ export const SAVE_ITEM_PRESETS = [
   "행복 미션",
 ];
 
-export const EXPENSE_PRESETS = [
-  { name: "색연필 구입", amount: 1000, emoji: "✏️" },
-  { name: "스티커 구입", amount: 500, emoji: "⭐" },
-  { name: "간식 사기", amount: 800, emoji: "🍪" },
-  { name: "장난감 구입", amount: 1500, emoji: "🧸" },
-  { name: "색칠공부 도구", amount: 1200, emoji: "🎨" },
-  { name: "책 사기", amount: 2000, emoji: "📚" },
-];
-
 export const DEFAULT_SAVE_AMOUNT = 100;
 
 function normalizeEntry(raw: Partial<LocalPassbookEntry> & { id: string; childId: string }): LocalPassbookEntry {

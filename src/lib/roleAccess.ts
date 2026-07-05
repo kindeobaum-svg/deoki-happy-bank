@@ -14,9 +14,9 @@ export const PROTECTED_PATH_RULES: PathRule[] = [
   { prefix: "/admin", roles: ["DIRECTOR"] as Role[] },
   { prefix: "/director", roles: ["DIRECTOR"] as Role[] },
   { prefix: "/teacher", roles: ["TEACHER", "DIRECTOR"] as Role[] },
-  { prefix: "/parent", roles: ["PARENT", "TEACHER", "DIRECTOR"] as Role[] },
-  { prefix: "/child", roles: ["CHILD", "PARENT", "TEACHER", "DIRECTOR"] as Role[] },
-  { prefix: "/passbook", roles: ["CHILD", "PARENT", "TEACHER", "DIRECTOR"] as Role[] },
+  { prefix: "/parent", roles: ["PARENT"] as Role[] },
+  { prefix: "/child", roles: ["CHILD", "TEACHER"] as Role[] },
+  { prefix: "/passbook", roles: ["CHILD", "PARENT", "TEACHER"] as Role[] },
 ].sort((a, b) => b.prefix.length - a.prefix.length);
 
 export function normalizePathname(pathname: string): string {

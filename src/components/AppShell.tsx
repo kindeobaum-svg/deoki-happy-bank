@@ -9,9 +9,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { state } = useApp();
   const pathname = usePathname();
   const isParent = state.user?.role === "PARENT";
-  const isForestAdmin =
-    state.user?.role === "DIRECTOR" &&
-    (pathname.startsWith("/admin") || pathname.startsWith("/passbook"));
+  const isForestAdmin = state.user?.role === "DIRECTOR" && pathname.startsWith("/admin");
   const useForestLayout = isParent || isForestAdmin;
 
   return (

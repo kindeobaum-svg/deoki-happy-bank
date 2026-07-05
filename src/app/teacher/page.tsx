@@ -12,6 +12,7 @@ import { TeacherQuickPassbookPanel } from "@/components/teacher/TeacherQuickPass
 export default function TeacherPage() {
   useRequireRole("TEACHER", "DIRECTOR");
   const { state, addPraise, addChild, updateChild, deleteChild } = useApp();
+  const isDirector = state.user?.role === "DIRECTOR";
 
   const classNames = useMemo(
     () => state.children.map((c) => c.className),
@@ -26,18 +27,38 @@ export default function TeacherPage() {
     );
   }
 
+  if (isDirector) {
+    return (
+      <div className="space-y-4 pb-2">
+        <PageHeader
+          badge="원장 모드"
+          title="반 관리"
+          subtitle="반 추가 · 이름 변경 · 삭제"
+        />
+
+        <div id="classes" className="scroll-target">
+          <TeacherClassPanel
+            children={state.children}
+            onClassRenamed={handleClassRenamed}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 pb-2">
       <PageHeader
         badge="교사 모드"
         title="행복숲 · 30초 관리"
-        subtitle="반 · 원아 · 미션 적립"
+        subtitle="원아 · 초대 · 미션 · 통장 입금"
       />
 
       <RoleQuickNav
         items={[
+          { href: "/teacher#invite-parent", emoji: "👶", title: "원아 관리", desc: "원아 등록 · 수정" },
           { href: "/teacher#invite-parent", emoji: "💌", title: "학부모 초대", desc: "초대코드 만들기" },
-          { href: "/teacher#missions", emoji: "🎯", title: "미션 확인", desc: "오늘의 미션 현황" },
+          { href: "/teacher#missions", emoji: "🎯", title: "미션 관리", desc: "오늘의 미션 적립" },
           {
             href: "/teacher#missions",
             emoji: "💰",
@@ -47,13 +68,6 @@ export default function TeacherPage() {
           },
         ]}
       />
-
-      <div id="classes" className="scroll-target">
-        <TeacherClassPanel
-          children={state.children}
-          onClassRenamed={handleClassRenamed}
-        />
-      </div>
 
       <div id="invite-parent" className="scroll-target">
         <TeacherChildPanel

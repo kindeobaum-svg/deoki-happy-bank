@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { ParentHero } from "@/components/parent/ParentHero";
 import { StatBubble } from "@/components/parent/EmotionCard";
 import { InviteTeacherPanel } from "@/components/admin/InviteTeacherPanel";
@@ -73,14 +72,20 @@ export default function AdminPage() {
         greeting="원장 관리"
         childName={DAYCARE_NAME}
         childAvatar="🏫"
-        subtitle="전체 원아 · 반 · 초대 · 적립 한눈에"
+        subtitle="반 · 교사 · 전체 원아 · 현황"
       />
 
       <RoleQuickNav
         className="animate-card-enter animate-card-enter-delay-1"
         items={[
-          { href: "/teacher#classes", emoji: "🏫", title: "반 관리", desc: "반 · 원아 · 미션 적립" },
-          { href: "/admin#invite", emoji: "✉️", title: "반 초대", desc: "교사 초대코드 만들기" },
+          { href: "/teacher#classes", emoji: "🏫", title: "반 관리", desc: "반 추가 · 이름 변경" },
+          { href: "/admin#invite", emoji: "👩‍🏫", title: "교사 관리", desc: "교사 초대코드 만들기" },
+          {
+            href: "/admin#children",
+            emoji: "👶",
+            title: "전체 아이 보기",
+            desc: "원아별 통장 · 반 현황",
+          },
           {
             href: "/admin#overview",
             emoji: "📊",
@@ -115,7 +120,7 @@ export default function AdminPage() {
         <InviteTeacherPanel />
       </div>
 
-      <section className="forest-card forest-card-ledger animate-card-enter animate-card-enter-delay-3">
+      <section id="children" className="forest-card forest-card-ledger animate-card-enter animate-card-enter-delay-3 scroll-target">
         <div className="forest-card-header">
           <div className="parent-section-title">
             <span className="text-2xl">📒</span>
@@ -140,9 +145,6 @@ export default function AdminPage() {
                   <p className="font-bold text-[var(--sage-800)]">
                     {child.totalSaved.toLocaleString()}원
                   </p>
-                  <Link href={`/passbook?child=${child.id}`} className="forest-link-btn mt-1 inline-block text-xs">
-                    통장 →
-                  </Link>
                 </div>
               </div>
             );

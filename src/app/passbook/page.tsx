@@ -100,7 +100,7 @@ function PassbookContent() {
 
         {hydrated ? (
           <div className="animate-card-enter animate-card-enter-delay-1">
-            <LocalPassbookView child={child} entries={localEntries} />
+            <LocalPassbookView child={child} entries={localEntries} parentMode />
           </div>
         ) : (
           <div className="forest-empty-state">
