@@ -8,9 +8,10 @@ import { useLocalPassbook } from "@/hooks/useLocalPassbook";
 type LocalPassbookViewProps = {
   child: Child;
   entries: LocalPassbookEntry[];
+  parentMode?: boolean;
 };
 
-export function LocalPassbookView({ child, entries }: LocalPassbookViewProps) {
+export function LocalPassbookView({ child, entries, parentMode = false }: LocalPassbookViewProps) {
   const { refresh } = useLocalPassbook();
 
   return (
@@ -18,6 +19,7 @@ export function LocalPassbookView({ child, entries }: LocalPassbookViewProps) {
       child={child}
       entries={entries}
       onAccumulated={refresh}
+      parentMode={parentMode}
     />
   );
 }

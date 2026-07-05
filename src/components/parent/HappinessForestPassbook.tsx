@@ -23,12 +23,15 @@ type HappinessForestPassbookProps = {
   child: Child;
   entries: LocalPassbookEntry[];
   onAccumulated?: () => void;
+  /** 학부모만 미션·입금·지출 가능 */
+  parentMode?: boolean;
 };
 
 export function HappinessForestPassbook({
   child,
   entries,
   onAccumulated,
+  parentMode = false,
 }: HappinessForestPassbookProps) {
   const [selectedItem, setSelectedItem] = useState(SAVE_ITEM_PRESETS[0]);
   const [justSaved, setJustSaved] = useState(false);
@@ -129,40 +132,44 @@ export function HappinessForestPassbook({
       </section>
 
       <div id="missions" className="scroll-target">
-        <MissionPanel child={child} onCompleted={handleTransactionComplete} compact />
+        {parentMode && (
+          <MissionPanel child={child} onCompleted={handleTransactionComplete} compact />
+        )}
       </div>
 
-      <section className="forest-card">
-        <div className="forest-card-body space-y-3">
-          <p className="font-title text-sm text-[var(--passbook-navy-deep)]">오늘의 행복 입금</p>
-          <div className="flex flex-wrap gap-2">
-            {SAVE_ITEM_PRESETS.slice(0, 4).map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setSelectedItem(item)}
-                className={`forest-item-chip tap-scale ${selectedItem === item ? "active" : ""}`}
-              >
-                {item}
-              </button>
-            ))}
+      {parentMode && (
+        <section className="forest-card">
+          <div className="forest-card-body space-y-3">
+            <p className="font-title text-sm text-[var(--passbook-navy-deep)]">오늘의 행복 입금</p>
+            <div className="flex flex-wrap gap-2">
+              {SAVE_ITEM_PRESETS.slice(0, 4).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setSelectedItem(item)}
+                  className={`forest-item-chip tap-scale ${selectedItem === item ? "active" : ""}`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={handleAccumulate}
+              className={`forest-accumulate-btn tap-scale ${justSaved ? "saved" : ""}`}
+            >
+              <span className="forest-accumulate-icon">{justSaved ? "✓" : "🌱"}</span>
+              <span>{justSaved ? "입금 완료!" : "입금하기"}</span>
+              <span className="forest-accumulate-amount">+{DEFAULT_SAVE_AMOUNT.toLocaleString()}원</span>
+            </button>
+            <p className="text-center text-xs text-[var(--ink-soft)]">
+              {selectedItem} · 행복숲 통장에 입금돼요
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={handleAccumulate}
-            className={`forest-accumulate-btn tap-scale ${justSaved ? "saved" : ""}`}
-          >
-            <span className="forest-accumulate-icon">{justSaved ? "✓" : "🌱"}</span>
-            <span>{justSaved ? "입금 완료!" : "입금하기"}</span>
-            <span className="forest-accumulate-amount">+{DEFAULT_SAVE_AMOUNT.toLocaleString()}원</span>
-          </button>
-          <p className="text-center text-xs text-[var(--ink-soft)]">
-            {selectedItem} · 행복숲 통장에 입금돼요
-          </p>
-        </div>
-      </section>
+        </section>
+      )}
 
-      <ExpensePanel child={child} onCompleted={handleTransactionComplete} />
+      {parentMode && <ExpensePanel child={child} onCompleted={handleTransactionComplete} />}
 
       <section className="forest-card forest-card-ledger passbook-ledger-section">
         <div className="forest-card-header">
