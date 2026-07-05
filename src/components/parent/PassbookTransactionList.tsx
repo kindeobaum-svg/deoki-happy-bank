@@ -3,7 +3,6 @@
 import {
   formatPassbookRowDate,
   formatTransactionAmount,
-  getTransactionTypeLabel,
   sortPassbookEntriesNewestFirst,
   type LocalPassbookEntry,
 } from "@/lib/localPassbook";
@@ -44,21 +43,18 @@ export function PassbookTransactionList({
       </div>
       <ul className="real-passbook-ledger-body">
         {rows.map((entry, i) => {
-          const isDeposit = entry.type === "deposit";
           const isToday = today && entry.date === today;
           return (
             <li
               key={entry.id}
-              className={`real-passbook-row ${isDeposit ? "deposit" : "withdrawal"} ${isToday ? "today" : ""} ${highlightFirst && i === 0 ? "row-pop" : ""}`}
+              className={`real-passbook-row deposit ${isToday ? "today" : ""} ${highlightFirst && i === 0 ? "row-pop" : ""}`}
             >
               <time className="real-passbook-date-col">{formatPassbookRowDate(entry.date)}</time>
               <div className="real-passbook-detail min-w-0">
-                <span className={`real-passbook-type ${isDeposit ? "type-deposit" : "type-withdrawal"}`}>
-                  {getTransactionTypeLabel(entry.type)}
-                </span>
+                <span className="real-passbook-type type-deposit">적립</span>
                 <p className="real-passbook-item">{entry.item}</p>
               </div>
-              <span className={`real-passbook-amount ${isDeposit ? "amount-plus" : "amount-minus"}`}>
+              <span className="real-passbook-amount amount-plus">
                 {formatTransactionAmount(entry)}
               </span>
               <span className="real-passbook-balance">

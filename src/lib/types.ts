@@ -36,16 +36,6 @@ export type Announcement = {
   author: string;
 };
 
-export type DailyReport = {
-  id: string;
-  childId: string;
-  date: string;
-  mood: string;
-  meal: string;
-  nap: string;
-  note: string;
-};
-
 export type Attendance = {
   id: string;
   childId: string;
@@ -69,7 +59,6 @@ export type AppState = {
   children: Child[];
   saveRecords: SaveRecord[];
   announcements: Announcement[];
-  dailyReports: DailyReport[];
   attendances: Attendance[];
   praiseRecords: PraiseRecord[];
   selectedChildId: string | null;

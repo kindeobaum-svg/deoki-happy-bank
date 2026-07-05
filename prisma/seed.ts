@@ -7,7 +7,6 @@ async function main() {
   await prisma.praiseRecord.deleteMany();
   await prisma.attendance.deleteMany();
   await prisma.saveRecord.deleteMany();
-  await prisma.dailyReport.deleteMany();
   await prisma.announcement.deleteMany();
   await prisma.user.deleteMany();
   await prisma.child.deleteMany();
@@ -122,17 +121,6 @@ async function main() {
         createdAt: new Date(Date.now() - 172800000),
       },
     ],
-  });
-
-  await prisma.dailyReport.create({
-    data: {
-      childId: child1.id,
-      date: new Date().toISOString().slice(0, 10),
-      mood: "😊",
-      meal: "밥 잘 먹었어요",
-      nap: "1시간 30분",
-      note: "친구들과 블록 놀이를 즐겁게 했어요.",
-    },
   });
 
   const today = new Date().toISOString().slice(0, 10);
