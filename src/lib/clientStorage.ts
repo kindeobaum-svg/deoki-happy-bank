@@ -3,7 +3,6 @@ export const APP_LOCAL_STORAGE_KEYS = [
   "haengbok-local-passbook",
   "haengbok-teacher-classes",
   "haengbok-mission-completions",
-  "haengbok-diary-deposits",
 ] as const;
 
 export function clearAppClientStorage() {
