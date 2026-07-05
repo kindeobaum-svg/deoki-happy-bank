@@ -50,7 +50,6 @@ model Child {
   avatar        String
   users        User[]
   saveRecords  SaveRecord[]
-  dailyReports DailyReport[]
   attendances  Attendance[]
   praiseRecords PraiseRecord[]
   inviteCodes  InviteCode[]
@@ -88,19 +87,6 @@ model Announcement {
   content   String
   author    String
   createdAt DateTime @default(now())
-}
-
-model DailyReport {
-  id      String @id @default(cuid())
-  childId String
-  child   Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
-  date    String
-  mood    String
-  meal    String
-  nap     String
-  note    String
-
-  @@unique([childId, date])
 }
 
 model PushSubscription {

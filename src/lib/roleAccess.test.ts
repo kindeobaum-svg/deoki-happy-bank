@@ -23,7 +23,7 @@ describe("isPathAllowedForRole", () => {
 
   it("allows parent on /parent paths", () => {
     expect(isPathAllowedForRole("/parent", "PARENT")).toBe(true);
-    expect(isPathAllowedForRole("/parent/diary", "PARENT")).toBe(true);
+    expect(isPathAllowedForRole("/parent/child", "PARENT")).toBe(true);
   });
 
   it("blocks parent on /director paths", () => {

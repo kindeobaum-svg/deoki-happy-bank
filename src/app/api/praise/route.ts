@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   await notifyParentsOfChild(childId, {
     title: `${emoji} 오늘의 칭찬`,
     body: `${child.name}님 — ${message}`,
-    url: "/parent/diary",
+    url: "/passbook",
   });
 
   return NextResponse.json({ praise });
