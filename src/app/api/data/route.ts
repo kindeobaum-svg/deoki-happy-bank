@@ -19,35 +19,28 @@ export async function GET() {
   const childIds = children.map((c) => c.id);
   const today = new Date().toISOString().slice(0, 10);
 
-  const [saveRecords, announcements, dailyReports, attendances, praiseRecords] =
-    await Promise.all([
-      prisma.saveRecord.findMany({
-        where: { childId: { in: childIds } },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      }),
-      prisma.announcement.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
-      prisma.dailyReport.findMany({
-        where: { childId: { in: childIds } },
-        orderBy: { date: "desc" },
-        take: 30,
-      }),
-      prisma.attendance.findMany({
-        where: { childId: { in: childIds }, date: today },
-      }),
-      prisma.praiseRecord.findMany({
-        where: { childId: { in: childIds } },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      }),
-    ]);
+  const [saveRecords, announcements, attendances, praiseRecords] = await Promise.all([
+    prisma.saveRecord.findMany({
+      where: { childId: { in: childIds } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.announcement.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
+    prisma.attendance.findMany({
+      where: { childId: { in: childIds }, date: today },
+    }),
+    prisma.praiseRecord.findMany({
+      where: { childId: { in: childIds } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+  ]);
 
   return NextResponse.json({
     user: session,
     children,
     saveRecords,
     announcements,
-    dailyReports,
     attendances,
     praiseRecords,
     selectedChildId: session.childId ?? children[0]?.id ?? null,

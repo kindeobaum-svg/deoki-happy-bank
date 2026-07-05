@@ -59,13 +59,13 @@ export async function POST(request: Request) {
     await notifyParentsOfChild(childId, {
       title: `${ATTENDANCE_LABELS[status]} 알림`,
       body: `${child.name}님 오늘 ${ATTENDANCE_LABELS[status]} 처리되었습니다.`,
-      url: "/parent/diary",
+      url: "/passbook",
     });
   } else {
     await notifyParentsOfChild(childId, {
       title: "✅ 출석 완료",
       body: `${child.name}님이 어린이집에 도착했어요!`,
-      url: "/parent/diary",
+      url: "/passbook",
     });
   }
 
