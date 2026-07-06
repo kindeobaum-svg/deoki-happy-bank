@@ -4,15 +4,13 @@ import { HappinessTreeCard } from "@/components/parent/HappinessTreeCard";
 import { RecentPassbookList } from "@/components/parent/RecentPassbookList";
 import { ParentHero } from "@/components/parent/ParentHero";
 import { useApp } from "@/hooks/useAppStore";
-import { useLocalPassbook } from "@/hooks/useLocalPassbook";
-import { getChildTotalSaved } from "@/lib/localPassbook";
+import { getChildTotalSaved, recordsToPassbookEntries } from "@/lib/localPassbook";
 import { TREE_LABELS, SAVINGS_STAGE_THRESHOLDS } from "@/lib/tree";
 
 const STAGE_ICONS = ["🌰", "🌱", "🌳", "🌲"];
 
 export default function ParentGrowthPage() {
-  const { state, selectedChild, selectChild } = useApp();
-  const { entries: localEntries, hydrated } = useLocalPassbook();
+  const { state, selectedChild, selectChild, loading } = useApp();
   const child = selectedChild ?? state.children[0];
 
   if (!child) {
@@ -23,7 +21,9 @@ export default function ParentGrowthPage() {
     );
   }
 
-  const localTotal = hydrated ? getChildTotalSaved(child.id) : child.totalSaved;
+  const records = state.saveRecords.filter((r) => r.childId === child.id);
+  const localEntries = recordsToPassbookEntries(child.id, child.name, records);
+  const localTotal = getChildTotalSaved(child.id, state.saveRecords);
   const stage = SAVINGS_STAGE_THRESHOLDS.filter((t) => localTotal >= t).length - 1;
 
   return (
@@ -99,7 +99,7 @@ export default function ParentGrowthPage() {
         </ul>
       </section>
 
-      {hydrated && (
+      {!loading && (
         <RecentPassbookList entries={localEntries} childId={child.id} limit={10} />
       )}
     </div>

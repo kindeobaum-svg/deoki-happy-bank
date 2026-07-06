@@ -1,9 +1,6 @@
-/** 앱 클라이언트 저장소 키 — 로그아웃 시 전부 삭제 */
+/** 앱 클라이언트 저장소 키 — 로그아웃 시 삭제 (통장·미션은 DB에 저장) */
 export const APP_LOCAL_STORAGE_KEYS = [
-  "haengbok-local-passbook",
   "haengbok-teacher-classes",
-  "haengbok-mission-completions",
-  "haengbok-diary-deposits",
 ] as const;
 
 export function clearAppClientStorage() {

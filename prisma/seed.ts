@@ -6,6 +6,7 @@ async function main() {
   await prisma.pushSubscription.deleteMany();
   await prisma.praiseRecord.deleteMany();
   await prisma.attendance.deleteMany();
+  await prisma.missionCompletion.deleteMany();
   await prisma.saveRecord.deleteMany();
   await prisma.dailyReport.deleteMany();
   await prisma.announcement.deleteMany();
@@ -19,8 +20,8 @@ async function main() {
       name: "김하늘",
       className: "햇살반",
       accountNumber: "HB-2024-0001",
-      points: 0,
-      totalSaved: 0,
+      points: 1,
+      totalSaved: 100,
       avatar: "🌻",
     },
   });

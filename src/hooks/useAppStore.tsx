@@ -37,6 +37,12 @@ type AppContextValue = {
   ) => Promise<void>;
   setAttendance: (childId: string, status: AttendanceStatus) => Promise<void>;
   addPraise: (childId: string, message: string, emoji: string) => Promise<void>;
+  addPassbookTransaction: (
+    childId: string,
+    message: string,
+    amount: number,
+    type: "deposit" | "withdrawal",
+  ) => Promise<{ error?: string }>;
   addChild: (name: string, className: string) => Promise<{ error?: string }>;
   updateChild: (
     id: string,
@@ -204,6 +210,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const addPassbookTransaction = useCallback(
+    async (
+      childId: string,
+      message: string,
+      amount: number,
+      type: "deposit" | "withdrawal",
+    ) => {
+      const res = await fetch(`/api/children/${childId}/passbook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, amount, type }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error ?? "통장 기록에 실패했습니다." };
+      await refresh();
+      return {};
+    },
+    [refresh],
+  );
+
   const addChild = useCallback(
     async (name: string, className: string) => {
       const res = await fetch("/api/children", {
@@ -260,6 +286,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addDailyReport,
       setAttendance,
       addPraise,
+      addPassbookTransaction,
       addChild,
       updateChild,
       deleteChild,
@@ -278,6 +305,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addDailyReport,
       setAttendance,
       addPraise,
+      addPassbookTransaction,
       addChild,
       updateChild,
       deleteChild,
@@ -311,6 +339,7 @@ function normalizeRecord(r: RecordRaw) {
     childId: r.childId,
     amount: r.amount,
     message: r.message,
+    type: r.type === "WITHDRAWAL" ? "WITHDRAWAL" as const : "DEPOSIT" as const,
     createdAt: typeof r.createdAt === "string" ? r.createdAt : new Date(r.createdAt).toISOString(),
   };
 }
@@ -352,6 +381,7 @@ type RecordRaw = {
   childId: string;
   amount: number;
   message: string;
+  type?: string;
   createdAt: string | Date;
 };
 

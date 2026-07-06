@@ -6,6 +6,7 @@ export type PassbookEntry = {
   message: string;
   amount: number;
   balance: number;
+  type: "deposit" | "withdrawal";
 };
 
 export function buildPassbookEntries(records: SaveRecord[]): PassbookEntry[] {
@@ -15,13 +16,15 @@ export function buildPassbookEntries(records: SaveRecord[]): PassbookEntry[] {
 
   let balance = 0;
   return sorted.map((record) => {
-    balance += record.amount;
+    const type = record.type === "WITHDRAWAL" ? "withdrawal" : "deposit";
+    balance += type === "deposit" ? record.amount : -record.amount;
     return {
       id: record.id,
       date: record.createdAt,
       message: record.message,
       amount: record.amount,
       balance,
+      type,
     };
   });
 }

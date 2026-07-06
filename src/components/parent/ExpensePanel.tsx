@@ -2,11 +2,8 @@
 
 import { useState } from "react";
 import type { Child } from "@/lib/types";
-import {
-  addWithdrawalEntry,
-  EXPENSE_PRESETS,
-  getChildTotalSaved,
-} from "@/lib/localPassbook";
+import { EXPENSE_PRESETS } from "@/lib/localPassbook";
+import { usePassbook } from "@/hooks/useLocalPassbook";
 
 type ExpensePanelProps = {
   child: Child;
@@ -14,35 +11,28 @@ type ExpensePanelProps = {
 };
 
 export function ExpensePanel({ child, onCompleted }: ExpensePanelProps) {
+  const { balance, withdraw } = usePassbook(child.id, child.name);
   const [selected, setSelected] = useState(EXPENSE_PRESETS[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [justSpent, setJustSpent] = useState(false);
 
-  const balance = getChildTotalSaved(child.id);
-
-  function handleExpense() {
+  async function handleExpense() {
+    if (loading) return;
     setLoading(true);
     setError(null);
 
-    window.setTimeout(() => {
-      const { entry, error: err } = addWithdrawalEntry(
-        child.id,
-        child.name,
-        selected.name,
-        selected.amount,
-      );
-      setLoading(false);
+    const result = await withdraw(selected.name, selected.amount);
+    setLoading(false);
 
-      if (err || !entry) {
-        setError(err ?? "지출할 수 없어요");
-        return;
-      }
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
 
-      setJustSpent(true);
-      onCompleted?.();
-      window.setTimeout(() => setJustSpent(false), 900);
-    }, 200);
+    setJustSpent(true);
+    onCompleted?.();
+    window.setTimeout(() => setJustSpent(false), 900);
   }
 
   return (

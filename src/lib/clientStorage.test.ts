@@ -14,8 +14,8 @@ describe("sessionCookieOptions", () => {
 });
 
 describe("APP_LOCAL_STORAGE_KEYS", () => {
-  it("includes passbook and teacher storage keys", () => {
-    expect(APP_LOCAL_STORAGE_KEYS).toContain("haengbok-local-passbook");
+  it("includes teacher storage keys only (passbook is in DB)", () => {
     expect(APP_LOCAL_STORAGE_KEYS).toContain("haengbok-teacher-classes");
+    expect(APP_LOCAL_STORAGE_KEYS).not.toContain("haengbok-local-passbook");
   });
 });

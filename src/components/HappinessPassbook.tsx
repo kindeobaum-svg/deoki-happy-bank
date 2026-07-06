@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { Child } from "@/lib/types";
+import type { Child, SaveRecord } from "@/lib/types";
 import { buildPassbookEntries, formatPassbookDate } from "@/lib/passbook";
 import {
   PassbookAccountHeader,
@@ -12,7 +12,7 @@ import { PassbookInnerPage, PassbookShell } from "@/components/passbook/Passbook
 
 type HappinessPassbookProps = {
   child: Child;
-  records: { id: string; childId: string; amount: number; message: string; createdAt: string }[];
+  records: SaveRecord[];
 };
 
 export function HappinessPassbook({ child, records }: HappinessPassbookProps) {

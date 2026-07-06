@@ -4,9 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Child } from "@/lib/types";
 import {
-  addDepositEntry,
   DEFAULT_SAVE_AMOUNT,
-  getChildPassbookSummary,
   SAVE_ITEM_PRESETS,
   sortPassbookEntriesNewestFirst,
   type LocalPassbookEntry,
@@ -18,25 +16,26 @@ import { PassbookSummaryCard } from "@/components/parent/PassbookSummaryCard";
 import { PassbookTransactionList } from "@/components/parent/PassbookTransactionList";
 import { todayStr } from "@/lib/attendance";
 import { ChildProfileAvatar } from "@/components/ChildProfileAvatar";
+import { usePassbook } from "@/hooks/useLocalPassbook";
 
 type HappinessForestPassbookProps = {
   child: Child;
-  entries: LocalPassbookEntry[];
+  entries?: LocalPassbookEntry[];
   onAccumulated?: () => void;
 };
 
 export function HappinessForestPassbook({
   child,
-  entries,
   onAccumulated,
 }: HappinessForestPassbookProps) {
+  const { entries, summary, deposit } = usePassbook(child.id, child.name);
   const [selectedItem, setSelectedItem] = useState(SAVE_ITEM_PRESETS[0]);
   const [justSaved, setJustSaved] = useState(false);
   const [sparkle, setSparkle] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const today = todayStr();
-  const childEntries = entries.filter((e) => e.childId === child.id);
-  const summary = getChildPassbookSummary(child.id);
+  const childEntries = entries;
   const todayDeposits = childEntries.filter((e) => e.date === today && e.type === "deposit");
   const todayDepositAmount = todayDeposits.reduce((sum, e) => sum + e.amount, 0);
   const ledgerEntries = sortPassbookEntriesNewestFirst(childEntries);
@@ -56,9 +55,14 @@ export function HappinessForestPassbook({
     window.setTimeout(() => setSparkle(false), 1200);
   }
 
-  function handleAccumulate() {
-    addDepositEntry(child.id, child.name, selectedItem, DEFAULT_SAVE_AMOUNT);
-    handleTransactionComplete();
+  async function handleAccumulate() {
+    if (saving) return;
+    setSaving(true);
+    const result = await deposit(selectedItem, DEFAULT_SAVE_AMOUNT);
+    setSaving(false);
+    if (!result.error) {
+      handleTransactionComplete();
+    }
   }
 
   return (
@@ -150,10 +154,11 @@ export function HappinessForestPassbook({
           <button
             type="button"
             onClick={handleAccumulate}
+            disabled={saving}
             className={`forest-accumulate-btn tap-scale ${justSaved ? "saved" : ""}`}
           >
             <span className="forest-accumulate-icon">{justSaved ? "✓" : "🌱"}</span>
-            <span>{justSaved ? "입금 완료!" : "입금하기"}</span>
+            <span>{justSaved ? "입금 완료!" : saving ? "입금 중..." : "입금하기"}</span>
             <span className="forest-accumulate-amount">+{DEFAULT_SAVE_AMOUNT.toLocaleString()}원</span>
           </button>
           <p className="text-center text-xs text-[var(--ink-soft)]">

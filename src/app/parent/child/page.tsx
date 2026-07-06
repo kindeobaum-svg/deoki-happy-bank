@@ -4,7 +4,6 @@ import { ParentHero } from "@/components/parent/ParentHero";
 import { PASSBOOK_NAME } from "@/lib/branding";
 import { EmotionCard } from "@/components/parent/EmotionCard";
 import { useApp } from "@/hooks/useAppStore";
-import { useLocalPassbook } from "@/hooks/useLocalPassbook";
 import { getChildTotalSaved } from "@/lib/localPassbook";
 import {
   ATTENDANCE_COLORS,
@@ -16,7 +15,6 @@ import { ChildProfileAvatar } from "@/components/ChildProfileAvatar";
 
 export default function ParentChildPage() {
   const { state, selectedChild, selectChild } = useApp();
-  const { hydrated } = useLocalPassbook();
   const child = selectedChild ?? state.children[0];
   const today = todayStr();
 
@@ -35,7 +33,7 @@ export default function ParentChildPage() {
   const hasDiary = state.dailyReports.some(
     (r) => r.childId === child.id && r.date === today,
   );
-  const localTotal = hydrated ? getChildTotalSaved(child.id) : child.totalSaved;
+  const localTotal = getChildTotalSaved(child.id, state.saveRecords);
 
   return (
     <div className="parent-page">

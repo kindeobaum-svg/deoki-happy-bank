@@ -1,7 +1,6 @@
 "use client";
 
 import { TreeVisual } from "@/components/TreeVisual";
-import { getChildTotalSaved } from "@/lib/localPassbook";
 import { TREE_LABELS } from "@/lib/tree";
 
 type HappinessTreeCardProps = {
@@ -67,8 +66,4 @@ export function HappinessTreeCard({
       </div>
     </section>
   );
-}
-
-export function getTreeTotalSaved(childId: string, fallback = 0) {
-  return getChildTotalSaved(childId) || fallback;
 }
