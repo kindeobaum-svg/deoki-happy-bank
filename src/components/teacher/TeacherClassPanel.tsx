@@ -1,75 +1,64 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  addTeacherClass,
-  bootstrapClassesFromChildren,
-  deleteTeacherClass,
-  loadTeacherClasses,
-  mergeClassesWithChildren,
-  type TeacherClass,
-  updateTeacherClass,
-} from "@/lib/teacherClasses";
-
-import type { Child } from "@/lib/types";
+import { useState } from "react";
+import type { Child, ClassRoom } from "@/lib/types";
 
 type TeacherClassPanelProps = {
+  classes: ClassRoom[];
   children?: Child[];
-  onClassRenamed?: (oldName: string, newName: string) => void;
+  onAddClass: (name: string) => Promise<{ error?: string }>;
+  onUpdateClass: (id: string, name: string) => Promise<{ error?: string }>;
+  onDeleteClass: (id: string) => Promise<{ error?: string }>;
 };
 
-export function TeacherClassPanel({ children = [], onClassRenamed }: TeacherClassPanelProps) {
-  const [classes, setClasses] = useState<TeacherClass[]>([]);
+export function TeacherClassPanel({
+  classes,
+  children = [],
+  onAddClass,
+  onUpdateClass,
+  onDeleteClass,
+}: TeacherClassPanelProps) {
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function reload() {
-    const stored = loadTeacherClasses();
-    const childClassNames = children.map((c) => c.className);
-    setClasses(mergeClassesWithChildren(stored, childClassNames));
-  }
-
-  useEffect(() => {
-    reload();
-    const onUpdate = () => reload();
-    window.addEventListener("teacher-classes-updated", onUpdate);
-    return () => window.removeEventListener("teacher-classes-updated", onUpdate);
-  }, [children]);
-
-  function handleAdd() {
-    const entry = addTeacherClass(name);
-    if (entry) {
+  async function handleAdd() {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setLoading(true);
+    const result = await onAddClass(trimmed);
+    setLoading(false);
+    if (!result.error) {
       setName("");
-      reload();
     }
   }
 
-  function startEdit(cls: TeacherClass) {
+  function startEdit(cls: ClassRoom) {
     setEditingId(cls.id);
     setEditName(cls.name);
   }
 
-  function saveEdit(id: string) {
-    const oldName = classes.find((c) => c.id === id)?.name;
+  async function saveEdit(id: string) {
     const trimmed = editName.trim();
-    if (updateTeacherClass(id, trimmed)) {
-      if (oldName && oldName !== trimmed) {
-        onClassRenamed?.(oldName, trimmed);
-      }
+    if (!trimmed) return;
+    setLoading(true);
+    const result = await onUpdateClass(id, trimmed);
+    setLoading(false);
+    if (!result.error) {
       setEditingId(null);
       setEditName("");
-      reload();
     }
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     const cls = classes.find((c) => c.id === id);
     if (!cls) return;
     const hasChildren = children.some((c) => c.className === cls.name);
     if (hasChildren) return;
-    deleteTeacherClass(id);
-    reload();
+    setLoading(true);
+    await onDeleteClass(id);
+    setLoading(false);
   }
 
   return (
@@ -85,10 +74,11 @@ export function TeacherClassPanel({ children = [], onClassRenamed }: TeacherClas
           onChange={(e) => setName(e.target.value)}
           placeholder="예) 햇님반, 달림반"
           className="input-warm teacher-inline-input flex-1 px-3 py-2.5 text-sm"
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          onKeyDown={(e) => e.key === "Enter" && void handleAdd()}
+          disabled={loading}
         />
-        <button type="button" onClick={handleAdd} className="teacher-inline-btn">
-          + 반 추가
+        <button type="button" onClick={() => void handleAdd()} disabled={loading || !name.trim()} className="teacher-inline-btn">
+          {loading ? "..." : "+ 반 추가"}
         </button>
       </div>
 
@@ -106,9 +96,10 @@ export function TeacherClassPanel({ children = [], onClassRenamed }: TeacherClas
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     className="input-warm flex-1 px-3 py-2 text-sm"
-                    onKeyDown={(e) => e.key === "Enter" && saveEdit(cls.id)}
+                    onKeyDown={(e) => e.key === "Enter" && void saveEdit(cls.id)}
+                    disabled={loading}
                   />
-                  <button type="button" onClick={() => saveEdit(cls.id)} className="teacher-mini-btn primary">
+                  <button type="button" onClick={() => void saveEdit(cls.id)} className="teacher-mini-btn primary" disabled={loading}>
                     저장
                   </button>
                   <button type="button" onClick={() => setEditingId(null)} className="teacher-mini-btn">
@@ -130,15 +121,9 @@ export function TeacherClassPanel({ children = [], onClassRenamed }: TeacherClas
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDelete(cls.id)}
-                    disabled={childCount > 0 || cls.id.startsWith("cls-db-")}
-                    title={
-                      childCount > 0
-                        ? "원아가 있는 반은 삭제할 수 없어요"
-                        : cls.id.startsWith("cls-db-")
-                          ? "원아가 등록된 반은 자동으로 표시돼요"
-                          : undefined
-                    }
+                    onClick={() => void handleDelete(cls.id)}
+                    disabled={childCount > 0 || loading}
+                    title={childCount > 0 ? "원아가 있는 반은 삭제할 수 없어요" : undefined}
                     className="teacher-mini-btn danger disabled:opacity-40"
                   >
                     삭제
@@ -154,8 +139,13 @@ export function TeacherClassPanel({ children = [], onClassRenamed }: TeacherClas
   );
 }
 
-export function useTeacherClassesBootstrap(classNames: string[]) {
-  useEffect(() => {
-    bootstrapClassesFromChildren(classNames);
-  }, [classNames]);
+export function useTeacherClassSelection(classes: ClassRoom[]) {
+  const [manualSelection, setManualSelection] = useState<string | null>(null);
+
+  const selectedClass =
+    manualSelection && classes.some((c) => c.name === manualSelection)
+      ? manualSelection
+      : classes[0]?.name ?? "";
+
+  return { selectedClass, setSelectedClass: setManualSelection };
 }

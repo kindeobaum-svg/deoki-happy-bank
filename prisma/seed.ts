@@ -11,6 +11,7 @@ export async function seedDatabase(options: { force?: boolean } = {}) {
   }
 
   if (force) {
+    await prisma.classRoom.deleteMany();
     await prisma.diaryDeposit.deleteMany();
     await prisma.missionCompletion.deleteMany();
     await prisma.passbookTransaction.deleteMany();
@@ -58,6 +59,11 @@ export async function seedDatabase(options: { force?: boolean } = {}) {
       totalSaved: 100,
       avatar: "🦋",
     },
+  });
+
+  await prisma.classRoom.createMany({
+    data: [{ name: "햇살반" }, { name: "무지개반" }],
+    skipDuplicates: true,
   });
 
   await prisma.user.createMany({

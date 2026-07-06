@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { Child } from "@/lib/types";
-import { loadTeacherClasses, mergeClassesWithChildren, type TeacherClass } from "@/lib/teacherClasses";
+import { useMemo, useState } from "react";
+import type { Child, ClassRoom } from "@/lib/types";
 import { ChildProfileAvatar } from "@/components/ChildProfileAvatar";
 import { ChildPhotoChangeButton } from "@/components/ChildPhotoChangeButton";
 import { InviteParentButton } from "@/components/teacher/InviteParentButton";
+import { useTeacherClassSelection } from "@/components/teacher/TeacherClassPanel";
 
 type TeacherChildPanelProps = {
+  classes: ClassRoom[];
   children: Child[];
   onAddChild: (name: string, className: string) => Promise<{ error?: string }>;
   onUpdateChild: (
@@ -18,30 +19,17 @@ type TeacherChildPanelProps = {
 };
 
 export function TeacherChildPanel({
+  classes,
   children,
   onAddChild,
   onUpdateChild,
   onDeleteChild,
 }: TeacherChildPanelProps) {
-  const [classes, setClasses] = useState<TeacherClass[]>([]);
-  const [selectedClass, setSelectedClass] = useState("");
+  const { selectedClass, setSelectedClass } = useTeacherClassSelection(classes);
   const [childName, setChildName] = useState("");
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-
-  useEffect(() => {
-    function reload() {
-      const stored = loadTeacherClasses();
-      const childClassNames = children.map((c) => c.className);
-      const merged = mergeClassesWithChildren(stored, childClassNames);
-      setClasses(merged);
-      setSelectedClass((prev) => prev || merged[0]?.name || "");
-    }
-    reload();
-    window.addEventListener("teacher-classes-updated", reload);
-    return () => window.removeEventListener("teacher-classes-updated", reload);
-  }, [children]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Child[]>();

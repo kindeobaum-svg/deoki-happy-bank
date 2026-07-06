@@ -46,12 +46,16 @@ type AppContextValue = {
     data: { name?: string; className?: string; avatar?: string },
   ) => Promise<{ error?: string }>;
   deleteChild: (id: string) => Promise<{ error?: string }>;
+  addClass: (name: string) => Promise<{ error?: string }>;
+  updateClass: (id: string, name: string) => Promise<{ error?: string }>;
+  deleteClass: (id: string) => Promise<{ error?: string }>;
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 const EMPTY: AppState = {
   user: null,
+  classes: [],
   children: [],
   passbookTransactions: [],
   missionCompletions: [],
@@ -90,6 +94,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await dataRes.json();
       setState((prev) => ({
         user,
+        classes: data.classes ?? [],
         children: data.children.map(normalizeChild),
         passbookTransactions: (data.passbookTransactions ?? []).map(normalizePassbookTransaction),
         missionCompletions: data.missionCompletions ?? [],
@@ -310,6 +315,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const addClass = useCallback(
+    async (name: string) => {
+      const res = await fetch("/api/classes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error ?? "반 추가에 실패했습니다." };
+      await refresh();
+      return {};
+    },
+    [refresh],
+  );
+
+  const updateClass = useCallback(
+    async (id: string, name: string) => {
+      const res = await fetch(`/api/classes/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error ?? "반 수정에 실패했습니다." };
+      await refresh();
+      return {};
+    },
+    [refresh],
+  );
+
+  const deleteClass = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/classes/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { error: data.error ?? "반 삭제에 실패했습니다." };
+      await refresh();
+      return {};
+    },
+    [refresh],
+  );
+
   const value = useMemo(
     () => ({
       state,
@@ -332,6 +378,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addChild,
       updateChild,
       deleteChild,
+      addClass,
+      updateClass,
+      deleteClass,
     }),
     [
       state,
@@ -354,6 +403,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addChild,
       updateChild,
       deleteChild,
+      addClass,
+      updateClass,
+      deleteClass,
     ],
   );
 

@@ -1,30 +1,25 @@
 "use client";
 
-import { useMemo } from "react";
 import { useApp } from "@/hooks/useAppStore";
 import { useRequireRole } from "@/hooks/useRequireRole";
 import { PageHeader } from "@/components/PageHeader";
 import { RoleQuickNav } from "@/components/RoleQuickNav";
-import { TeacherClassPanel, useTeacherClassesBootstrap } from "@/components/teacher/TeacherClassPanel";
+import { TeacherClassPanel } from "@/components/teacher/TeacherClassPanel";
 import { TeacherChildPanel } from "@/components/teacher/TeacherChildPanel";
 import { TeacherQuickPassbookPanel } from "@/components/teacher/TeacherQuickPassbookPanel";
 
 export default function TeacherPage() {
   useRequireRole("TEACHER", "DIRECTOR");
-  const { state, addPraise, addChild, updateChild, deleteChild } = useApp();
-
-  const classNames = useMemo(
-    () => state.children.map((c) => c.className),
-    [state.children],
-  );
-  useTeacherClassesBootstrap(classNames);
-
-  async function handleClassRenamed(oldName: string, newName: string) {
-    const targets = state.children.filter((c) => c.className === oldName);
-    await Promise.all(
-      targets.map((c) => updateChild(c.id, { className: newName })),
-    );
-  }
+  const {
+    state,
+    addPraise,
+    addChild,
+    updateChild,
+    deleteChild,
+    addClass,
+    updateClass,
+    deleteClass,
+  } = useApp();
 
   return (
     <div className="space-y-4 pb-2">
@@ -50,13 +45,17 @@ export default function TeacherPage() {
 
       <div id="classes" className="scroll-target">
         <TeacherClassPanel
+          classes={state.classes}
           children={state.children}
-          onClassRenamed={handleClassRenamed}
+          onAddClass={addClass}
+          onUpdateClass={updateClass}
+          onDeleteClass={deleteClass}
         />
       </div>
 
       <div id="invite-parent" className="scroll-target">
         <TeacherChildPanel
+          classes={state.classes}
           children={state.children}
           onAddChild={addChild}
           onUpdateChild={updateChild}

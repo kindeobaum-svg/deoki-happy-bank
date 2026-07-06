@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Child } from "@prisma/client";
 import { getSession } from "@/lib/auth";
+import { listClassRooms } from "@/lib/classService";
 import { prisma } from "@/lib/db";
 import { todayStr } from "@/lib/attendance";
 
@@ -11,8 +12,12 @@ export async function GET() {
   }
 
   let children: Child[] = [];
+  let classes: { id: string; name: string }[] = [];
   if (session.role === "TEACHER" || session.role === "DIRECTOR") {
-    children = await prisma.child.findMany({ orderBy: { name: "asc" } });
+    [children, classes] = await Promise.all([
+      prisma.child.findMany({ orderBy: { name: "asc" } }),
+      listClassRooms(prisma),
+    ]);
   } else if (session.childId) {
     children = await prisma.child.findMany({ where: { id: session.childId } });
   }
@@ -57,6 +62,7 @@ export async function GET() {
 
   return NextResponse.json({
     user: session,
+    classes,
     children,
     passbookTransactions: passbookTransactions.map((t) => ({
       id: t.id,

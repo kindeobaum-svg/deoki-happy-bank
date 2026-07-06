@@ -42,6 +42,11 @@ export type DiaryDeposit = {
   reportDate: string;
 };
 
+export type ClassRoom = {
+  id: string;
+  name: string;
+};
+
 export type Child = {
   id: string;
   name: string;
@@ -90,6 +95,7 @@ export type PraiseRecord = {
 
 export type AppState = {
   user: User | null;
+  classes: ClassRoom[];
   children: Child[];
   passbookTransactions: PassbookTransaction[];
   missionCompletions: MissionCompletion[];

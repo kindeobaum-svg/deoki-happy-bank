@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Role } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { ensureClassRoomForChild } from "@/lib/classService";
 import { pickChildAvatar } from "@/lib/childAvatars";
 import { generateUniqueChildInviteCode } from "@/lib/childInviteCode";
 
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
   }
 
   const accountNumber = await generateUniqueAccountNumber();
+  await ensureClassRoomForChild(prisma, className);
 
   const child = await prisma.child.create({
     data: {
