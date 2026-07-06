@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db";
-import { getTursoConfig } from "@/lib/tursoConfig";
 
 const CLASS_ROOM_TABLE = `
 CREATE TABLE IF NOT EXISTS "ClassRoom" (
@@ -15,10 +14,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS "ClassRoom_name_key" ON "ClassRoom"("name")
 
 let ensurePromise: Promise<void> | null = null;
 
-/** Turso 프로덕션에 ClassRoom 테이블이 없을 때 런타임 생성 (빌드 마이그레이션 실패 대비) */
+/** ClassRoom 테이블이 없을 때 런타임 생성 (Turso·demo.db 공통) */
 export async function ensureClassRoomSchema(): Promise<void> {
-  if (!getTursoConfig()) return;
-
   if (!ensurePromise) {
     ensurePromise = (async () => {
       await prisma.$executeRawUnsafe(CLASS_ROOM_TABLE);
