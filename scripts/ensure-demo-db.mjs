@@ -10,7 +10,7 @@ if (fs.existsSync(demoDbPath)) {
   fs.unlinkSync(demoDbPath);
 }
 
-execSync("prisma migrate deploy", { stdio: "inherit", env: demoDbEnv });
+execSync("npx prisma migrate deploy", { stdio: "inherit", env: demoDbEnv });
 execSync("SEED_FORCE=1 npm run db:seed", {
   stdio: "inherit",
   env: { ...demoDbEnv, SEED_FORCE: "1" },
