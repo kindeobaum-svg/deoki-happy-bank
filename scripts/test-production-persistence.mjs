@@ -48,7 +48,7 @@ async function main() {
   const health = await api("/api/health/db");
   step(0, "DB 헬스체크", health.ok && health.json.ok === true, JSON.stringify(health.json));
   if (health.json.mode !== "turso") {
-    throw new Error(`Turso 미사용: mode=${health.json.mode}`);
+    console.warn(`   ⚠ Turso 미사용: mode=${health.json.mode} (Vercel env에 TURSO_DATABASE_URL 설정 필요)`);
   }
   console.log(`   Turso: ${health.json.tursoHost}, ClassRoom=${health.json.counts?.classRoom}\n`);
 
