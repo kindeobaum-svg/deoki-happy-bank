@@ -92,7 +92,18 @@ npm run db:seed
 
 6. **Deploy** 클릭
 
-빌드 명령 (자동): `prisma generate && prisma migrate deploy && next build`
+> **중요: Vercel 프로젝트는 하나만 사용하세요.**  
+> `deoki-happy-bank`, `haengbok-buja-daycare`, `project-ht10y`처럼 같은 저장소를 여러 Vercel 프로젝트에 연결하면 **각각 별도 Turso DB**가 생겨 반·원아 데이터가 “사라진 것처럼” 보입니다.  
+> 운영 URL은 **`https://deoki-happy-bank.vercel.app` 하나**로 통일하고, 나머지 프로젝트는 삭제하거나 Turso env를 동일하게 맞추세요.
+
+빌드 명령 (자동): `prisma generate` → Turso 마이그레이션(`scripts/turso-migrate.mjs`) → `next build`
+
+운영 점검:
+
+```bash
+node scripts/verify-production-turso.mjs
+node scripts/test-production-persistence.mjs https://deoki-happy-bank.vercel.app
+```
 
 ---
 
@@ -156,8 +167,11 @@ npm run db:seed
 ### 빌드 실패: `AUTH_SECRET is not set`
 → Vercel Environment Variables에 `AUTH_SECRET` 추가 후 Redeploy
 
-### 빌드 실패: `migrate deploy` 오류
-→ `DATABASE_URL`에 `?authToken=` 포함 여부 확인
+### 빌드 실패: `migrate deploy` / `the URL must start with the protocol file:` 오류
+→ Prisma CLI는 Turso(`libsql://`) URL을 지원하지 않습니다. 최신 `main`은 빌드 시 `scripts/turso-migrate.mjs`로 Turso에 SQL을 적용합니다. Redeploy 후에도 실패하면 Vercel Build Logs에서 `Turso migration failed` 메시지를 확인하세요.
+
+### 반·원아가 다른 URL에서 다르게 보임
+→ Vercel 프로젝트가 여러 개이고 각각 다른 Turso DB를 사용 중입니다. `node scripts/verify-production-turso.mjs`로 teacher userId가 URL마다 다른지 확인하세요.
 
 ### 로그인 후 빈 화면 / 데이터 없음
 → Turso DB에 시드 미실행. 로컬에서 2단계 5번(`db:seed`) 재실행
