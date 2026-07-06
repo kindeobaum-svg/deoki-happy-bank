@@ -8,11 +8,9 @@ import { LogoutButton } from "@/components/LogoutButton";
 import type { Role } from "@/lib/types";
 
 const staffLinks: { href: string; label: string; emoji: string; roles: Role[] }[] = [
-  { href: "/", label: "홈", emoji: "🏠", roles: ["TEACHER", "CHILD", "DIRECTOR"] },
-  { href: "/child", label: "원아", emoji: "🌱", roles: ["CHILD", "TEACHER", "DIRECTOR"] },
-  { href: "/passbook", label: "통장", emoji: "📒", roles: ["CHILD", "TEACHER", "DIRECTOR"] },
-  { href: "/teacher", label: "교사", emoji: "👩‍🏫", roles: ["TEACHER", "DIRECTOR"] },
+  { href: "/teacher", label: "교사", emoji: "👩‍🏫", roles: ["TEACHER"] },
   { href: "/admin", label: "원장", emoji: "🏫", roles: ["DIRECTOR"] },
+  { href: "/child", label: "원아", emoji: "🌱", roles: ["CHILD"] },
 ];
 
 export function NavBar() {

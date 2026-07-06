@@ -12,7 +12,7 @@ export const DEMO_ACCOUNTS: Record<Role, DemoAccount> = {
   PARENT: {
     email: "parent@haengbok.local",
     password: "1234",
-    redirect: "/passbook",
+    redirect: "/parent",
     label: "김하늘",
   },
   TEACHER: {

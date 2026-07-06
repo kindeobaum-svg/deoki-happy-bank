@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useApp } from "@/hooks/useAppStore";
+import { useRequireRole } from "@/hooks/useRequireRole";
 import { ParentDiaryCard } from "@/components/ParentDiaryCard";
 import { TodayPraiseCard } from "@/components/parent/TodayPraiseCard";
 import { ParentHero } from "@/components/parent/ParentHero";
@@ -13,6 +14,7 @@ import {
 } from "@/lib/attendance";
 
 export default function ParentDiaryPage() {
+  useRequireRole("PARENT");
   const { state, selectedChild, selectChild } = useApp();
   const child = selectedChild ?? state.children[0];
   const today = todayStr();

@@ -4,12 +4,14 @@ import { HappinessTreeCard } from "@/components/parent/HappinessTreeCard";
 import { RecentPassbookList } from "@/components/parent/RecentPassbookList";
 import { ParentHero } from "@/components/parent/ParentHero";
 import { useApp } from "@/hooks/useAppStore";
+import { useRequireRole } from "@/hooks/useRequireRole";
 import { getChildPassbookEntries, getChildTotalSaved } from "@/lib/localPassbook";
 import { TREE_LABELS, SAVINGS_STAGE_THRESHOLDS } from "@/lib/tree";
 
 const STAGE_ICONS = ["🌰", "🌱", "🌳", "🌲"];
 
 export default function ParentGrowthPage() {
+  useRequireRole("PARENT");
   const { state, selectedChild, selectChild, loading } = useApp();
   const child = selectedChild ?? state.children[0];
 

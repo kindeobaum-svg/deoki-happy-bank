@@ -4,6 +4,7 @@ import { ParentHero } from "@/components/parent/ParentHero";
 import { PASSBOOK_NAME } from "@/lib/branding";
 import { EmotionCard } from "@/components/parent/EmotionCard";
 import { useApp } from "@/hooks/useAppStore";
+import { useRequireRole } from "@/hooks/useRequireRole";
 import { getChildTotalSaved } from "@/lib/localPassbook";
 import {
   ATTENDANCE_COLORS,
@@ -14,6 +15,7 @@ import {
 import { ChildProfileAvatar } from "@/components/ChildProfileAvatar";
 
 export default function ParentChildPage() {
+  useRequireRole("PARENT");
   const { state, selectedChild, selectChild, loading } = useApp();
   const child = selectedChild ?? state.children[0];
   const today = todayStr();

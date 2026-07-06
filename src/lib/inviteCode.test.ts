@@ -41,9 +41,9 @@ describe("compactInviteCode", () => {
 });
 
 describe("canCreateInvite", () => {
-  it("allows director to invite teachers and parents", () => {
+  it("allows director to invite teachers only", () => {
     expect(canCreateInvite("DIRECTOR", "TEACHER")).toBe(true);
-    expect(canCreateInvite("DIRECTOR", "PARENT")).toBe(true);
+    expect(canCreateInvite("DIRECTOR", "PARENT")).toBe(false);
   });
 
   it("allows teacher to invite parents only", () => {

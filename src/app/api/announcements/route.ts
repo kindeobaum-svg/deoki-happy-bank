@@ -5,7 +5,7 @@ import { notifyAllParents } from "@/lib/push";
 
 export async function POST(request: Request) {
   const session = await getSession();
-  if (!session || (session.role !== "TEACHER" && session.role !== "DIRECTOR")) {
+  if (!session || session.role !== "TEACHER") {
     return NextResponse.json({ error: "교사 또는 원장만 등록할 수 있습니다." }, { status: 403 });
   }
 

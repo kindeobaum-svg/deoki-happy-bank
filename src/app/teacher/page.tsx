@@ -10,7 +10,7 @@ import { TeacherChildPanel } from "@/components/teacher/TeacherChildPanel";
 import { TeacherQuickPassbookPanel } from "@/components/teacher/TeacherQuickPassbookPanel";
 
 export default function TeacherPage() {
-  useRequireRole("TEACHER", "DIRECTOR");
+  useRequireRole("TEACHER");
   const {
     state,
     refresh,
