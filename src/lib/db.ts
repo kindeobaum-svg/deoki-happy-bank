@@ -1,13 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSQL } from "@prisma/adapter-libsql";
-import { getVercelSqliteUrl, warmDemoDatabase } from "@/lib/demoDb";
+import { getVercelSqliteUrl } from "@/lib/demoDb";
 import { getTursoConfig } from "@/lib/tursoConfig";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 function resolveSqliteUrl(): string {
   if (process.env.VERCEL) {
-    warmDemoDatabase();
     const vercelUrl = getVercelSqliteUrl();
     if (vercelUrl) return vercelUrl;
 

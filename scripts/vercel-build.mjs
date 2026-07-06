@@ -36,7 +36,7 @@ if (turso) {
     TURSO_DATABASE_URL: turso.url,
     TURSO_AUTH_TOKEN: turso.authToken,
   };
-  console.log("Turso detected — running prisma migrate deploy + seed");
+  console.log("Turso detected — running prisma migrate deploy + seed (if empty)");
   execSync("prisma migrate deploy", { stdio: "inherit", env: tursoEnv });
   execSync("npm run db:seed", { stdio: "inherit", env: tursoEnv });
 } else {
@@ -45,7 +45,7 @@ if (turso) {
     fs.unlinkSync(demoDbPath);
   }
   execSync("prisma migrate deploy", { stdio: "inherit", env: demoDbEnv });
-  execSync("npm run db:seed", { stdio: "inherit", env: demoDbEnv });
+  execSync("SEED_FORCE=1 npm run db:seed", { stdio: "inherit", env: { ...demoDbEnv, SEED_FORCE: "1" } });
 }
 
 execSync("next build", { stdio: "inherit" });

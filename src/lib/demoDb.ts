@@ -42,6 +42,10 @@ function resolveBundledDemoDbPath(): string | null {
 
 /** Vercel cold start: copy bundled SQLite to writable tmp before API traffic */
 export function warmDemoDatabase(): string | null {
+  if (fs.existsSync(TMP_DB)) {
+    return TMP_DB;
+  }
+
   const bundledPath = resolveBundledDemoDbPath();
   if (!bundledPath) {
     console.error("demo.db not found for Vercel warm-up; cwd=", process.cwd());

@@ -1,19 +1,29 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/db";
 
-async function main() {
-  await prisma.diaryDeposit.deleteMany();
-  await prisma.missionCompletion.deleteMany();
-  await prisma.passbookTransaction.deleteMany();
-  await prisma.inviteCode.deleteMany();
-  await prisma.pushSubscription.deleteMany();
-  await prisma.praiseRecord.deleteMany();
-  await prisma.attendance.deleteMany();
-  await prisma.saveRecord.deleteMany();
-  await prisma.dailyReport.deleteMany();
-  await prisma.announcement.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.child.deleteMany();
+export async function seedDatabase(options: { force?: boolean } = {}) {
+  const force = options.force ?? process.env.SEED_FORCE === "1";
+  const userCount = await prisma.user.count();
+
+  if (!force && userCount > 0) {
+    console.log("Seed skipped — database already has data.");
+    return;
+  }
+
+  if (force) {
+    await prisma.diaryDeposit.deleteMany();
+    await prisma.missionCompletion.deleteMany();
+    await prisma.passbookTransaction.deleteMany();
+    await prisma.inviteCode.deleteMany();
+    await prisma.pushSubscription.deleteMany();
+    await prisma.praiseRecord.deleteMany();
+    await prisma.attendance.deleteMany();
+    await prisma.saveRecord.deleteMany();
+    await prisma.dailyReport.deleteMany();
+    await prisma.announcement.deleteMany();
+    await prisma.user.deleteMany();
+    await prisma.child.deleteMany();
+  }
 
   const passwordHash = await bcrypt.hash("1234", 10);
 
@@ -185,6 +195,10 @@ async function main() {
   console.log("  teacher@haengbok.local (교사)");
   console.log("  parent@haengbok.local (학부모)");
   console.log("  child@haengbok.local (원아)");
+}
+
+async function main() {
+  await seedDatabase({ force: process.env.SEED_FORCE === "1" });
 }
 
 main()

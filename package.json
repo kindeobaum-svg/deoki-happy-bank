@@ -14,7 +14,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma migrate reset --force",
+    "db:reset": "SEED_FORCE=1 prisma migrate reset --force",
     "setup": "prisma generate && prisma migrate deploy && npm run db:seed",
     "start:all": "npm run setup && next dev",
     "postinstall": "prisma generate"
