@@ -10,11 +10,14 @@ export type User = {
   childId: string | null;
 };
 
+export type TransactionType = "DEPOSIT" | "WITHDRAWAL";
+
 export type SaveRecord = {
   id: string;
   childId: string;
   amount: number;
   message: string;
+  type: TransactionType;
   createdAt: string;
 };
 

@@ -6,12 +6,13 @@ import { ATTENDANCE_EMOJI, ATTENDANCE_LABELS } from "@/lib/attendance";
 import { DAYCARE_NAME } from "@/lib/branding";
 import { ChildProfileAvatar } from "@/components/ChildProfileAvatar";
 import {
-  completeDiaryDeposit,
   DIARY_SAVE_AMOUNT,
+  DIARY_SAVE_ITEM,
   DIARY_SAVE_SUCCESS,
   isDiaryDepositDone,
 } from "@/lib/diaryPassbook";
 import { getChildTotalSaved } from "@/lib/localPassbook";
+import { useApp } from "@/hooks/useAppStore";
 
 type ParentDiaryCardProps = {
   childId: string;
@@ -28,60 +29,52 @@ export function ParentDiaryCard({
   report,
   attendanceStatus,
 }: ParentDiaryCardProps) {
-  const [deposited, setDeposited] = useState(false);
-  const [balance, setBalance] = useState(0);
+  const { state, addPassbookTransaction } = useApp();
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
 
-  const syncState = useCallback(() => {
-    setDeposited(isDiaryDepositDone(childId, report.date));
-    setBalance(getChildTotalSaved(childId));
-  }, [childId, report.date]);
-
-  useEffect(() => {
-    syncState();
-    window.addEventListener("passbook-updated", syncState);
-    window.addEventListener("diary-deposit-updated", syncState);
-    window.addEventListener("storage", syncState);
-    return () => {
-      window.removeEventListener("passbook-updated", syncState);
-      window.removeEventListener("diary-deposit-updated", syncState);
-      window.removeEventListener("storage", syncState);
-    };
-  }, [syncState]);
+  const deposited = isDiaryDepositDone(childId, report.date, state.saveRecords);
+  const balance = getChildTotalSaved(childId, state.saveRecords);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(null), 2200);
   }, []);
 
-  function handleTap() {
-    if (loading) return;
+  async function handleTap() {
+    if (loading || deposited) return;
 
     setLoading(true);
-    window.setTimeout(() => {
-      const { alreadyDone } = completeDiaryDeposit(childId, childName, report.date);
-      setLoading(false);
-      syncState();
+    const result = await addPassbookTransaction(
+      childId,
+      DIARY_SAVE_ITEM,
+      DIARY_SAVE_AMOUNT,
+      "deposit",
+    );
+    setLoading(false);
 
-      if (alreadyDone) {
-        showToast("이미 적립한 알림장이에요 🌱");
-        return;
-      }
+    if (result.error) {
+      showToast(result.error);
+      return;
+    }
 
-      setJustSaved(true);
-      showToast(DIARY_SAVE_SUCCESS);
-      window.setTimeout(() => setJustSaved(false), 900);
-    }, 200);
+    if (isDiaryDepositDone(childId, report.date, state.saveRecords)) {
+      showToast("이미 적립한 알림장이에요 🌱");
+      return;
+    }
+
+    setJustSaved(true);
+    showToast(DIARY_SAVE_SUCCESS);
+    window.setTimeout(() => setJustSaved(false), 900);
   }
 
   return (
     <>
       <button
         type="button"
-        onClick={handleTap}
-        disabled={loading}
+        onClick={() => void handleTap()}
+        disabled={loading || deposited}
         className={`diary-card diary-card--tappable tap-scale ${deposited ? "diary-card--deposited" : ""} ${justSaved ? "diary-card--saved" : ""} ${loading ? "diary-card--loading" : ""}`}
         aria-label={`${childName} 알림장, 터치하면 행복숲 통장에 ${DIARY_SAVE_AMOUNT}원 적립`}
       >

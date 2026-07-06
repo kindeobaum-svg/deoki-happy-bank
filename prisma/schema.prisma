@@ -26,6 +26,11 @@ enum InviteTargetRole {
   TEACHER
 }
 
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -54,6 +59,7 @@ model Child {
   attendances  Attendance[]
   praiseRecords PraiseRecord[]
   inviteCodes  InviteCode[]
+  missionCompletions MissionCompletion[]
 }
 
 model InviteCode {
@@ -74,12 +80,27 @@ model InviteCode {
 }
 
 model SaveRecord {
+  id        String          @id @default(cuid())
+  childId   String
+  child     Child           @relation(fields: [childId], references: [id], onDelete: Cascade)
+  amount    Int
+  message   String
+  type      TransactionType @default(DEPOSIT)
+  createdAt DateTime        @default(now())
+
+  @@index([childId, createdAt])
+}
+
+model MissionCompletion {
   id        String   @id @default(cuid())
   childId   String
   child     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
-  amount    Int
-  message   String
+  missionId String
+  date      String
   createdAt DateTime @default(now())
+
+  @@unique([childId, missionId, date])
+  @@index([childId, date])
 }
 
 model Announcement {

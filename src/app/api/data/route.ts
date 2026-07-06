@@ -24,7 +24,6 @@ export async function GET() {
       prisma.saveRecord.findMany({
         where: { childId: { in: childIds } },
         orderBy: { createdAt: "desc" },
-        take: 50,
       }),
       prisma.announcement.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
       prisma.dailyReport.findMany({

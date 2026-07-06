@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import type { Role } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { buildPassbookEntries } from "@/lib/passbook";
-import { addPassbookTransaction } from "@/lib/passbookServer";
+import { todayStr } from "@/lib/attendance";
+import { MISSIONS } from "@/lib/missions";
+import { completeMissionForChild, getTodayCompletedMissionIds } from "@/lib/passbookServer";
 
 export async function GET(
   _request: Request,
@@ -24,23 +25,15 @@ export async function GET(
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
   }
 
-  const records = await prisma.saveRecord.findMany({
-    where: { childId: id },
-    orderBy: { createdAt: "asc" },
-  });
+  const today = todayStr();
+  const completedIds = await getTodayCompletedMissionIds(id, today);
 
-  const entries = buildPassbookEntries(
-    records.map((r) => ({
-      id: r.id,
-      childId: r.childId,
-      amount: r.amount,
-      message: r.message,
-      type: r.type,
-      createdAt: r.createdAt.toISOString(),
-    })),
-  );
+  const missions = MISSIONS.map((mission) => ({
+    ...mission,
+    completed: completedIds.includes(mission.id),
+  }));
 
-  return NextResponse.json({ child, entries, balance: child.totalSaved });
+  return NextResponse.json({ date: today, missions });
 }
 
 export async function POST(
@@ -63,23 +56,26 @@ export async function POST(
   }
 
   const body = await request.json();
-  const message = String(body.message ?? "").trim();
-  const amount = Number(body.amount);
-  const type = body.type === "withdrawal" ? "WITHDRAWAL" : "DEPOSIT";
-
-  if (!message) {
-    return NextResponse.json({ error: "내용을 입력해 주세요." }, { status: 400 });
-  }
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return NextResponse.json({ error: "금액이 올바르지 않습니다." }, { status: 400 });
+  const missionId = String(body.missionId ?? "");
+  const mission = MISSIONS.find((m) => m.id === missionId);
+  if (!mission) {
+    return NextResponse.json({ error: "미션을 찾을 수 없습니다." }, { status: 404 });
   }
 
-  const result = await addPassbookTransaction(id, message, amount, type);
-  if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: 400 });
+  const today = todayStr();
+  const result = await completeMissionForChild(
+    id,
+    mission.id,
+    mission.name,
+    mission.amount,
+    today,
+  );
+
+  if (result.alreadyDone) {
+    return NextResponse.json({ alreadyDone: true }, { status: 409 });
   }
 
-  return NextResponse.json(result);
+  return NextResponse.json({ alreadyDone: false, record: result.record });
 }
 
 function canAccessChild(role: Role, userChildId: string | null, childId: string) {

@@ -35,7 +35,7 @@ export async function POST(
       },
     }),
     prisma.saveRecord.create({
-      data: { childId: id, amount: SAVE_AMOUNT, message },
+      data: { childId: id, amount: SAVE_AMOUNT, message, type: "DEPOSIT" },
     }),
   ]);
 
