@@ -1,4 +1,5 @@
 import type { ClassRoom, PrismaClient } from "@prisma/client";
+import { ensureClassRoomSchema } from "@/lib/ensureClassRoomSchema";
 
 export type ClassRoomDto = {
   id: string;
@@ -11,6 +12,7 @@ export function toClassRoomDto(room: ClassRoom): ClassRoomDto {
 
 /** DB 원아 반 이름 중 ClassRoom에 없는 항목을 자동 등록 */
 export async function syncClassRoomsFromChildren(prisma: PrismaClient): Promise<void> {
+  await ensureClassRoomSchema();
   const children = await prisma.child.findMany({
     select: { className: true },
     distinct: ["className"],
@@ -40,6 +42,7 @@ export async function listClassRooms(prisma: PrismaClient): Promise<ClassRoomDto
 }
 
 export async function createClassRoom(prisma: PrismaClient, name: string): Promise<ClassRoomDto> {
+  await ensureClassRoomSchema();
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error("반 이름을 입력해 주세요.");
@@ -111,6 +114,7 @@ export async function deleteClassRoom(prisma: PrismaClient, id: string): Promise
 
 /** 원아 등록 시 반 이름이 ClassRoom에 없으면 자동 생성 */
 export async function ensureClassRoomForChild(prisma: PrismaClient, className: string): Promise<void> {
+  await ensureClassRoomSchema();
   const trimmed = className.trim();
   if (!trimmed) return;
 

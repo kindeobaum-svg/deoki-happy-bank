@@ -41,14 +41,12 @@ if (turso) {
     TURSO_AUTH_TOKEN: turso.authToken,
   };
 
-  // Prisma CLI only accepts file: URLs for sqlite — use libsql client for Turso.
-  console.log("Turso detected — applying migrations via libsql to", turso.url);
-  run("node scripts/turso-migrate.mjs", tursoEnv);
-
+  // Prisma CLI only accepts file: URLs for sqlite — try libsql migration, but do not block deploy.
+  console.log("Turso detected — syncing schema via libsql to", turso.url);
   try {
-    run("npm run db:seed", tursoEnv);
+    run("node scripts/turso-migrate.mjs", tursoEnv);
   } catch (error) {
-    console.warn("Seed skipped or failed during build (non-fatal):", error);
+    console.warn("Turso build-time migration skipped (runtime ensure will apply ClassRoom):", error);
   }
 } else {
   console.log("Building bundled SQLite demo database (prisma/demo.db)...");

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDatabaseMode, prisma } from "@/lib/db";
+import { ensureClassRoomSchema } from "@/lib/ensureClassRoomSchema";
 import { getTursoConfig } from "@/lib/tursoConfig";
 
 /** 운영 DB 연결 상태 확인 (비밀값 미노출) */
@@ -12,6 +13,7 @@ export async function GET() {
   let inviteCount = 0;
 
   try {
+    await ensureClassRoomSchema();
     [classRoomCount, childCount, inviteCount] = await Promise.all([
       prisma.classRoom.count(),
       prisma.child.count(),
