@@ -19,6 +19,7 @@ export async function middleware(request: Request) {
     PUBLIC_PATHS.some((p) => normalized.startsWith(p)) ||
     normalized === "/" ||
     normalized.startsWith("/api/auth") ||
+    normalized.startsWith("/api/health/db") ||
     normalized.startsWith("/api/invites/verify") ||
     normalized.startsWith("/api/invites/redeem") ||
     normalized.startsWith("/api/push/vapid") ||
