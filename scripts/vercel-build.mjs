@@ -41,15 +41,9 @@ if (turso) {
     TURSO_AUTH_TOKEN: turso.authToken,
   };
 
-  console.log("Turso detected — applying migrations to", turso.url);
-
-  try {
-    run("prisma migrate deploy", tursoEnv);
-  } catch (error) {
-    console.error("prisma migrate deploy failed:", error);
-    console.log("Falling back to prisma db push for Turso schema sync...");
-    run("npx prisma db push --skip-generate --accept-data-loss", tursoEnv);
-  }
+  // Prisma CLI only accepts file: URLs for sqlite — use libsql client for Turso.
+  console.log("Turso detected — applying migrations via libsql to", turso.url);
+  run("node scripts/turso-migrate.mjs", tursoEnv);
 
   try {
     run("npm run db:seed", tursoEnv);
