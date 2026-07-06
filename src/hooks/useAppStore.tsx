@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -23,6 +24,7 @@ type AppContextValue = {
   loading: boolean;
   selectedChild: AppState["children"][0] | null;
   refresh: () => Promise<void>;
+  refreshClasses: () => Promise<void>;
   login: (email: string, password: string, expectedRole?: Role) => Promise<{ error?: string; user?: User }>;
   enterAsRole: (role: Role) => Promise<{ error?: string; user?: User }>;
   logout: () => Promise<void>;
@@ -66,34 +68,72 @@ const EMPTY: AppState = {
   selectedChildId: null,
 };
 
+function canLoadClasses(role: Role | undefined): role is "TEACHER" | "DIRECTOR" {
+  return role === "TEACHER" || role === "DIRECTOR";
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(EMPTY);
   const [loading, setLoading] = useState(true);
+  const refreshGeneration = useRef(0);
+
+const refreshClasses = useCallback(async () => {
+    try {
+      const meRes = await fetch("/api/auth/me", { cache: "no-store" });
+      const meBody = (await meRes.json().catch(() => ({}))) as { user?: User | null };
+      const user = meBody.user ?? null;
+      if (!canLoadClasses(user?.role)) return;
+
+      const classesRes = await fetch("/api/classes", { cache: "no-store" });
+      if (!classesRes.ok) return;
+
+      const body = await classesRes.json();
+      if (!Array.isArray(body.classes)) return;
+
+      setState((prev) => ({ ...prev, classes: body.classes }));
+    } catch {
+      // DB 조회 실패 시 기존 반 목록 유지
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
+    const generation = ++refreshGeneration.current;
+    const isStale = () => generation !== refreshGeneration.current;
+
     try {
-      const meRes = await fetch("/api/auth/me");
+      const meRes = await fetch("/api/auth/me", { cache: "no-store" });
       const meBody = (await meRes.json().catch(() => ({}))) as { user?: User | null };
+      if (isStale()) return;
+
       if (!meRes.ok && meBody.user === undefined) {
-        setState((prev) => (prev.user ? { ...prev, user: null } : EMPTY));
-        return;
-      }
-      const user = meBody.user ?? null;
-      if (!user) {
-        setState((prev) => (prev.user ? { ...EMPTY } : EMPTY));
+        setState((prev) => ({ ...prev, user: null }));
         return;
       }
 
-      const dataRes = await fetch("/api/data");
+      const user = meBody.user ?? null;
+      if (!user) {
+        setState((prev) => ({ ...prev, user: null }));
+        return;
+      }
+
+      const dataRes = await fetch("/api/data", { cache: "no-store" });
+      if (isStale()) return;
+
       if (!dataRes.ok) {
         setState((prev) => ({ ...prev, user }));
         return;
       }
 
       const data = await dataRes.json();
+      if (isStale()) return;
+
       setState((prev) => ({
         user,
-        classes: Array.isArray(data.classes) ? data.classes : prev.classes,
+        classes: canLoadClasses(user.role)
+          ? Array.isArray(data.classes)
+            ? data.classes
+            : prev.classes
+          : prev.classes,
         children: Array.isArray(data.children)
           ? data.children.map(normalizeChild)
           : prev.children,
@@ -115,7 +155,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         selectedChildId: data.selectedChildId ?? prev.selectedChildId,
       }));
     } catch {
-      setState((prev) => (prev.user ? prev : EMPTY));
+      if (isStale()) return;
     }
   }, []);
 
@@ -138,9 +178,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (!res.ok) return { error: data.error ?? "로그인에 실패했습니다." };
       await refresh();
+      if (canLoadClasses((data.user as User)?.role)) {
+        await refreshClasses();
+      }
       return { user: data.user as User };
     },
-    [refresh],
+    [refresh, refreshClasses],
   );
 
   const enterAsRole = useCallback(
@@ -370,6 +413,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loading,
       selectedChild,
       refresh,
+      refreshClasses,
       login,
       enterAsRole,
       logout,
@@ -395,6 +439,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loading,
       selectedChild,
       refresh,
+      refreshClasses,
       login,
       enterAsRole,
       logout,
