@@ -13,13 +13,23 @@ export async function GET() {
 
   let children: Child[] = [];
   let classes: { id: string; name: string }[] = [];
+  let linkedChildId: string | null = session.childId;
+
+  if (session.role === "PARENT") {
+    const parentUser = await prisma.user.findUnique({
+      where: { id: session.id },
+      select: { childId: true },
+    });
+    linkedChildId = parentUser?.childId ?? null;
+  }
+
   if (session.role === "TEACHER" || session.role === "DIRECTOR") {
     [children, classes] = await Promise.all([
       prisma.child.findMany({ orderBy: { name: "asc" } }),
       listClassRooms(prisma),
     ]);
-  } else if (session.childId) {
-    children = await prisma.child.findMany({ where: { id: session.childId } });
+  } else if (linkedChildId) {
+    children = await prisma.child.findMany({ where: { id: linkedChildId } });
   }
 
   const childIds = children.map((c) => c.id);
@@ -89,6 +99,6 @@ export async function GET() {
     dailyReports,
     attendances,
     praiseRecords,
-    selectedChildId: session.childId ?? children[0]?.id ?? null,
+    selectedChildId: linkedChildId ?? children[0]?.id ?? null,
   });
 }
