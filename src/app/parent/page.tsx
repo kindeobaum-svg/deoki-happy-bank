@@ -8,6 +8,7 @@ import { RecentPassbookList } from "@/components/parent/RecentPassbookList";
 import { MissionPanel } from "@/components/parent/MissionPanel";
 import { RoleQuickNav } from "@/components/RoleQuickNav";
 import { useApp } from "@/hooks/useAppStore";
+import { useRequireRole } from "@/hooks/useRequireRole";
 import { usePassbook } from "@/hooks/useLocalPassbook";
 import { getChildPassbookEntries, getChildTotalSaved } from "@/lib/localPassbook";
 import { PASSBOOK_NAME } from "@/lib/branding";
@@ -18,6 +19,7 @@ import {
 } from "@/lib/attendance";
 
 export default function ParentPage() {
+  useRequireRole("PARENT");
   const { state, selectedChild, selectChild, loading } = useApp();
   const { refresh } = usePassbook();
   const child = selectedChild ?? state.children[0];

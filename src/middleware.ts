@@ -5,9 +5,9 @@ import {
   getHomeForRole,
   getLoginRedirectForPath,
   isPathAllowedForRole,
+  isTeacherOnlyApi,
   normalizePathname,
 } from "@/lib/roleAccess";
-import { PARENT_HOME_PATH } from "@/lib/parentHomePath";
 
 const PUBLIC_PATHS = ["/login", "/manifest.webmanifest", "/sw.js", "/icons"];
 
@@ -17,7 +17,6 @@ export async function middleware(request: Request) {
 
   if (
     PUBLIC_PATHS.some((p) => normalized.startsWith(p)) ||
-    normalized === "/" ||
     normalized.startsWith("/api/auth") ||
     normalized.startsWith("/api/invites/verify") ||
     normalized.startsWith("/api/invites/redeem") ||
@@ -37,6 +36,10 @@ export async function middleware(request: Request) {
 
   const session = token ? await verifySessionToken(token) : null;
 
+  if (normalized === "/" && !session) {
+    return NextResponse.next();
+  }
+
   if (normalized.startsWith("/api")) {
     if (pathname === "/api/auth/me") {
       return NextResponse.next();
@@ -47,16 +50,22 @@ export async function middleware(request: Request) {
     if (normalized.startsWith("/api/admin") && session.role !== "DIRECTOR") {
       return NextResponse.json({ error: "원장만 접근할 수 있습니다." }, { status: 403 });
     }
+    if (isTeacherOnlyApi(normalized) && session.role !== "TEACHER") {
+      return NextResponse.json({ error: "교사만 접근할 수 있습니다." }, { status: 403 });
+    }
+    if (
+      (normalized === "/api/invites" || normalized.startsWith("/api/invites/")) &&
+      session.role !== "TEACHER" &&
+      session.role !== "DIRECTOR"
+    ) {
+      return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+    }
     return NextResponse.next();
   }
 
   if (normalized.startsWith("/login")) {
     if (session) {
-      const home =
-        session.role === "PARENT" && session.childId
-          ? PARENT_HOME_PATH
-          : getHomeForRole(session.role);
-      return NextResponse.redirect(new URL(home, request.url));
+      return NextResponse.redirect(new URL(getHomeForRole(session.role as Role), request.url));
     }
     return NextResponse.next();
   }
@@ -65,7 +74,7 @@ export async function middleware(request: Request) {
     return NextResponse.redirect(getLoginRedirectForPath(normalized, request.url));
   }
 
-  if (!isPathAllowedForRole(normalized, session.role as Role)) {
+  if (normalized === "/" || !isPathAllowedForRole(normalized, session.role as Role)) {
     return NextResponse.redirect(new URL(getHomeForRole(session.role as Role), request.url));
   }
 

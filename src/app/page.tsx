@@ -78,9 +78,10 @@ export default function HomePage() {
 
   const links = [
     { href: "/admin", emoji: "🏫", title: "원장 관리", roles: ["DIRECTOR"] },
-    { href: "/teacher", emoji: "👩‍🏫", title: "교사 모드", roles: ["TEACHER", "DIRECTOR"] },
+    { href: "/teacher", emoji: "👩‍🏫", title: "교사 모드", roles: ["TEACHER"] },
+    { href: "/parent", emoji: "💚", title: "학부모 홈", roles: ["PARENT"] },
     { href: "/passbook", emoji: "📒", title: PASSBOOK_NAME, roles: ["PARENT"] },
-    { href: "/child", emoji: "🌱", title: "원아 모드", roles: ["CHILD", "TEACHER", "DIRECTOR"] },
+    { href: "/child", emoji: "🌱", title: "원아 모드", roles: ["CHILD"] },
   ].filter((l) => l.roles.includes(user.role));
 
   return (

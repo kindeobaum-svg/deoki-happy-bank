@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { ParentHero } from "@/components/parent/ParentHero";
 import { StatBubble } from "@/components/parent/EmotionCard";
 import { InviteTeacherPanel } from "@/components/admin/InviteTeacherPanel";
@@ -79,7 +78,6 @@ export default function AdminPage() {
       <RoleQuickNav
         className="animate-card-enter animate-card-enter-delay-1"
         items={[
-          { href: "/teacher#classes", emoji: "🏫", title: "반 관리", desc: "반 · 원아 · 미션 적립" },
           { href: "/admin#invite", emoji: "✉️", title: "반 초대", desc: "교사 초대코드 만들기" },
           {
             href: "/admin#overview",
@@ -140,9 +138,6 @@ export default function AdminPage() {
                   <p className="font-bold text-[var(--sage-800)]">
                     {child.totalSaved.toLocaleString()}원
                   </p>
-                  <Link href={`/passbook?child=${child.id}`} className="forest-link-btn mt-1 inline-block text-xs">
-                    통장 →
-                  </Link>
                 </div>
               </div>
             );

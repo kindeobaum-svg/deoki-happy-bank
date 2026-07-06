@@ -13,7 +13,7 @@ export async function GET() {
 
   let children: Child[] = [];
   let classes: { id: string; name: string }[] = [];
-  if (session.role === "TEACHER" || session.role === "DIRECTOR") {
+  if (session.role === "TEACHER") {
     [children, classes] = await Promise.all([
       prisma.child.findMany({ orderBy: { name: "asc" } }),
       listClassRooms(prisma),

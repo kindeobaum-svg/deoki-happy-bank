@@ -25,5 +25,5 @@ export function canCreateInvite(
   if (targetRole === "TEACHER") {
     return role === "DIRECTOR";
   }
-  return role === "TEACHER" || role === "DIRECTOR";
+  return role === "TEACHER";
 }

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { pickChildAvatar } from "@/lib/childAvatars";
 
 function canManageChildren(role: Role) {
-  return role === "TEACHER" || role === "DIRECTOR";
+  return role === "TEACHER";
 }
 
 type RouteContext = { params: Promise<{ id: string }> };

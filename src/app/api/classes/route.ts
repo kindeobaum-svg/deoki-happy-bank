@@ -5,7 +5,7 @@ import { createClassRoom, listClassRooms } from "@/lib/classService";
 import { prisma } from "@/lib/db";
 
 function canManageClasses(role: Role) {
-  return role === "TEACHER" || role === "DIRECTOR";
+  return role === "TEACHER";
 }
 
 export async function GET() {

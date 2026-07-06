@@ -3,7 +3,6 @@ import type { InviteTargetRole } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
-  canCreateInvite,
   createParentInviteForChild,
   formatInviteCode,
   generateUniqueTeacherInviteCode,
@@ -11,7 +10,7 @@ import {
 
 export async function POST(request: Request) {
   const session = await getSession();
-  if (!session || (session.role !== "TEACHER" && session.role !== "DIRECTOR")) {
+  if (!session) {
     return NextResponse.json({ error: "초대코드를 만들 권한이 없습니다." }, { status: 403 });
   }
 
@@ -23,8 +22,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "올바른 초대 유형이 아닙니다." }, { status: 400 });
   }
 
-  if (!canCreateInvite(session.role, targetRole)) {
-    return NextResponse.json({ error: "이 초대 유형을 만들 권한이 없습니다." }, { status: 403 });
+  if (targetRole === "PARENT" && session.role !== "TEACHER") {
+    return NextResponse.json({ error: "학부모 초대는 교사만 만들 수 있습니다." }, { status: 403 });
+  }
+
+  if (targetRole === "TEACHER" && session.role !== "DIRECTOR") {
+    return NextResponse.json({ error: "교사 초대는 원장만 만들 수 있습니다." }, { status: 403 });
   }
 
   let invite;

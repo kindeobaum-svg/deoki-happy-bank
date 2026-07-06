@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const date = searchParams.get("date") ?? new Date().toISOString().slice(0, 10);
 
   let childIds: string[] = [];
-  if (session.role === "TEACHER" || session.role === "DIRECTOR") {
+  if (session.role === "TEACHER") {
     const all = await prisma.child.findMany({ select: { id: true } });
     childIds = all.map((c) => c.id);
   } else if (session.childId) {
@@ -31,8 +31,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await getSession();
-  if (!session || (session.role !== "TEACHER" && session.role !== "DIRECTOR")) {
-    return NextResponse.json({ error: "교사 또는 원장만 기록할 수 있습니다." }, { status: 403 });
+  if (!session || session.role !== "TEACHER") {
+    return NextResponse.json({ error: "교사만 기록할 수 있습니다." }, { status: 403 });
   }
 
   const body = await request.json();

@@ -7,7 +7,7 @@ import { pickChildAvatar } from "@/lib/childAvatars";
 import { generateUniqueChildInviteCode } from "@/lib/childInviteCode";
 
 function canManageChildren(role: Role) {
-  return role === "TEACHER" || role === "DIRECTOR";
+  return role === "TEACHER";
 }
 
 async function generateUniqueAccountNumber(): Promise<string> {

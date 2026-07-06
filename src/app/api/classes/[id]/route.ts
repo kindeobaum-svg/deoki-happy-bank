@@ -5,7 +5,7 @@ import { deleteClassRoom, updateClassRoom } from "@/lib/classService";
 import { prisma } from "@/lib/db";
 
 function canManageClasses(role: Role) {
-  return role === "TEACHER" || role === "DIRECTOR";
+  return role === "TEACHER";
 }
 
 type RouteContext = { params: Promise<{ id: string }> };
