@@ -47,9 +47,12 @@ async function main() {
 
   const health = await api("/api/health/db");
   step(0, "DB 헬스체크", health.ok && health.json.ok === true, JSON.stringify(health.json));
-  if (health.json.mode !== "turso") {
-    console.warn(`   ⚠ Turso 미사용: mode=${health.json.mode} (Vercel env에 TURSO_DATABASE_URL 설정 필요)`);
-  }
+  step(
+    0,
+    'Turso 모드 (mode: "turso")',
+    health.json.mode === "turso" && health.json.tursoConfigured === true,
+    `mode=${health.json.mode}, tursoConfigured=${health.json.tursoConfigured}`,
+  );
   console.log(`   Turso: ${health.json.tursoHost}, ClassRoom=${health.json.counts?.classRoom}\n`);
 
   cookie = "";
