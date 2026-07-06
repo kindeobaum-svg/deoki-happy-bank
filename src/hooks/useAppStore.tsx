@@ -76,7 +76,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const meRes = await fetch("/api/auth/me");
       const meBody = (await meRes.json().catch(() => ({}))) as { user?: User | null };
       if (!meRes.ok && meBody.user === undefined) {
-        setState(EMPTY);
+        setState((prev) => (prev.user ? { ...prev, user: null } : EMPTY));
         return;
       }
       const user = meBody.user ?? null;
@@ -87,7 +87,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const dataRes = await fetch("/api/data");
       if (!dataRes.ok) {
-        setState({ ...EMPTY, user });
+        setState((prev) => ({ ...prev, user }));
         return;
       }
 
@@ -95,18 +95,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setState((prev) => ({
         user,
         classes: data.classes ?? [],
-        children: data.children.map(normalizeChild),
+        children: (data.children ?? []).map(normalizeChild),
         passbookTransactions: (data.passbookTransactions ?? []).map(normalizePassbookTransaction),
         missionCompletions: data.missionCompletions ?? [],
         diaryDeposits: data.diaryDeposits ?? [],
-        announcements: data.announcements.map(normalizeAnnouncement),
-        dailyReports: data.dailyReports,
+        announcements: (data.announcements ?? []).map(normalizeAnnouncement),
+        dailyReports: data.dailyReports ?? [],
         attendances: data.attendances ?? [],
         praiseRecords: (data.praiseRecords ?? []).map(normalizePraise),
         selectedChildId: prev.selectedChildId ?? data.selectedChildId,
       }));
     } catch {
-      setState(EMPTY);
+      setState((prev) => (prev.user ? prev : EMPTY));
     }
   }, []);
 

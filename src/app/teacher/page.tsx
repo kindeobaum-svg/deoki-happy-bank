@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useApp } from "@/hooks/useAppStore";
 import { useRequireRole } from "@/hooks/useRequireRole";
 import { PageHeader } from "@/components/PageHeader";
@@ -12,6 +13,7 @@ export default function TeacherPage() {
   useRequireRole("TEACHER", "DIRECTOR");
   const {
     state,
+    refresh,
     addPraise,
     addChild,
     updateChild,
@@ -20,6 +22,10 @@ export default function TeacherPage() {
     updateClass,
     deleteClass,
   } = useApp();
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   return (
     <div className="space-y-4 pb-2">

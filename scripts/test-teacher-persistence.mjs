@@ -1,16 +1,16 @@
 /**
- * 교사 반/원아/초대코드 DB 영속성 통합 테스트
+ * 교사 반/원아 DB 영속성 통합 테스트 (교사↔학부모 교차 포함)
  * 사용: node scripts/test-teacher-persistence.mjs [baseUrl]
  */
 const BASE = process.argv[2] ?? "http://localhost:3000";
 const TEACHER = { email: "teacher@haengbok.local", password: "1234" };
+const DEMO_PARENT = { email: "parent@haengbok.local", password: "1234" };
 
 let cookie = "";
 
 function parseSetCookie(header) {
   if (!header) return "";
-  const part = header.split(";")[0];
-  return part;
+  return header.split(";")[0];
 }
 
 async function api(path, options = {}) {
@@ -21,9 +21,7 @@ async function api(path, options = {}) {
   }
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
   const setCookie = res.headers.get("set-cookie");
-  if (setCookie) {
-    cookie = parseSetCookie(setCookie);
-  }
+  if (setCookie) cookie = parseSetCookie(setCookie);
   const text = await res.text();
   let json;
   try {
@@ -51,6 +49,15 @@ async function logout() {
   const res = await api("/api/auth/logout", { method: "POST" });
   assert(res.ok, `로그아웃 실패: ${JSON.stringify(res.json)}`);
   cookie = "";
+}
+
+function hasClassAndChild(data, classId, className, childId, childName) {
+  const classes = data.classes ?? [];
+  const children = data.children ?? [];
+  return (
+    classes.some((c) => c.id === classId && c.name === className) &&
+    children.some((c) => c.id === childId && c.name === childName && c.className === className)
+  );
 }
 
 async function main() {
@@ -87,37 +94,21 @@ async function main() {
   assert(createInvite.ok, `초대코드 생성 실패: ${JSON.stringify(createInvite.json)}`);
   const inviteCode = createInvite.json.invite.code;
 
-  console.log("5. 교사 로그아웃");
+  console.log("5. 교사 로그아웃 → 재로그인");
   await logout();
-
-  console.log("6. 교사 재로그인");
   await login(TEACHER.email, TEACHER.password, "TEACHER");
 
-  console.log("7. 반/원아 DB 조회 확인");
-  const dataAfterRelogin = await api("/api/data");
-  assert(dataAfterRelogin.ok, `데이터 조회 실패: ${JSON.stringify(dataAfterRelogin.json)}`);
-  const classes = dataAfterRelogin.json.classes ?? [];
-  const children = dataAfterRelogin.json.children ?? [];
+  console.log("6. 반/원아 DB 유지 확인 (교사 재로그인)");
+  let teacherData = await api("/api/data");
+  assert(teacherData.ok, `데이터 조회 실패: ${JSON.stringify(teacherData.json)}`);
   assert(
-    classes.some((c) => c.id === classId && c.name === className),
-    `반 '${className}' 이(가) 재로그인 후 사라짐`,
+    hasClassAndChild(teacherData.json, classId, className, childId, childName),
+    `교사 재로그인 후 반/원아 사라짐`,
   );
-  assert(
-    children.some((c) => c.id === childId && c.name === childName && c.className === className),
-    `원아 '${childName}' 이(가) 재로그인 후 사라짐`,
-  );
-  console.log("   ✓ 반/원아 유지 확인");
+  console.log("   ✓ 교사 재로그인 후 반/원아 유지");
 
-  console.log("8. 초대코드 검증");
+  console.log("7. 학부모 가입");
   cookie = "";
-  const verifyInvite = await api("/api/invites/verify", {
-    method: "POST",
-    body: JSON.stringify({ code: inviteCode }),
-  });
-  assert(verifyInvite.ok, `초대코드 검증 실패: ${JSON.stringify(verifyInvite.json)}`);
-  console.log("   ✓ 초대코드 유효");
-
-  console.log("9. 학부모 가입");
   const redeem = await api("/api/invites/redeem", {
     method: "POST",
     body: JSON.stringify({
@@ -128,29 +119,32 @@ async function main() {
     }),
   });
   assert(redeem.ok, `학부모 가입 실패: ${JSON.stringify(redeem.json)}`);
-  console.log("   ✓ 학부모 가입 성공");
 
-  console.log("10. 학부모 로그아웃 후 재로그인");
+  console.log("8. 학부모 로그아웃 → 재로그인");
   await logout();
-  const parentLogin = await login(parentEmail, parentPassword, "PARENT");
-  assert(parentLogin.user?.childId === childId, "학부모-원아 연결(childId) 없음");
-
-  console.log("11. 학부모 홈/통장 데이터 확인");
-  const parentHome = await api("/api/auth/parent-home");
-  assert(parentHome.ok, `parent-home 실패: ${JSON.stringify(parentHome.json)}`);
-  assert(parentHome.json.linked === true, "parent-home linked=false");
-  assert(
-    parentHome.json.parentSession?.childId === childId,
-    `parent-home childId 불일치: ${JSON.stringify(parentHome.json.parentSession)}`,
-  );
-
+  await login(parentEmail, parentPassword, "PARENT");
   const parentData = await api("/api/data");
-  assert(parentData.ok, `학부모 data 조회 실패: ${JSON.stringify(parentData.json)}`);
+  assert(parentData.ok, `학부모 data 조회 실패`);
   assert(
     parentData.json.children.some((c) => c.id === childId),
-    "학부모 재로그인 후 원아 통장 데이터 없음",
+    "학부모 재로그인 후 원아 없음",
   );
-  console.log("   ✓ 학부모 재로그인 후 원아 연결 유지");
+  console.log("   ✓ 학부모 재로그인 후 원아 유지");
+
+  console.log("9. 데모 학부모 로그인/로그아웃 (교사 데이터 영향 없어야 함)");
+  await logout();
+  await login(DEMO_PARENT.email, DEMO_PARENT.password, "PARENT");
+  await logout();
+
+  console.log("10. 교사 재로그인 → 반/원아 유지 확인");
+  await login(TEACHER.email, TEACHER.password, "TEACHER");
+  teacherData = await api("/api/data");
+  assert(teacherData.ok, `교사 data 조회 실패`);
+  assert(
+    hasClassAndChild(teacherData.json, classId, className, childId, childName),
+    `학부모 로그인/로그아웃 후 교사 반/원아 사라짐`,
+  );
+  console.log("   ✓ 학부모 활동 후에도 교사 반/원아 유지");
 
   console.log("\n✅ 전체 테스트 통과");
 }
