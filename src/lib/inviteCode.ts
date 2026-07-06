@@ -6,6 +6,7 @@ import {
   inviteCodesMatch,
   normalizeInviteCodeInput,
 } from "@/lib/inviteCodeUtils";
+import { ChildNotFoundError, requireChildRecord, type ChildLookupInput } from "@/lib/childLookup";
 
 export {
   canCreateInvite,
@@ -123,31 +124,32 @@ export async function findValidInvite(
 /** 학부모 초대코드 생성 — Child.accountNumber와 InviteCode.code 동일 값으로 SQLite에 저장 */
 export async function createParentInviteForChild(
   prisma: PrismaClient,
-  childId: string,
+  lookup: ChildLookupInput,
   createdById: string,
 ) {
-  const child = await prisma.child.findUnique({ where: { id: childId } });
-  if (!child) throw new Error("원아를 찾을 수 없습니다.");
+  const child = await requireChildRecord(prisma, lookup);
 
   const code = normalizeInviteCodeInput(child.accountNumber);
 
   const existing = await prisma.inviteCode.findFirst({
-    where: { childId, targetRole: "PARENT", usedAt: null, code },
+    where: { childId: child.id, targetRole: "PARENT", usedAt: null, code },
     include: childInclude,
   });
   if (existing) return existing;
 
   await prisma.inviteCode.deleteMany({
-    where: { childId, targetRole: "PARENT", usedAt: null },
+    where: { childId: child.id, targetRole: "PARENT", usedAt: null },
   });
 
   return prisma.inviteCode.create({
     data: {
       code,
       targetRole: "PARENT",
-      childId,
+      childId: child.id,
       createdById,
     },
     include: childInclude,
   });
 }
+
+export { ChildNotFoundError };
