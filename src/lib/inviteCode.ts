@@ -155,9 +155,9 @@ export async function createParentInviteForChild(
   });
   if (existing) return existing;
 
-  // 가입 완료된(used) 초대코드도 삭제 — 연결은 User.childId에 영구 저장됨
+  // 가입 완료된(used) 초대코드는 유지 — 연결은 User.childId에 영구 저장됨
   await prisma.inviteCode.deleteMany({
-    where: { childId, targetRole: "PARENT" },
+    where: { childId, targetRole: "PARENT", usedAt: null },
   });
 
   return prisma.inviteCode.create({

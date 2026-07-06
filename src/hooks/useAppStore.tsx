@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -69,53 +70,60 @@ const EMPTY: AppState = {
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(EMPTY);
   const [loading, setLoading] = useState(true);
+  const refreshGeneration = useRef(0);
 
   const refresh = useCallback(async () => {
+    const generation = ++refreshGeneration.current;
+    const isStale = () => generation !== refreshGeneration.current;
+
     try {
-      const meRes = await fetch("/api/auth/me");
+      const meRes = await fetch("/api/auth/me", { cache: "no-store" });
       const meBody = (await meRes.json().catch(() => ({}))) as { user?: User | null };
+      if (isStale()) return;
+
       if (!meRes.ok && meBody.user === undefined) {
-        setState((prev) => (prev.user ? { ...prev, user: null } : EMPTY));
-        return;
-      }
-      const user = meBody.user ?? null;
-      if (!user) {
-        setState((prev) => (prev.user ? { ...EMPTY } : EMPTY));
+        setState((prev) => ({ ...prev, user: null }));
         return;
       }
 
-      const dataRes = await fetch("/api/data");
+      const user = meBody.user ?? null;
+      if (!user) {
+        setState((prev) => ({ ...prev, user: null }));
+        return;
+      }
+
+      const dataRes = await fetch("/api/data", { cache: "no-store" });
+      if (isStale()) return;
+
       if (!dataRes.ok) {
         setState((prev) => ({ ...prev, user }));
         return;
       }
 
       const data = await dataRes.json();
-      setState((prev) => ({
+      if (isStale()) return;
+
+      setState({
         user,
-        classes: Array.isArray(data.classes) ? data.classes : prev.classes,
-        children: Array.isArray(data.children)
-          ? data.children.map(normalizeChild)
-          : prev.children,
+        classes: Array.isArray(data.classes) ? data.classes : [],
+        children: Array.isArray(data.children) ? data.children.map(normalizeChild) : [],
         passbookTransactions: Array.isArray(data.passbookTransactions)
           ? data.passbookTransactions.map(normalizePassbookTransaction)
-          : prev.passbookTransactions,
-        missionCompletions: Array.isArray(data.missionCompletions)
-          ? data.missionCompletions
-          : prev.missionCompletions,
-        diaryDeposits: Array.isArray(data.diaryDeposits) ? data.diaryDeposits : prev.diaryDeposits,
+          : [],
+        missionCompletions: Array.isArray(data.missionCompletions) ? data.missionCompletions : [],
+        diaryDeposits: Array.isArray(data.diaryDeposits) ? data.diaryDeposits : [],
         announcements: Array.isArray(data.announcements)
           ? data.announcements.map(normalizeAnnouncement)
-          : prev.announcements,
-        dailyReports: Array.isArray(data.dailyReports) ? data.dailyReports : prev.dailyReports,
-        attendances: Array.isArray(data.attendances) ? data.attendances : prev.attendances,
+          : [],
+        dailyReports: Array.isArray(data.dailyReports) ? data.dailyReports : [],
+        attendances: Array.isArray(data.attendances) ? data.attendances : [],
         praiseRecords: Array.isArray(data.praiseRecords)
           ? data.praiseRecords.map(normalizePraise)
-          : prev.praiseRecords,
-        selectedChildId: data.selectedChildId ?? prev.selectedChildId,
-      }));
+          : [],
+        selectedChildId: data.selectedChildId ?? null,
+      });
     } catch {
-      setState((prev) => (prev.user ? prev : EMPTY));
+      if (isStale()) return;
     }
   }, []);
 
