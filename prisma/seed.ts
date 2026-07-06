@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import path from "node:path";
 import { prisma } from "../src/lib/db";
 
 export async function seedDatabase(options: { force?: boolean } = {}) {
@@ -210,9 +211,15 @@ async function main() {
   await seedDatabase({ force: process.env.SEED_FORCE === "1" });
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
+const invokedDirectly =
+  typeof process.argv[1] === "string" &&
+  (process.argv[1].endsWith("seed.ts") || process.argv[1].includes(`${path.sep}seed`));
+
+if (invokedDirectly) {
+  main()
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(() => prisma.$disconnect());
+}
