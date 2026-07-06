@@ -33,13 +33,7 @@ function resolveSqliteUrl(): string {
 }
 
 function shouldUseTurso(): boolean {
-  const turso = getTursoConfig();
-  if (!turso) return false;
-  // Explicit Turso URL required on Vercel — otherwise fall back to bundled demo.db
-  if (process.env.VERCEL && !process.env.TURSO_DATABASE_URL?.startsWith("libsql:")) {
-    return false;
-  }
-  return true;
+  return getTursoConfig() !== null;
 }
 
 function createPrismaClient(): PrismaClient {

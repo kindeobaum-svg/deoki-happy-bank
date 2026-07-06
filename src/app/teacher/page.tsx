@@ -25,8 +25,10 @@ export default function TeacherPage() {
   } = useApp();
 
   useEffect(() => {
-    void refresh();
-    void refreshClasses();
+    void (async () => {
+      await refresh();
+      await refreshClasses();
+    })();
   }, [refresh, refreshClasses]);
 
   return (
