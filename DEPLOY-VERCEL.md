@@ -96,7 +96,9 @@ npm run db:seed
 > `deoki-happy-bank`, `haengbok-buja-daycare`, `project-ht10y`처럼 같은 저장소를 여러 Vercel 프로젝트에 연결하면 **각각 별도 Turso DB**가 생겨 반·원아 데이터가 “사라진 것처럼” 보입니다.  
 > 운영 URL은 **`https://deoki-happy-bank.vercel.app` 하나**로 통일하고, 나머지 프로젝트는 삭제하거나 Turso env를 동일하게 맞추세요.
 
-빌드 명령 (자동): `prisma generate` → Turso 마이그레이션(`scripts/turso-migrate.mjs`) → `next build`
+빌드 명령 (Vercel): `npm run build:local` (= `prisma generate && next build`)  
+Turso 스키마(ClassRoom)는 **런타임**에 `ensureClassRoomSchema()`로 자동 생성됩니다.  
+선택적으로 `node scripts/turso-migrate.mjs`로 수동 마이그레이션 가능.
 
 운영 점검:
 

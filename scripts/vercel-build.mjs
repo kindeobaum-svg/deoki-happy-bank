@@ -23,10 +23,6 @@ function getTursoConfig() {
   }
 }
 
-function run(command, env = process.env) {
-  execSync(command, { stdio: "inherit", env });
-}
-
 execSync("prisma generate", { stdio: "inherit" });
 
 const turso = getTursoConfig();
@@ -34,27 +30,30 @@ const demoDbPath = "prisma/demo.db";
 const demoDbEnv = { ...process.env, DATABASE_URL: "file:./demo.db" };
 
 if (turso) {
-  const tursoEnv = {
-    ...process.env,
-    DATABASE_URL: `${turso.url}?authToken=${turso.authToken}`,
-    TURSO_DATABASE_URL: turso.url,
-    TURSO_AUTH_TOKEN: turso.authToken,
-  };
-
-  // Prisma CLI only accepts file: URLs for sqlite — try libsql migration, but do not block deploy.
-  console.log("Turso detected — syncing schema via libsql to", turso.url);
+  // Prisma CLI cannot use libsql:// URLs. ClassRoom schema is ensured at runtime
+  // (see src/lib/ensureClassRoomSchema.ts). Optional build-time sync when Turso is reachable:
+  console.log("Turso detected — skipping Prisma CLI migrate; runtime schema ensure enabled.");
   try {
-    run("node scripts/turso-migrate.mjs", tursoEnv);
+    execSync("node scripts/turso-migrate.mjs", {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        DATABASE_URL: `${turso.url}?authToken=${turso.authToken}`,
+        TURSO_DATABASE_URL: turso.url,
+        TURSO_AUTH_TOKEN: turso.authToken,
+      },
+      timeout: 15_000,
+    });
   } catch (error) {
-    console.warn("Turso build-time migration skipped (runtime ensure will apply ClassRoom):", error);
+    console.warn("Optional Turso build-time migration skipped:", error instanceof Error ? error.message : error);
   }
 } else {
   console.log("Building bundled SQLite demo database (prisma/demo.db)...");
   if (fs.existsSync(demoDbPath)) {
     fs.unlinkSync(demoDbPath);
   }
-  run("prisma migrate deploy", demoDbEnv);
-  run("SEED_FORCE=1 npm run db:seed", { ...demoDbEnv, SEED_FORCE: "1" });
+  execSync("prisma migrate deploy", { stdio: "inherit", env: demoDbEnv });
+  execSync("SEED_FORCE=1 npm run db:seed", { stdio: "inherit", env: { ...demoDbEnv, SEED_FORCE: "1" } });
 }
 
-run("next build");
+execSync("next build", { stdio: "inherit" });
