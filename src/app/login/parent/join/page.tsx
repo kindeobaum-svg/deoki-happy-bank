@@ -149,6 +149,11 @@ export default function ParentJoinPage() {
       </form>
 
       <p className="text-center">
+        <Link href="/login/parent" className="text-sm font-semibold text-[var(--sage-600)]">
+          이미 가입하셨나요? 로그인하기 →
+        </Link>
+      </p>
+      <p className="text-center">
         <Link href="/login/parent" className="text-sm text-[var(--sage-600)]">
           ← 데모 통장으로 돌아가기
         </Link>

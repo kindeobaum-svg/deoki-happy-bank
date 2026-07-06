@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatInviteCode } from "@/lib/inviteCodeUtils";
+import { InviteCodeCopyButton } from "@/components/InviteCodeCopyButton";
 
 export function InviteTeacherPanel() {
   const [loading, setLoading] = useState(false);
@@ -30,15 +31,6 @@ export function InviteTeacherPanel() {
     }
   }
 
-  async function copyCode() {
-    if (!code) return;
-    try {
-      await navigator.clipboard.writeText(code);
-    } catch {
-      // ignore clipboard errors
-    }
-  }
-
   return (
     <section className="forest-card">
       <div className="forest-card-header">
@@ -64,16 +56,14 @@ export function InviteTeacherPanel() {
         ) : (
           <div className="mt-3 rounded-2xl bg-[var(--sage-50)] px-4 py-3 ring-1 ring-[var(--sage-200)]">
             <p className="text-[10px] font-bold text-[var(--sage-600)]">교사 초대코드</p>
-            <p className="mt-1 font-mono text-lg font-bold tracking-wider text-[var(--sage-800)]">
+            <p className="select-all mt-1 font-mono text-lg font-bold tracking-wider text-[var(--sage-800)]">
               {code}
             </p>
-            <button
-              type="button"
-              onClick={() => void copyCode()}
+            <InviteCodeCopyButton
+              code={code}
               className="forest-link-btn mt-2 inline-block"
-            >
-              복사
-            </button>
+              label="복사"
+            />
           </div>
         )}
         {error && <p className="mt-2 text-xs text-red-600">{error}</p>}

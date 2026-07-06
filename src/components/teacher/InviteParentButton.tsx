@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatInviteCode } from "@/lib/inviteCodeUtils";
+import { InviteCodeCopyButton } from "@/components/InviteCodeCopyButton";
 
 type InviteParentButtonProps = {
   childId: string;
@@ -35,15 +36,6 @@ export function InviteParentButton({ childId, childName }: InviteParentButtonPro
     }
   }
 
-  async function copyCode() {
-    if (!code) return;
-    try {
-      await navigator.clipboard.writeText(code);
-    } catch {
-      // ignore clipboard errors
-    }
-  }
-
   return (
     <div className="mt-1">
       {!code ? (
@@ -58,10 +50,10 @@ export function InviteParentButton({ childId, childName }: InviteParentButtonPro
       ) : (
         <div className="mt-1 rounded-xl bg-[var(--sage-50)] px-2 py-1.5">
           <p className="text-[10px] text-[var(--ink-soft)]">{childName} 학부모 초대코드</p>
-          <p className="font-mono text-xs font-bold tracking-wider text-[var(--sage-800)]">{code}</p>
-          <button type="button" onClick={() => void copyCode()} className="teacher-mini-btn mt-1 text-[10px]">
-            복사
-          </button>
+          <p className="select-all font-mono text-xs font-bold tracking-wider text-[var(--sage-800)]">
+            {code}
+          </p>
+          <InviteCodeCopyButton code={code} />
         </div>
       )}
       {error && <p className="mt-1 text-[10px] text-red-600">{error}</p>}

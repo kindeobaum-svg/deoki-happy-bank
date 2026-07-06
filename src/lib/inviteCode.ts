@@ -90,6 +90,20 @@ export async function findValidInvite(
     const child = children.find((c) => inviteCodesMatch(c.accountNumber, normalized));
 
     if (child) {
+      const usedInvite = await prisma.inviteCode.findFirst({
+        where: { childId: child.id, targetRole: "PARENT", usedAt: { not: null } },
+        orderBy: { usedAt: "desc" },
+        include: childInclude,
+      });
+
+      if (usedInvite) {
+        return {
+          valid: false,
+          error:
+            "이미 가입이 완료된 초대코드입니다. 로그인 페이지에서 이메일과 비밀번호로 로그인해 주세요.",
+        };
+      }
+
       invite = await prisma.inviteCode.findFirst({
         where: { childId: child.id, targetRole: "PARENT", usedAt: null },
         orderBy: { createdAt: "desc" },
@@ -110,7 +124,11 @@ export async function findValidInvite(
   }
 
   if (invite.usedAt) {
-    return { valid: false, error: "이미 사용된 초대코드입니다." };
+    return {
+      valid: false,
+      error:
+        "이미 사용된 초대코드입니다. 로그인 페이지에서 이메일과 비밀번호로 로그인해 주세요.",
+    };
   }
 
   if (invite.targetRole === "PARENT" && !invite.childId) {
