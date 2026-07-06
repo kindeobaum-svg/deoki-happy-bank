@@ -1,7 +1,6 @@
 /**
  * Apply Prisma migration SQL to Turso via @libsql/client.
- * Prisma CLI (migrate deploy / db push) only accepts file: URLs for sqlite,
- * so Vercel builds must use this script when Turso env vars are set.
+ * Prisma CLI (migrate deploy / db push) only accepts file: URLs for sqlite.
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -54,7 +53,7 @@ async function tableExists(client, name) {
 }
 
 async function ensureMigrationsTable(client) {
-  await client.execute(`
+  await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
       "id" TEXT PRIMARY KEY NOT NULL,
       "checksum" TEXT NOT NULL,
@@ -64,7 +63,7 @@ async function ensureMigrationsTable(client) {
       "rolled_back_at" DATETIME,
       "started_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "applied_steps_count" INTEGER NOT NULL DEFAULT 0
-    )
+    );
   `);
 }
 
@@ -107,17 +106,6 @@ async function bootstrapExistingDatabase(client, migrationFolders) {
   }
 }
 
-async function applyMigrationSql(client, sql) {
-  const statements = sql
-    .split(/;\s*\n/)
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0 && !part.startsWith("--"));
-
-  for (const statement of statements) {
-    await client.execute(`${statement};`);
-  }
-}
-
 async function applyMigration(client, folder) {
   const sqlPath = path.join(process.cwd(), "prisma/migrations", folder, "migration.sql");
   const sql = fs.readFileSync(sqlPath, "utf8");
@@ -125,7 +113,7 @@ async function applyMigration(client, folder) {
 
   console.log(`Applying migration: ${folder}`);
   try {
-    await applyMigrationSql(client, sql);
+    await client.executeMultiple(sql);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/already exists|duplicate column|UNIQUE constraint failed/i.test(message)) {
@@ -136,6 +124,20 @@ async function applyMigration(client, folder) {
   }
 
   await recordMigration(client, folder, migrationChecksum);
+}
+
+async function ensureClassRoomTable(client) {
+  if (await tableExists(client, "ClassRoom")) {
+    console.log("ClassRoom table already exists.");
+    return;
+  }
+
+  const sqlPath = path.join(
+    process.cwd(),
+    "prisma/migrations/20260706180000_class_rooms/migration.sql",
+  );
+  console.log("Ensuring ClassRoom table exists...");
+  await client.executeMultiple(fs.readFileSync(sqlPath, "utf8"));
 }
 
 async function main() {
@@ -159,6 +161,8 @@ async function main() {
     await applyMigration(client, folder);
     appliedCount += 1;
   }
+
+  await ensureClassRoomTable(client);
 
   console.log(
     appliedCount === 0
