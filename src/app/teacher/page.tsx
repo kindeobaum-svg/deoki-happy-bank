@@ -14,6 +14,7 @@ export default function TeacherPage() {
   const {
     state,
     refresh,
+    refreshClasses,
     addPraise,
     addChild,
     updateChild,
@@ -25,7 +26,8 @@ export default function TeacherPage() {
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void refreshClasses();
+  }, [refresh, refreshClasses]);
 
   return (
     <div className="space-y-4 pb-2">
