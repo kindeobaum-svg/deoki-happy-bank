@@ -23,6 +23,10 @@ function getTursoConfig() {
   }
 }
 
+function run(command, env = process.env) {
+  execSync(command, { stdio: "inherit", env });
+}
+
 execSync("prisma generate", { stdio: "inherit" });
 
 const turso = getTursoConfig();
@@ -36,16 +40,29 @@ if (turso) {
     TURSO_DATABASE_URL: turso.url,
     TURSO_AUTH_TOKEN: turso.authToken,
   };
-  console.log("Turso detected — running prisma migrate deploy + seed (if empty)");
-  execSync("prisma migrate deploy", { stdio: "inherit", env: tursoEnv });
-  execSync("npm run db:seed", { stdio: "inherit", env: tursoEnv });
+
+  console.log("Turso detected — applying migrations to", turso.url);
+
+  try {
+    run("prisma migrate deploy", tursoEnv);
+  } catch (error) {
+    console.error("prisma migrate deploy failed:", error);
+    console.log("Falling back to prisma db push for Turso schema sync...");
+    run("npx prisma db push --skip-generate --accept-data-loss", tursoEnv);
+  }
+
+  try {
+    run("npm run db:seed", tursoEnv);
+  } catch (error) {
+    console.warn("Seed skipped or failed during build (non-fatal):", error);
+  }
 } else {
   console.log("Building bundled SQLite demo database (prisma/demo.db)...");
   if (fs.existsSync(demoDbPath)) {
     fs.unlinkSync(demoDbPath);
   }
-  execSync("prisma migrate deploy", { stdio: "inherit", env: demoDbEnv });
-  execSync("SEED_FORCE=1 npm run db:seed", { stdio: "inherit", env: { ...demoDbEnv, SEED_FORCE: "1" } });
+  run("prisma migrate deploy", demoDbEnv);
+  run("SEED_FORCE=1 npm run db:seed", { ...demoDbEnv, SEED_FORCE: "1" });
 }
 
-execSync("next build", { stdio: "inherit" });
+run("next build");

@@ -1,10 +1,10 @@
 -- CreateTable
-CREATE TABLE "ClassRoom" (
+CREATE TABLE IF NOT EXISTS "ClassRoom" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ClassRoom_name_key" ON "ClassRoom"("name");
+CREATE UNIQUE INDEX IF NOT EXISTS "ClassRoom_name_key" ON "ClassRoom"("name");
