@@ -4,6 +4,7 @@ import type { Role } from "@prisma/client";
 import { prisma, getDatabaseMode } from "@/lib/db";
 import { COOKIE_NAME, createSessionToken, sessionCookieOptions } from "@/lib/auth";
 import { ensureDemoUsers } from "@/lib/ensureDemoUsers";
+import { loadParentSessionFromDb } from "@/lib/parentSession";
 
 export async function POST(request: Request) {
   try {
@@ -51,6 +52,9 @@ export async function POST(request: Request) {
       childId: user.childId,
     });
 
+    const parentSession =
+      user.role === "PARENT" ? await loadParentSessionFromDb(user.id) : null;
+
     const response = NextResponse.json({
       user: {
         id: user.id,
@@ -59,6 +63,8 @@ export async function POST(request: Request) {
         role: user.role,
         childId: user.childId,
       },
+      parentSession,
+      homePath: parentSession?.homePath ?? null,
     });
 
     response.cookies.set(COOKIE_NAME, token, sessionCookieOptions());

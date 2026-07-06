@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { QuickRoleEnter } from "@/components/QuickRoleEnter";
 import { PassbookShell } from "@/components/passbook/PassbookShell";
 import { useApp } from "@/hooks/useAppStore";
 import { PASSBOOK_NAME } from "@/lib/branding";
+import { fetchParentHomePath, redirectToParentHome } from "@/lib/parentHomeClient";
 
 export default function ParentLoginPage() {
   const router = useRouter();
@@ -14,7 +15,25 @@ export default function ParentLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { homePath } = await fetchParentHomePath();
+      if (cancelled) return;
+      if (homePath) {
+        router.replace(homePath);
+        router.refresh();
+        return;
+      }
+      setCheckingSession(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -22,15 +41,26 @@ export default function ParentLoginPage() {
     setError("");
 
     const result = await login(email, password, "PARENT");
-    setLoading(false);
-
     if (result.error) {
+      setLoading(false);
       setError(result.error);
       return;
     }
 
-    router.push("/passbook");
-    router.refresh();
+    const { ok, error: redirectError } = await redirectToParentHome(router);
+    setLoading(false);
+
+    if (!ok) {
+      setError(redirectError ?? "원아 연결 정보를 불러오지 못했습니다.");
+    }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="quick-enter-loading py-12">
+        <p className="font-title text-base text-[var(--passbook-navy-deep)]">연결 정보 확인 중...</p>
+      </div>
+    );
   }
 
   return (

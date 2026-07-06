@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { COOKIE_NAME, createSessionToken, sessionCookieOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { findValidInvite } from "@/lib/inviteCode";
+import { loadParentSessionFromDb } from "@/lib/parentSession";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -68,6 +69,8 @@ export async function POST(request: Request) {
     childId: user.childId,
   });
 
+  const parentSession = await loadParentSessionFromDb(user.id);
+
   const response = NextResponse.json({
     user: {
       id: user.id,
@@ -76,6 +79,8 @@ export async function POST(request: Request) {
       role: user.role,
       childId: user.childId,
     },
+    parentSession,
+    homePath: parentSession?.homePath ?? null,
   });
 
   response.cookies.set(COOKIE_NAME, token, sessionCookieOptions());

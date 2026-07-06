@@ -7,6 +7,7 @@ import {
   isPathAllowedForRole,
   normalizePathname,
 } from "@/lib/roleAccess";
+import { PARENT_HOME_PATH } from "@/lib/parentHomePath";
 
 const PUBLIC_PATHS = ["/login", "/manifest.webmanifest", "/sw.js", "/icons"];
 
@@ -51,7 +52,11 @@ export async function middleware(request: Request) {
 
   if (normalized.startsWith("/login")) {
     if (session) {
-      return NextResponse.redirect(new URL(getHomeForRole(session.role), request.url));
+      const home =
+        session.role === "PARENT" && session.childId
+          ? PARENT_HOME_PATH
+          : getHomeForRole(session.role);
+      return NextResponse.redirect(new URL(home, request.url));
     }
     return NextResponse.next();
   }

@@ -3,7 +3,7 @@ import type { Role } from "@prisma/client";
 export const ROLE_HOME: Record<Role, string> = {
   DIRECTOR: "/admin",
   TEACHER: "/teacher",
-  PARENT: "/passbook",
+  PARENT: "/parent",
   CHILD: "/child",
 };
 

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/hooks/useAppStore";
 import { PassbookShell } from "@/components/passbook/PassbookShell";
+import { fetchParentHomePath, redirectToParentHome } from "@/lib/parentHomeClient";
 
 export default function ParentJoinPage() {
   const router = useRouter();
@@ -15,7 +16,25 @@ export default function ParentJoinPage() {
   const [password, setPassword] = useState("");
   const [verifiedChild, setVerifiedChild] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { homePath } = await fetchParentHomePath();
+      if (cancelled) return;
+      if (homePath) {
+        router.replace(homePath);
+        router.refresh();
+        return;
+      }
+      setCheckingSession(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function verifyCode() {
     setLoading(true);
@@ -59,14 +78,25 @@ export default function ParentJoinPage() {
         setError(data.error ?? "가입에 실패했습니다.");
         return;
       }
+
       await refresh();
-      router.push("/passbook");
-      router.refresh();
+      const { ok, error: redirectError } = await redirectToParentHome(router);
+      if (!ok) {
+        setError(redirectError ?? "원아 연결 정보를 불러오지 못했습니다.");
+      }
     } catch {
       setError("가입에 실패했습니다.");
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="quick-enter-loading py-12">
+        <p className="font-title text-base text-[var(--passbook-navy-deep)]">연결 정보 확인 중...</p>
+      </div>
+    );
   }
 
   return (

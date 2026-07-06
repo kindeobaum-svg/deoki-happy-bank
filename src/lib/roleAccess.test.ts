@@ -39,8 +39,8 @@ describe("findPathRule", () => {
 });
 
 describe("getHomeForRole", () => {
-  it("returns passbook for parent", () => {
-    expect(getHomeForRole("PARENT")).toBe("/passbook");
+  it("returns parent home for parent", () => {
+    expect(getHomeForRole("PARENT")).toBe("/parent");
   });
 });
 
