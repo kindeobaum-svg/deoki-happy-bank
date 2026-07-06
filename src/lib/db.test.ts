@@ -28,4 +28,16 @@ describe("getDatabaseMode turso detection", () => {
     const { getDatabaseMode } = await import("@/lib/db");
     expect(getDatabaseMode()).toBe("sqlite");
   });
+
+  it("allows Vercel build phase without Turso env (placeholder DB)", async () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("NEXT_PHASE", "phase-production-build");
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("TURSO_DATABASE_URL", "");
+    vi.stubEnv("TURSO_AUTH_TOKEN", "");
+
+    const { getDatabaseMode, prisma } = await import("@/lib/db");
+    expect(getDatabaseMode()).toBe("sqlite");
+    expect(prisma).toBeDefined();
+  });
 });
