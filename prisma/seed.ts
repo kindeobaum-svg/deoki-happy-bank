@@ -63,7 +63,6 @@ export async function seedDatabase(options: { force?: boolean } = {}) {
 
   await prisma.classRoom.createMany({
     data: [{ name: "햇살반" }, { name: "무지개반" }],
-    skipDuplicates: true,
   });
 
   await prisma.user.createMany({
