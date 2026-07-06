@@ -73,10 +73,10 @@ export function TeacherClassPanel({ children = [], onClassRenamed }: TeacherClas
   }
 
   return (
-    <section className="teacher-panel card-warm rounded-3xl p-4">
+    <section className="teacher-panel teacher-panel-compact card-warm rounded-2xl p-3">
       <div className="teacher-panel-head">
         <p className="teacher-panel-title">🏫 반 관리</p>
-        <p className="teacher-panel-desc">반 이름 입력 후 추가 · 30초 설정</p>
+        <p className="teacher-panel-desc">반 이름 입력 후 추가</p>
       </div>
 
       <div className="teacher-inline-form mt-3">

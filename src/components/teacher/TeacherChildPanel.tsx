@@ -84,7 +84,7 @@ export function TeacherChildPanel({
 
   if (classes.length === 0) {
     return (
-      <section className="teacher-panel card-warm rounded-3xl p-4">
+      <section className="teacher-panel teacher-panel-compact card-warm rounded-2xl p-3">
         <div className="teacher-panel-head">
           <p className="teacher-panel-title">👶 원아 관리</p>
         </div>
@@ -94,10 +94,10 @@ export function TeacherChildPanel({
   }
 
   return (
-    <section className="teacher-panel card-warm rounded-3xl p-4">
+    <section className="teacher-panel teacher-panel-compact card-warm rounded-2xl p-3">
       <div className="teacher-panel-head">
         <p className="teacher-panel-title">👶 원아 관리</p>
-        <p className="teacher-panel-desc">반 선택 → 이름 입력 → 사진 변경</p>
+        <p className="teacher-panel-desc">반 선택 후 원아를 등록하세요</p>
       </div>
 
       <div className="teacher-class-chips mt-3">
@@ -144,9 +144,10 @@ export function TeacherChildPanel({
               ) : (
                 <ul className="space-y-1.5">
                   {list.map((child) => (
-                    <li key={child.id} className="teacher-child-row">
-                      <ChildProfileAvatar avatar={child.avatar} name={child.name} size="sm" />
-                      <div className="min-w-0 flex-1">
+            <li key={child.id} className="teacher-child-card">
+                      <div className="teacher-child-card-top">
+                        <ChildProfileAvatar avatar={child.avatar} name={child.name} size="sm" />
+                        <div className="min-w-0 flex-1">
                         {editingId === child.id ? (
                           <input
                             value={editName}
@@ -157,17 +158,28 @@ export function TeacherChildPanel({
                         ) : (
                           <>
                             <span className="teacher-child-name block">{child.name}</span>
+                            <span className="teacher-child-card-class">{child.className}</span>
+                          </>
+                        )}
+                        </div>
+                      </div>
+                      {editingId !== child.id && (
+                        <div className="teacher-child-card-tools">
                             <ChildPhotoChangeButton
                               childId={child.id}
                               childName={child.name}
                               onPhotoChange={handlePhotoChange}
                               compact
                             />
-                            <InviteParentButton childId={child.id} childName={child.name} />
-                          </>
-                        )}
-                      </div>
-                      <div className="teacher-child-actions">
+                            <InviteParentButton
+                              childId={child.id}
+                              childName={child.name}
+                              accountNumber={child.accountNumber}
+                              className={child.className}
+                            />
+                        </div>
+                      )}
+                      <div className="teacher-child-card-actions">
                         {editingId === child.id ? (
                           <>
                             <button type="button" onClick={() => void saveEdit(child)} className="teacher-mini-btn primary">

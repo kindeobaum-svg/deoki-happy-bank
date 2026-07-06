@@ -2221,6 +2221,172 @@ body:has(.parent-main) {
   flex-shrink: 0;
 }
 
+/* ── Teacher compact menu layout ── */
+.teacher-page {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.teacher-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.teacher-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 4.75rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 1rem;
+  background: white;
+  border: 1px solid var(--sage-100);
+  box-shadow: 0 2px 8px rgba(61, 79, 61, 0.05);
+  color: var(--forest-deep);
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.teacher-menu-item.active,
+.teacher-menu-item:active {
+  border-color: var(--sage-400);
+  background: var(--sage-50);
+}
+
+.teacher-menu-emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.teacher-menu-label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.teacher-page-hint {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  padding: 0.5rem 0 0.25rem;
+}
+
+.teacher-section-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.teacher-section-back {
+  border-radius: 999px;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--sage-700);
+  background: var(--sage-50);
+  border: 1px solid var(--sage-200);
+}
+
+.teacher-section-title {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--forest-deep);
+}
+
+.teacher-panel-compact {
+  padding: 0.75rem !important;
+}
+
+.teacher-panel-compact .teacher-panel-title {
+  font-size: 0.9375rem;
+}
+
+.teacher-panel-compact .teacher-panel-desc {
+  font-size: 0.6875rem;
+}
+
+.teacher-child-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  background: white;
+  border: 1px solid var(--sage-100);
+  box-shadow: 0 1px 6px rgba(61, 79, 61, 0.04);
+}
+
+.teacher-child-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.teacher-child-card-class {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.teacher-child-card-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  padding-left: 2.375rem;
+}
+
+.teacher-child-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  padding-top: 0.25rem;
+  border-top: 1px dashed var(--sage-100);
+}
+
+.teacher-quick-hero-compact {
+  padding: 0.875rem 1rem;
+}
+
+.teacher-quick-hero-compact .teacher-quick-hero-title {
+  font-size: 1rem;
+}
+
+.teacher-quick-hero-compact .teacher-quick-hero-sub {
+  font-size: 0.6875rem;
+}
+
+.teacher-quick-card {
+  padding: 0.75rem;
+}
+
+.teacher-quick-chip {
+  padding: 0.5rem 0.375rem;
+  min-height: 3.25rem;
+}
+
+.teacher-quick-chip-label {
+  font-size: 0.5625rem;
+}
+
+@media (min-width: 640px) {
+  .teacher-menu-grid {
+    max-width: 24rem;
+    margin-inline: auto;
+  }
+
+  .teacher-page {
+    padding-inline: 0.25rem;
+  }
+}
+
 /* ── Child profile photo (원형 1장) ── */
 .child-profile-avatar {
   display: inline-flex;

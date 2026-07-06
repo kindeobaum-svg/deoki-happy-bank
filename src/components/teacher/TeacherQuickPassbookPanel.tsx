@@ -14,12 +14,16 @@ type TeacherQuickPassbookPanelProps = {
   children: Child[];
   praiseRecords: PraiseRecord[];
   onAddPraise: (childId: string, message: string, emoji: string) => Promise<void>;
+  panelTitle?: string;
+  panelSubtitle?: string;
 };
 
 export function TeacherQuickPassbookPanel({
   children,
   praiseRecords,
   onAddPraise,
+  panelTitle = "미션 적립",
+  panelSubtitle,
 }: TeacherQuickPassbookPanelProps) {
   const { state, addPassbookDeposit } = useApp();
   const [flashKey, setFlashKey] = useState<string | null>(null);
@@ -53,11 +57,11 @@ export function TeacherQuickPassbookPanel({
 
   return (
     <div className="teacher-quick space-y-4">
-      <section className="teacher-quick-hero">
+      <section className="teacher-quick-hero teacher-quick-hero-compact">
         <p className="teacher-quick-hero-badge">30초 모드</p>
-        <h2 className="teacher-quick-hero-title">미션 적립</h2>
+        <h2 className="teacher-quick-hero-title">{panelTitle}</h2>
         <p className="teacher-quick-hero-sub">
-          {PASSBOOK_NAME} · 탭 한 번 = 칭찬 + 입금
+          {panelSubtitle ?? `${PASSBOOK_NAME} · 탭 한 번 = 칭찬 + 입금`}
         </p>
         <div className="teacher-quick-stats">
           <span>오늘 칭찬 {todayPraiseCount}건</span>
