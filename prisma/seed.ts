@@ -61,9 +61,13 @@ export async function seedDatabase(options: { force?: boolean } = {}) {
     },
   });
 
-  await prisma.classRoom.createMany({
-    data: [{ name: "햇살반" }, { name: "무지개반" }],
-  });
+  for (const name of ["햇살반", "무지개반"]) {
+    await prisma.classRoom.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
 
   await prisma.user.createMany({
     data: [
