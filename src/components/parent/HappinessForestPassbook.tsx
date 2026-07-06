@@ -4,9 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Child } from "@/lib/types";
 import {
-  addDepositEntry,
   DEFAULT_SAVE_AMOUNT,
-  getChildPassbookSummary,
+  getSummaryFromEntries,
   SAVE_ITEM_PRESETS,
   sortPassbookEntriesNewestFirst,
   type LocalPassbookEntry,
@@ -18,6 +17,7 @@ import { PassbookSummaryCard } from "@/components/parent/PassbookSummaryCard";
 import { PassbookTransactionList } from "@/components/parent/PassbookTransactionList";
 import { todayStr } from "@/lib/attendance";
 import { ChildProfileAvatar } from "@/components/ChildProfileAvatar";
+import { useApp } from "@/hooks/useAppStore";
 
 type HappinessForestPassbookProps = {
   child: Child;
@@ -30,13 +30,14 @@ export function HappinessForestPassbook({
   entries,
   onAccumulated,
 }: HappinessForestPassbookProps) {
+  const { addPassbookDeposit } = useApp();
   const [selectedItem, setSelectedItem] = useState(SAVE_ITEM_PRESETS[0]);
   const [justSaved, setJustSaved] = useState(false);
   const [sparkle, setSparkle] = useState(false);
 
   const today = todayStr();
   const childEntries = entries.filter((e) => e.childId === child.id);
-  const summary = getChildPassbookSummary(child.id);
+  const summary = useMemo(() => getSummaryFromEntries(childEntries), [childEntries]);
   const todayDeposits = childEntries.filter((e) => e.date === today && e.type === "deposit");
   const todayDepositAmount = todayDeposits.reduce((sum, e) => sum + e.amount, 0);
   const ledgerEntries = sortPassbookEntriesNewestFirst(childEntries);
@@ -56,8 +57,9 @@ export function HappinessForestPassbook({
     window.setTimeout(() => setSparkle(false), 1200);
   }
 
-  function handleAccumulate() {
-    addDepositEntry(child.id, child.name, selectedItem, DEFAULT_SAVE_AMOUNT);
+  async function handleAccumulate() {
+    const { error } = await addPassbookDeposit(child.id, selectedItem, DEFAULT_SAVE_AMOUNT);
+    if (error) return;
     handleTransactionComplete();
   }
 
@@ -149,7 +151,7 @@ export function HappinessForestPassbook({
           </div>
           <button
             type="button"
-            onClick={handleAccumulate}
+            onClick={() => void handleAccumulate()}
             className={`forest-accumulate-btn tap-scale ${justSaved ? "saved" : ""}`}
           >
             <span className="forest-accumulate-icon">{justSaved ? "✓" : "🌱"}</span>
@@ -162,7 +164,7 @@ export function HappinessForestPassbook({
         </div>
       </section>
 
-      <ExpensePanel child={child} onCompleted={handleTransactionComplete} />
+      <ExpensePanel child={child} entries={childEntries} onCompleted={handleTransactionComplete} />
 
       <section className="forest-card forest-card-ledger passbook-ledger-section">
         <div className="forest-card-header">

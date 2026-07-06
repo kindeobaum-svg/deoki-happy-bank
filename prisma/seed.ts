@@ -2,6 +2,9 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/db";
 
 async function main() {
+  await prisma.diaryDeposit.deleteMany();
+  await prisma.missionCompletion.deleteMany();
+  await prisma.passbookTransaction.deleteMany();
   await prisma.inviteCode.deleteMany();
   await prisma.pushSubscription.deleteMany();
   await prisma.praiseRecord.deleteMany();
@@ -19,8 +22,8 @@ async function main() {
       name: "김하늘",
       className: "햇살반",
       accountNumber: "HB-2024-0001",
-      points: 0,
-      totalSaved: 0,
+      points: 1,
+      totalSaved: 100,
       avatar: "🌻",
     },
   });
@@ -30,8 +33,8 @@ async function main() {
       name: "이민준",
       className: "햇살반",
       accountNumber: "HB-2024-0002",
-      points: 12,
-      totalSaved: 1200,
+      points: 2,
+      totalSaved: 200,
       avatar: "🐻",
     },
   });
@@ -41,8 +44,8 @@ async function main() {
       name: "박서연",
       className: "무지개반",
       accountNumber: "HB-2024-0003",
-      points: 28,
-      totalSaved: 2800,
+      points: 1,
+      totalSaved: 100,
       avatar: "🦋",
     },
   });
@@ -78,30 +81,42 @@ async function main() {
     ],
   });
 
-  await prisma.saveRecord.createMany({
+  await prisma.passbookTransaction.createMany({
     data: [
       {
         childId: child1.id,
+        type: "DEPOSIT",
+        item: "첫 적립 — 오늘도 잘했어요!",
         amount: 100,
-        message: "첫 적립 — 오늘도 잘했어요!",
+        balance: 100,
+        date: new Date(Date.now() - 172800000).toISOString().slice(0, 10),
         createdAt: new Date(Date.now() - 172800000),
       },
       {
         childId: child2.id,
+        type: "DEPOSIT",
+        item: "친구와 나누기 잘했어요!",
         amount: 100,
-        message: "친구와 나누기 잘했어요!",
+        balance: 100,
+        date: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
         createdAt: new Date(Date.now() - 86400000),
       },
       {
         childId: child2.id,
+        type: "DEPOSIT",
+        item: "스스로 정리했어요!",
         amount: 100,
-        message: "스스로 정리했어요!",
+        balance: 200,
+        date: new Date(Date.now() - 43200000).toISOString().slice(0, 10),
         createdAt: new Date(Date.now() - 43200000),
       },
       {
         childId: child3.id,
+        type: "DEPOSIT",
+        item: "스스로 정리정돈했어요!",
         amount: 100,
-        message: "스스로 정리정돈했어요!",
+        balance: 100,
+        date: new Date(Date.now() - 3600000).toISOString().slice(0, 10),
         createdAt: new Date(Date.now() - 3600000),
       },
     ],

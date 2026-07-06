@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { addPassbookTransaction } from "@/lib/passbookService";
 import { SAVE_AMOUNT } from "@/lib/tree";
 import { notifyParentsOfChild } from "@/lib/push";
 
@@ -26,18 +27,17 @@ export async function POST(
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
   }
 
-  const [updated, record] = await prisma.$transaction([
-    prisma.child.update({
-      where: { id },
-      data: {
-        points: { increment: 1 },
-        totalSaved: { increment: SAVE_AMOUNT },
-      },
-    }),
-    prisma.saveRecord.create({
-      data: { childId: id, amount: SAVE_AMOUNT, message },
-    }),
-  ]);
+  const { transaction, error } = await addPassbookTransaction(
+    id,
+    "deposit",
+    message,
+    SAVE_AMOUNT,
+  );
+  if (error || !transaction) {
+    return NextResponse.json({ error: error ?? "적립에 실패했습니다." }, { status: 400 });
+  }
+
+  const updated = await prisma.child.findUnique({ where: { id } });
 
   await notifyParentsOfChild(id, {
     title: "🌳 행복 적립!",
@@ -45,5 +45,5 @@ export async function POST(
     url: "/parent/diary",
   });
 
-  return NextResponse.json({ child: updated, record });
+  return NextResponse.json({ child: updated, record: transaction });
 }

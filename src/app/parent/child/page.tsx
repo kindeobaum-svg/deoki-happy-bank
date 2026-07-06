@@ -4,7 +4,6 @@ import { ParentHero } from "@/components/parent/ParentHero";
 import { PASSBOOK_NAME } from "@/lib/branding";
 import { EmotionCard } from "@/components/parent/EmotionCard";
 import { useApp } from "@/hooks/useAppStore";
-import { useLocalPassbook } from "@/hooks/useLocalPassbook";
 import { getChildTotalSaved } from "@/lib/localPassbook";
 import {
   ATTENDANCE_COLORS,
@@ -15,8 +14,7 @@ import {
 import { ChildProfileAvatar } from "@/components/ChildProfileAvatar";
 
 export default function ParentChildPage() {
-  const { state, selectedChild, selectChild } = useApp();
-  const { hydrated } = useLocalPassbook();
+  const { state, selectedChild, selectChild, loading } = useApp();
   const child = selectedChild ?? state.children[0];
   const today = todayStr();
 
@@ -35,7 +33,9 @@ export default function ParentChildPage() {
   const hasDiary = state.dailyReports.some(
     (r) => r.childId === child.id && r.date === today,
   );
-  const localTotal = hydrated ? getChildTotalSaved(child.id) : child.totalSaved;
+  const balance = loading
+    ? child.totalSaved
+    : getChildTotalSaved(child.id, state.passbookTransactions);
 
   return (
     <div className="parent-page">
@@ -86,7 +86,7 @@ export default function ParentChildPage() {
           <div className="rounded-2xl bg-[var(--sage-50)] p-4 ring-2 ring-[var(--sage-200)]">
             <p className="text-[10px] font-bold text-[var(--sage-600)]">💰 {PASSBOOK_NAME}</p>
             <p className="mt-1 font-display text-xl font-bold text-[var(--forest-deep)]">
-              {localTotal.toLocaleString()}
+              {balance.toLocaleString()}
               <span className="text-sm">원</span>
             </p>
           </div>
@@ -117,7 +117,7 @@ export default function ParentChildPage() {
           href="/passbook"
           emoji="📒"
           title={PASSBOOK_NAME}
-          desc={`지금까지 ${localTotal.toLocaleString()}원 모았어요`}
+          desc={`지금까지 ${balance.toLocaleString()}원 모았어요`}
         />
         <EmotionCard
           href="/parent/growth"

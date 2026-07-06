@@ -9,7 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { DAYCARE_NAME } from "@/lib/branding";
 import { clearAppClientStorage } from "@/lib/clientStorage";
 import { getDemoAccount } from "@/lib/demoAccess";
 import type {
@@ -30,6 +29,10 @@ type AppContextValue = {
   logout: () => Promise<void>;
   accumulate: (childId: string, message?: string) => Promise<void>;
   selectChild: (childId: string) => void;
+  addPassbookDeposit: (childId: string, item: string, amount: number) => Promise<{ error?: string }>;
+  addPassbookWithdrawal: (childId: string, item: string, amount: number) => Promise<{ error?: string }>;
+  completeMission: (childId: string, missionId: string) => Promise<{ alreadyDone: boolean; error?: string }>;
+  completeDiaryDeposit: (childId: string, reportDate: string) => Promise<{ alreadyDone: boolean; error?: string }>;
   addAnnouncement: (title: string, content: string, author: string) => Promise<void>;
   addDailyReport: (
     childId: string,
@@ -50,7 +53,9 @@ const AppContext = createContext<AppContextValue | null>(null);
 const EMPTY: AppState = {
   user: null,
   children: [],
-  saveRecords: [],
+  passbookTransactions: [],
+  missionCompletions: [],
+  diaryDeposits: [],
   announcements: [],
   dailyReports: [],
   attendances: [],
@@ -86,12 +91,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setState((prev) => ({
         user,
         children: data.children.map(normalizeChild),
-        saveRecords: data.saveRecords.map(normalizeRecord),
+        passbookTransactions: (data.passbookTransactions ?? []).map(normalizePassbookTransaction),
+        missionCompletions: data.missionCompletions ?? [],
+        diaryDeposits: data.diaryDeposits ?? [],
         announcements: data.announcements.map(normalizeAnnouncement),
         dailyReports: data.dailyReports,
         attendances: data.attendances ?? [],
         praiseRecords: (data.praiseRecords ?? []).map(normalizePraise),
-        selectedChildId: data.selectedChildId,
+        selectedChildId: prev.selectedChildId ?? data.selectedChildId,
       }));
     } catch {
       setState(EMPTY);
@@ -145,6 +152,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       if (!res.ok) return;
       await refresh();
+    },
+    [refresh],
+  );
+
+  const addPassbookDeposit = useCallback(
+    async (childId: string, item: string, amount: number) => {
+      const res = await fetch(`/api/children/${childId}/passbook-transactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "deposit", item, amount }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { error: data.error ?? "입금에 실패했습니다." };
+      await refresh();
+      return {};
+    },
+    [refresh],
+  );
+
+  const addPassbookWithdrawal = useCallback(
+    async (childId: string, item: string, amount: number) => {
+      const res = await fetch(`/api/children/${childId}/passbook-transactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "withdrawal", item, amount }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { error: data.error ?? "지출에 실패했습니다." };
+      await refresh();
+      return {};
+    },
+    [refresh],
+  );
+
+  const completeMission = useCallback(
+    async (childId: string, missionId: string) => {
+      const res = await fetch(`/api/children/${childId}/missions/${missionId}/complete`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { alreadyDone: false, error: data.error ?? "미션 완료에 실패했습니다." };
+      await refresh();
+      return { alreadyDone: data.alreadyDone ?? false };
+    },
+    [refresh],
+  );
+
+  const completeDiaryDeposit = useCallback(
+    async (childId: string, reportDate: string) => {
+      const res = await fetch(`/api/children/${childId}/diary-deposit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportDate }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { alreadyDone: false, error: data.error ?? "적립에 실패했습니다." };
+      await refresh();
+      return { alreadyDone: data.alreadyDone ?? false };
     },
     [refresh],
   );
@@ -256,6 +321,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       logout,
       accumulate,
       selectChild,
+      addPassbookDeposit,
+      addPassbookWithdrawal,
+      completeMission,
+      completeDiaryDeposit,
       addAnnouncement,
       addDailyReport,
       setAttendance,
@@ -274,6 +343,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       logout,
       accumulate,
       selectChild,
+      addPassbookDeposit,
+      addPassbookWithdrawal,
+      completeMission,
+      completeDiaryDeposit,
       addAnnouncement,
       addDailyReport,
       setAttendance,
@@ -305,13 +378,16 @@ function normalizeChild(c: ChildRaw) {
   };
 }
 
-function normalizeRecord(r: RecordRaw) {
+function normalizePassbookTransaction(t: PassbookTransactionRaw) {
   return {
-    id: r.id,
-    childId: r.childId,
-    amount: r.amount,
-    message: r.message,
-    createdAt: typeof r.createdAt === "string" ? r.createdAt : new Date(r.createdAt).toISOString(),
+    id: t.id,
+    childId: t.childId,
+    type: t.type,
+    item: t.item,
+    amount: t.amount,
+    balance: t.balance,
+    date: t.date,
+    createdAt: typeof t.createdAt === "string" ? t.createdAt : new Date(t.createdAt).toISOString(),
   };
 }
 
@@ -347,11 +423,14 @@ type ChildRaw = {
   avatar: string;
 };
 
-type RecordRaw = {
+type PassbookTransactionRaw = {
   id: string;
   childId: string;
+  type: "deposit" | "withdrawal";
+  item: string;
   amount: number;
-  message: string;
+  balance: number;
+  date: string;
   createdAt: string | Date;
 };
 

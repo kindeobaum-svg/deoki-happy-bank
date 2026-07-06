@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from "react";
 import type { Child, PraiseRecord } from "@/lib/types";
-import { useLocalPassbook } from "@/hooks/useLocalPassbook";
-import { addDepositEntry, getChildTotalSaved } from "@/lib/localPassbook";
+import { getChildTotalSaved } from "@/lib/localPassbook";
 import { TEACHER_HABIT_QUICK_ACTIONS } from "@/lib/teacherQuickActions";
 import { todayStr } from "@/lib/attendance";
 import { PASSBOOK_NAME } from "@/lib/branding";
 import { getTreeStage, TREE_LABELS } from "@/lib/tree";
 import { ChildProfileAvatar } from "@/components/ChildProfileAvatar";
+import { useApp } from "@/hooks/useAppStore";
 
 type TeacherQuickPassbookPanelProps = {
   children: Child[];
@@ -21,7 +21,7 @@ export function TeacherQuickPassbookPanel({
   praiseRecords,
   onAddPraise,
 }: TeacherQuickPassbookPanelProps) {
-  const { entries, refresh } = useLocalPassbook();
+  const { state, addPassbookDeposit } = useApp();
   const [flashKey, setFlashKey] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const today = todayStr();
@@ -30,8 +30,10 @@ export function TeacherQuickPassbookPanel({
 
   const todayDepositCount = useMemo(
     () =>
-      entries.filter((e) => e.date === today && e.type === "deposit").length,
-    [entries, today],
+      state.passbookTransactions.filter(
+        (e) => e.date === today && e.type === "deposit",
+      ).length,
+    [state.passbookTransactions, today],
   );
 
   async function handleQuickAction(child: Child, actionId: string) {
@@ -41,9 +43,8 @@ export function TeacherQuickPassbookPanel({
     const key = `${child.id}-${actionId}`;
     setBusyKey(key);
 
-    addDepositEntry(child.id, child.name, action.label, action.amount);
+    await addPassbookDeposit(child.id, action.label, action.amount);
     await onAddPraise(child.id, action.praise, action.emoji);
-    refresh();
 
     setFlashKey(key);
     window.setTimeout(() => setFlashKey(null), 700);
@@ -72,7 +73,7 @@ export function TeacherQuickPassbookPanel({
       ) : (
       <ul className="teacher-quick-list space-y-3">
         {children.map((child) => {
-          const balance = getChildTotalSaved(child.id);
+          const balance = getChildTotalSaved(child.id, state.passbookTransactions);
           const stage = getTreeStage(child.points);
           const childTodayPraises = praiseRecords.filter(
             (p) => p.childId === child.id && p.date === today,

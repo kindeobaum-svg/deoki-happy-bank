@@ -3,7 +3,7 @@
 import type { Child } from "@/lib/types";
 import { type LocalPassbookEntry } from "@/lib/localPassbook";
 import { HappinessForestPassbook } from "@/components/parent/HappinessForestPassbook";
-import { useLocalPassbook } from "@/hooks/useLocalPassbook";
+import { useApp } from "@/hooks/useAppStore";
 
 type LocalPassbookViewProps = {
   child: Child;
@@ -11,13 +11,13 @@ type LocalPassbookViewProps = {
 };
 
 export function LocalPassbookView({ child, entries }: LocalPassbookViewProps) {
-  const { refresh } = useLocalPassbook();
+  const { refresh } = useApp();
 
   return (
     <HappinessForestPassbook
       child={child}
       entries={entries}
-      onAccumulated={refresh}
+      onAccumulated={() => void refresh()}
     />
   );
 }

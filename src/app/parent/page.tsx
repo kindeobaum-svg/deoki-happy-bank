@@ -8,8 +8,8 @@ import { RecentPassbookList } from "@/components/parent/RecentPassbookList";
 import { MissionPanel } from "@/components/parent/MissionPanel";
 import { RoleQuickNav } from "@/components/RoleQuickNav";
 import { useApp } from "@/hooks/useAppStore";
-import { useLocalPassbook } from "@/hooks/useLocalPassbook";
-import { getChildTotalSaved } from "@/lib/localPassbook";
+import { usePassbook } from "@/hooks/useLocalPassbook";
+import { getChildPassbookEntries, getChildTotalSaved } from "@/lib/localPassbook";
 import { PASSBOOK_NAME } from "@/lib/branding";
 import {
   ATTENDANCE_EMOJI,
@@ -18,8 +18,8 @@ import {
 } from "@/lib/attendance";
 
 export default function ParentPage() {
-  const { state, selectedChild, selectChild } = useApp();
-  const { entries: localEntries, hydrated, refresh } = useLocalPassbook();
+  const { state, selectedChild, selectChild, loading } = useApp();
+  const { refresh } = usePassbook();
   const child = selectedChild ?? state.children[0];
   const today = todayStr();
 
@@ -35,7 +35,14 @@ export default function ParentPage() {
   const todayPraises = state.praiseRecords.filter(
     (p) => p.childId === child.id && p.date === today,
   );
-  const localTotal = hydrated ? getChildTotalSaved(child.id) : child.totalSaved;
+  const balance = loading
+    ? child.totalSaved
+    : getChildTotalSaved(child.id, state.passbookTransactions);
+  const childEntries = getChildPassbookEntries(
+    child.id,
+    state.passbookTransactions,
+    child.name,
+  );
 
   return (
     <div className="parent-page">
@@ -69,7 +76,7 @@ export default function ParentPage() {
         />
         <StatBubble
           emoji="💰"
-          value={hydrated ? `${localTotal.toLocaleString()}` : "—"}
+          value={loading ? "—" : `${balance.toLocaleString()}`}
           label="행복숲 적립"
           variant="gold"
         />
@@ -106,10 +113,10 @@ export default function ParentPage() {
         className="animate-card-enter animate-card-enter-delay-2"
         childName={child.name}
         childAvatar={child.avatar}
-        totalSaved={localTotal}
+        totalSaved={balance}
       />
 
-      {hydrated && (
+      {!loading && (
         <div id="missions" className="animate-card-enter animate-card-enter-delay-2 scroll-target">
           <MissionPanel child={child} onCompleted={refresh} />
         </div>
@@ -123,9 +130,9 @@ export default function ParentPage() {
         />
       </div>
 
-      {hydrated && (
+      {!loading && (
         <div className="animate-card-enter animate-card-enter-delay-3">
-          <RecentPassbookList entries={localEntries} childId={child.id} />
+          <RecentPassbookList entries={childEntries} childId={child.id} />
         </div>
       )}
 

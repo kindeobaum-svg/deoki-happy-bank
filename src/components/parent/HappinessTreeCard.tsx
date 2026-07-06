@@ -1,7 +1,6 @@
 "use client";
 
 import { TreeVisual } from "@/components/TreeVisual";
-import { getChildTotalSaved } from "@/lib/localPassbook";
 import { TREE_LABELS } from "@/lib/tree";
 
 type HappinessTreeCardProps = {
@@ -69,6 +68,15 @@ export function HappinessTreeCard({
   );
 }
 
-export function getTreeTotalSaved(childId: string, fallback = 0) {
-  return getChildTotalSaved(childId) || fallback;
+export function getTreeTotalSaved(
+  childId: string,
+  transactions: { childId: string; balance: number; createdAt: string }[],
+  fallback = 0,
+) {
+  const childTx = transactions.filter((t) => t.childId === childId);
+  if (childTx.length === 0) return fallback;
+  const sorted = [...childTx].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+  return sorted[sorted.length - 1].balance;
 }

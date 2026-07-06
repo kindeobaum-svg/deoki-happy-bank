@@ -1,3 +1,5 @@
+import type { PassbookTransaction } from "@/lib/types";
+
 export type PassbookTransactionType = "deposit" | "withdrawal";
 
 export type LocalPassbookEntry = {
@@ -10,8 +12,6 @@ export type LocalPassbookEntry = {
   cumulative: number;
   type: PassbookTransactionType;
 };
-
-const STORAGE_KEY = "haengbok-local-passbook";
 
 export const SAVE_ITEM_PRESETS = [
   "칭찬 적립",
@@ -33,112 +33,43 @@ export const EXPENSE_PRESETS = [
 
 export const DEFAULT_SAVE_AMOUNT = 100;
 
-function normalizeEntry(raw: Partial<LocalPassbookEntry> & { id: string; childId: string }): LocalPassbookEntry {
-  return {
-    id: raw.id,
-    childId: raw.childId,
-    childName: raw.childName ?? "",
-    date: raw.date ?? new Date().toISOString().slice(0, 10),
-    item: raw.item ?? "",
-    amount: Math.abs(raw.amount ?? 0),
-    cumulative: raw.cumulative ?? 0,
-    type: raw.type === "withdrawal" ? "withdrawal" : "deposit",
-  };
-}
-
-export function loadLocalPassbook(): LocalPassbookEntry[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Array<Partial<LocalPassbookEntry> & { id: string; childId: string }>;
-    return parsed.map(normalizeEntry);
-  } catch {
-    return [];
-  }
-}
-
-export function saveLocalPassbook(entries: LocalPassbookEntry[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  window.dispatchEvent(new Event("passbook-updated"));
-}
-
-function getLastBalance(childId: string, existing: LocalPassbookEntry[]): number {
-  const childEntries = existing.filter((e) => e.childId === childId);
-  if (childEntries.length === 0) return 0;
-  return childEntries[childEntries.length - 1].cumulative;
-}
-
-export function addPassbookTransaction(
-  childId: string,
+export function transactionsToEntries(
+  transactions: PassbookTransaction[],
   childName: string,
-  item: string,
-  amount: number,
-  type: PassbookTransactionType,
-): { entry: LocalPassbookEntry | null; error?: string } {
-  const existing = loadLocalPassbook();
-  const absAmount = Math.abs(amount);
-  const lastBalance = getLastBalance(childId, existing);
-
-  if (type === "withdrawal" && lastBalance < absAmount) {
-    return { entry: null, error: "잔액이 부족해요" };
-  }
-
-  const cumulative =
-    type === "deposit" ? lastBalance + absAmount : lastBalance - absAmount;
-
-  const entry: LocalPassbookEntry = {
-    id: `lp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    childId,
+): LocalPassbookEntry[] {
+  return transactions.map((t) => ({
+    id: t.id,
+    childId: t.childId,
     childName,
-    date: new Date().toISOString().slice(0, 10),
-    item,
-    amount: absAmount,
-    cumulative,
-    type,
-  };
-
-  saveLocalPassbook([...existing, entry]);
-  return { entry };
+    date: t.date,
+    item: t.item,
+    amount: t.amount,
+    cumulative: t.balance,
+    type: t.type,
+  }));
 }
 
-/** @deprecated use addPassbookTransaction with type deposit */
-export function addLocalPassbookEntry(
+export function getChildPassbookEntries(
   childId: string,
+  transactions: PassbookTransaction[],
   childName: string,
-  item: string,
-  amount: number = DEFAULT_SAVE_AMOUNT,
-): LocalPassbookEntry {
-  const { entry } = addPassbookTransaction(childId, childName, item, amount, "deposit");
-  return entry!;
+): LocalPassbookEntry[] {
+  const sorted = [...transactions]
+    .filter((t) => t.childId === childId)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  return transactionsToEntries(sorted, childName);
 }
 
-export function addDepositEntry(
+export function getChildTotalSaved(
   childId: string,
-  childName: string,
-  item: string,
-  amount: number,
-) {
-  return addPassbookTransaction(childId, childName, item, amount, "deposit");
-}
-
-export function addWithdrawalEntry(
-  childId: string,
-  childName: string,
-  item: string,
-  amount: number,
-) {
-  return addPassbookTransaction(childId, childName, item, amount, "withdrawal");
-}
-
-export function getChildPassbookEntries(childId: string): LocalPassbookEntry[] {
-  return loadLocalPassbook().filter((e) => e.childId === childId);
-}
-
-export function getChildTotalSaved(childId: string): number {
-  const entries = getChildPassbookEntries(childId);
-  if (entries.length === 0) return 0;
-  return entries[entries.length - 1].cumulative;
+  transactions: PassbookTransaction[],
+): number {
+  const childTx = transactions.filter((t) => t.childId === childId);
+  if (childTx.length === 0) return 0;
+  const sorted = [...childTx].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+  return sorted[sorted.length - 1].balance;
 }
 
 export type PassbookSummary = {
@@ -147,25 +78,40 @@ export type PassbookSummary = {
   balance: number;
 };
 
-export function getChildPassbookSummary(childId: string): PassbookSummary {
-  const entries = getChildPassbookEntries(childId);
+export function sortPassbookEntriesNewestFirst(entries: LocalPassbookEntry[]): LocalPassbookEntry[] {
+  return [...entries].sort((a, b) => {
+    const aTime = new Date(a.date + "T12:00:00").getTime();
+    const bTime = new Date(b.date + "T12:00:00").getTime();
+    if (aTime !== bTime) return bTime - aTime;
+    return b.id.localeCompare(a.id);
+  });
+}
+
+export function getSummaryFromEntries(entries: LocalPassbookEntry[]): PassbookSummary {
   const totalDeposits = entries
     .filter((e) => e.type === "deposit")
     .reduce((sum, e) => sum + e.amount, 0);
   const totalWithdrawals = entries
     .filter((e) => e.type === "withdrawal")
     .reduce((sum, e) => sum + e.amount, 0);
-  const balance = entries.length ? entries[entries.length - 1].cumulative : 0;
+  const sorted = sortPassbookEntriesNewestFirst(entries);
+  const balance = sorted.length ? sorted[0].cumulative : 0;
   return { totalDeposits, totalWithdrawals, balance };
 }
 
-export function sortPassbookEntriesNewestFirst(entries: LocalPassbookEntry[]): LocalPassbookEntry[] {
-  return [...entries].sort((a, b) => {
-    const aTime = Number(a.id.match(/^lp-(\d+)/)?.[1] ?? 0);
-    const bTime = Number(b.id.match(/^lp-(\d+)/)?.[1] ?? 0);
-    if (aTime !== bTime) return bTime - aTime;
-    return b.id.localeCompare(a.id);
-  });
+export function getChildPassbookSummary(
+  childId: string,
+  transactions: PassbookTransaction[],
+): PassbookSummary {
+  const entries = transactions.filter((t) => t.childId === childId);
+  const totalDeposits = entries
+    .filter((e) => e.type === "deposit")
+    .reduce((sum, e) => sum + e.amount, 0);
+  const totalWithdrawals = entries
+    .filter((e) => e.type === "withdrawal")
+    .reduce((sum, e) => sum + e.amount, 0);
+  const balance = getChildTotalSaved(childId, transactions);
+  return { totalDeposits, totalWithdrawals, balance };
 }
 
 export function formatPassbookRowDate(date: string) {
@@ -184,4 +130,38 @@ export function formatTransactionAmount(entry: LocalPassbookEntry): string {
 
 export function getTransactionTypeLabel(type: PassbookTransactionType): string {
   return type === "deposit" ? "입금" : "지출";
+}
+
+export async function postPassbookTransaction(
+  childId: string,
+  type: PassbookTransactionType,
+  item: string,
+  amount: number,
+): Promise<{ error?: string }> {
+  const res = await fetch(`/api/children/${childId}/passbook-transactions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, item, amount }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { error: data.error ?? "처리에 실패했습니다." };
+  return {};
+}
+
+export async function addDepositEntry(
+  childId: string,
+  _childName: string,
+  item: string,
+  amount: number,
+) {
+  return postPassbookTransaction(childId, "deposit", item, amount);
+}
+
+export async function addWithdrawalEntry(
+  childId: string,
+  _childName: string,
+  item: string,
+  amount: number,
+) {
+  return postPassbookTransaction(childId, "withdrawal", item, amount);
 }

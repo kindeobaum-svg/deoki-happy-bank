@@ -1,33 +1,42 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { useApp } from "@/hooks/useAppStore";
 import {
-  loadLocalPassbook,
+  getChildPassbookEntries,
   type LocalPassbookEntry,
 } from "@/lib/localPassbook";
 
-export function useLocalPassbook() {
-  const [entries, setEntries] = useState<LocalPassbookEntry[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+export function usePassbook(childId?: string) {
+  const { state, selectedChild, refresh } = useApp();
 
-  const refresh = useCallback(() => {
-    setEntries(loadLocalPassbook());
-  }, []);
+  const entries: LocalPassbookEntry[] = useMemo(() => {
+    if (!state.passbookTransactions.length) return [];
+    const targets = childId
+      ? state.children.filter((c) => c.id === childId)
+      : state.children;
 
-  useEffect(() => {
-    refresh();
-    setHydrated(true);
+    return targets.flatMap((child) =>
+      getChildPassbookEntries(child.id, state.passbookTransactions, child.name),
+    );
+  }, [state.passbookTransactions, state.children, childId]);
 
-    function onUpdate() {
-      refresh();
-    }
-    window.addEventListener("passbook-updated", onUpdate);
-    window.addEventListener("storage", onUpdate);
-    return () => {
-      window.removeEventListener("passbook-updated", onUpdate);
-      window.removeEventListener("storage", onUpdate);
-    };
+  const refreshPassbook = useCallback(async () => {
+    await refresh();
   }, [refresh]);
 
-  return { entries, hydrated, refresh };
+  return {
+    entries,
+    hydrated: !state.user || state.passbookTransactions !== undefined,
+    refresh: refreshPassbook,
+    selectedChild,
+    transactions: state.passbookTransactions,
+    missionCompletions: state.missionCompletions,
+    diaryDeposits: state.diaryDeposits,
+  };
+}
+
+/** @deprecated use usePassbook */
+export function useLocalPassbook() {
+  return usePassbook();
 }

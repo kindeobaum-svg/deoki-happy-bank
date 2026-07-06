@@ -18,6 +18,30 @@ export type SaveRecord = {
   createdAt: string;
 };
 
+export type PassbookTransaction = {
+  id: string;
+  childId: string;
+  type: "deposit" | "withdrawal";
+  item: string;
+  amount: number;
+  balance: number;
+  date: string;
+  createdAt: string;
+};
+
+export type MissionCompletion = {
+  id: string;
+  childId: string;
+  missionId: string;
+  date: string;
+};
+
+export type DiaryDeposit = {
+  id: string;
+  childId: string;
+  reportDate: string;
+};
+
 export type Child = {
   id: string;
   name: string;
@@ -67,7 +91,9 @@ export type PraiseRecord = {
 export type AppState = {
   user: User | null;
   children: Child[];
-  saveRecords: SaveRecord[];
+  passbookTransactions: PassbookTransaction[];
+  missionCompletions: MissionCompletion[];
+  diaryDeposits: DiaryDeposit[];
   announcements: Announcement[];
   dailyReports: DailyReport[];
   attendances: Attendance[];

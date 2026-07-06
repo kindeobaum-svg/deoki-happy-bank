@@ -3,46 +3,43 @@
 import { useState } from "react";
 import type { Child } from "@/lib/types";
 import {
-  addWithdrawalEntry,
   EXPENSE_PRESETS,
-  getChildTotalSaved,
+  getSummaryFromEntries,
+  type LocalPassbookEntry,
 } from "@/lib/localPassbook";
+import { useApp } from "@/hooks/useAppStore";
 
 type ExpensePanelProps = {
   child: Child;
+  entries: LocalPassbookEntry[];
   onCompleted?: () => void;
 };
 
-export function ExpensePanel({ child, onCompleted }: ExpensePanelProps) {
+export function ExpensePanel({ child, entries, onCompleted }: ExpensePanelProps) {
+  const { addPassbookWithdrawal } = useApp();
   const [selected, setSelected] = useState(EXPENSE_PRESETS[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [justSpent, setJustSpent] = useState(false);
 
-  const balance = getChildTotalSaved(child.id);
+  const summary = getSummaryFromEntries(entries);
+  const balance = summary.balance;
 
-  function handleExpense() {
+  async function handleExpense() {
     setLoading(true);
     setError(null);
 
-    window.setTimeout(() => {
-      const { entry, error: err } = addWithdrawalEntry(
-        child.id,
-        child.name,
-        selected.name,
-        selected.amount,
-      );
-      setLoading(false);
+    const { error: err } = await addPassbookWithdrawal(child.id, selected.name, selected.amount);
+    setLoading(false);
 
-      if (err || !entry) {
-        setError(err ?? "지출할 수 없어요");
-        return;
-      }
+    if (err) {
+      setError(err);
+      return;
+    }
 
-      setJustSpent(true);
-      onCompleted?.();
-      window.setTimeout(() => setJustSpent(false), 900);
-    }, 200);
+    setJustSpent(true);
+    onCompleted?.();
+    window.setTimeout(() => setJustSpent(false), 900);
   }
 
   return (
@@ -77,7 +74,7 @@ export function ExpensePanel({ child, onCompleted }: ExpensePanelProps) {
         <button
           type="button"
           disabled={loading || balance < selected.amount}
-          onClick={handleExpense}
+          onClick={() => void handleExpense()}
           className={`forest-expense-btn tap-scale ${justSpent ? "done" : ""}`}
         >
           {loading ? "처리 중..." : justSpent ? "지출 완료 ✓" : "지출하기"}

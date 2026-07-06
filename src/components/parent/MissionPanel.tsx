@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Child } from "@/lib/types";
 import {
-  completeMission,
   getTodayCompletedMissionIds,
   MISSIONS,
   MISSION_SUCCESS_MESSAGE,
   type Mission,
 } from "@/lib/missions";
+import { todayStr } from "@/lib/attendance";
+import { useApp } from "@/hooks/useAppStore";
 
 type MissionPanelProps = {
   child: Child;
@@ -17,26 +18,15 @@ type MissionPanelProps = {
 };
 
 export function MissionPanel({ child, onCompleted, compact = false }: MissionPanelProps) {
+  const { state, completeMission } = useApp();
   const [toast, setToast] = useState<string | null>(null);
   const [activeMissionId, setActiveMissionId] = useState<string | null>(null);
   const [completedFlash, setCompletedFlash] = useState<string | null>(null);
-  const [doneToday, setDoneToday] = useState<Set<string>>(() => new Set());
+  const today = todayStr();
 
-  const syncDone = useCallback(() => {
-    setDoneToday(new Set(getTodayCompletedMissionIds(child.id)));
-  }, [child.id]);
-
-  useEffect(() => {
-    syncDone();
-    window.addEventListener("passbook-updated", syncDone);
-    window.addEventListener("mission-updated", syncDone);
-    window.addEventListener("storage", syncDone);
-    return () => {
-      window.removeEventListener("passbook-updated", syncDone);
-      window.removeEventListener("mission-updated", syncDone);
-      window.removeEventListener("storage", syncDone);
-    };
-  }, [syncDone]);
+  const doneToday = new Set(
+    getTodayCompletedMissionIds(child.id, state.missionCompletions, today),
+  );
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -46,26 +36,26 @@ export function MissionPanel({ child, onCompleted, compact = false }: MissionPan
   const doneCount = doneToday.size;
   const totalCount = MISSIONS.length;
 
-  function handleMission(mission: Mission) {
+  async function handleMission(mission: Mission) {
     setActiveMissionId(mission.id);
 
-    window.setTimeout(() => {
-      const { alreadyDone } = completeMission(child.id, child.name, mission);
-      setActiveMissionId(null);
+    const { alreadyDone, error } = await completeMission(child.id, mission.id);
+    setActiveMissionId(null);
 
-      if (alreadyDone) {
-        syncDone();
-        showToast("오늘은 이미 완료한 미션이에요 🌱");
-        return;
-      }
+    if (error) {
+      showToast(error);
+      return;
+    }
 
-      setDoneToday((prev) => new Set([...prev, mission.id]));
-      setCompletedFlash(mission.id);
-      showToast(MISSION_SUCCESS_MESSAGE);
-      onCompleted?.();
-      syncDone();
-      window.setTimeout(() => setCompletedFlash(null), 900);
-    }, 280);
+    if (alreadyDone) {
+      showToast("오늘은 이미 완료한 미션이에요 🌱");
+      return;
+    }
+
+    setCompletedFlash(mission.id);
+    showToast(MISSION_SUCCESS_MESSAGE);
+    onCompleted?.();
+    window.setTimeout(() => setCompletedFlash(null), 900);
   }
 
   return (
@@ -95,7 +85,7 @@ export function MissionPanel({ child, onCompleted, compact = false }: MissionPan
                   <button
                     type="button"
                     disabled={isLoading || isDone}
-                    onClick={() => handleMission(mission)}
+                    onClick={() => void handleMission(mission)}
                     className={`forest-mission-btn tap-scale w-full ${isDone ? "done" : ""} ${justDone ? "just-done" : ""}`}
                   >
                     <span className="forest-mission-emoji">{mission.emoji}</span>

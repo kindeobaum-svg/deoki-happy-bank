@@ -21,6 +21,11 @@ enum AttendanceStatus {
   ABSENT
 }
 
+enum PassbookTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
 enum InviteTargetRole {
   PARENT
   TEACHER
@@ -50,6 +55,9 @@ model Child {
   avatar        String
   users        User[]
   saveRecords  SaveRecord[]
+  passbookTransactions PassbookTransaction[]
+  missionCompletions   MissionCompletion[]
+  diaryDeposits        DiaryDeposit[]
   dailyReports DailyReport[]
   attendances  Attendance[]
   praiseRecords PraiseRecord[]
@@ -80,6 +88,43 @@ model SaveRecord {
   amount    Int
   message   String
   createdAt DateTime @default(now())
+}
+
+model PassbookTransaction {
+  id        String                  @id @default(cuid())
+  childId   String
+  child     Child                   @relation(fields: [childId], references: [id], onDelete: Cascade)
+  type      PassbookTransactionType
+  item      String
+  amount    Int
+  balance   Int
+  date      String
+  createdAt DateTime                @default(now())
+
+  @@index([childId, createdAt])
+  @@index([childId, date])
+}
+
+model MissionCompletion {
+  id        String   @id @default(cuid())
+  childId   String
+  child     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  missionId String
+  date      String
+  createdAt DateTime @default(now())
+
+  @@unique([childId, missionId, date])
+  @@index([childId, date])
+}
+
+model DiaryDeposit {
+  id         String   @id @default(cuid())
+  childId    String
+  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  reportDate String
+  createdAt  DateTime @default(now())
+
+  @@unique([childId, reportDate])
 }
 
 model Announcement {

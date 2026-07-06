@@ -4,15 +4,13 @@ import { HappinessTreeCard } from "@/components/parent/HappinessTreeCard";
 import { RecentPassbookList } from "@/components/parent/RecentPassbookList";
 import { ParentHero } from "@/components/parent/ParentHero";
 import { useApp } from "@/hooks/useAppStore";
-import { useLocalPassbook } from "@/hooks/useLocalPassbook";
-import { getChildTotalSaved } from "@/lib/localPassbook";
+import { getChildPassbookEntries, getChildTotalSaved } from "@/lib/localPassbook";
 import { TREE_LABELS, SAVINGS_STAGE_THRESHOLDS } from "@/lib/tree";
 
 const STAGE_ICONS = ["🌰", "🌱", "🌳", "🌲"];
 
 export default function ParentGrowthPage() {
-  const { state, selectedChild, selectChild } = useApp();
-  const { entries: localEntries, hydrated } = useLocalPassbook();
+  const { state, selectedChild, selectChild, loading } = useApp();
   const child = selectedChild ?? state.children[0];
 
   if (!child) {
@@ -23,8 +21,15 @@ export default function ParentGrowthPage() {
     );
   }
 
-  const localTotal = hydrated ? getChildTotalSaved(child.id) : child.totalSaved;
-  const stage = SAVINGS_STAGE_THRESHOLDS.filter((t) => localTotal >= t).length - 1;
+  const balance = loading
+    ? child.totalSaved
+    : getChildTotalSaved(child.id, state.passbookTransactions);
+  const childEntries = getChildPassbookEntries(
+    child.id,
+    state.passbookTransactions,
+    child.name,
+  );
+  const stage = SAVINGS_STAGE_THRESHOLDS.filter((t) => balance >= t).length - 1;
 
   return (
     <div className="parent-page">
@@ -58,7 +63,7 @@ export default function ParentGrowthPage() {
       <HappinessTreeCard
         childName={child.name}
         childAvatar={child.avatar}
-        totalSaved={localTotal}
+        totalSaved={balance}
       />
 
       <section className="forest-card">
@@ -99,8 +104,8 @@ export default function ParentGrowthPage() {
         </ul>
       </section>
 
-      {hydrated && (
-        <RecentPassbookList entries={localEntries} childId={child.id} limit={10} />
+      {!loading && (
+        <RecentPassbookList entries={childEntries} childId={child.id} limit={10} />
       )}
     </div>
   );

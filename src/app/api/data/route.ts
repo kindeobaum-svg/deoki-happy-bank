@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Child } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { todayStr } from "@/lib/attendance";
 
 export async function GET() {
   const session = await getSession();
@@ -17,35 +18,67 @@ export async function GET() {
   }
 
   const childIds = children.map((c) => c.id);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
 
-  const [saveRecords, announcements, dailyReports, attendances, praiseRecords] =
-    await Promise.all([
-      prisma.saveRecord.findMany({
-        where: { childId: { in: childIds } },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      }),
-      prisma.announcement.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
-      prisma.dailyReport.findMany({
-        where: { childId: { in: childIds } },
-        orderBy: { date: "desc" },
-        take: 30,
-      }),
-      prisma.attendance.findMany({
-        where: { childId: { in: childIds }, date: today },
-      }),
-      prisma.praiseRecord.findMany({
-        where: { childId: { in: childIds } },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      }),
-    ]);
+  const [
+    passbookTransactions,
+    missionCompletions,
+    diaryDeposits,
+    announcements,
+    dailyReports,
+    attendances,
+    praiseRecords,
+  ] = await Promise.all([
+    prisma.passbookTransaction.findMany({
+      where: { childId: { in: childIds } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    }),
+    prisma.missionCompletion.findMany({
+      where: { childId: { in: childIds }, date: today },
+    }),
+    prisma.diaryDeposit.findMany({
+      where: { childId: { in: childIds } },
+    }),
+    prisma.announcement.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
+    prisma.dailyReport.findMany({
+      where: { childId: { in: childIds } },
+      orderBy: { date: "desc" },
+      take: 30,
+    }),
+    prisma.attendance.findMany({
+      where: { childId: { in: childIds }, date: today },
+    }),
+    prisma.praiseRecord.findMany({
+      where: { childId: { in: childIds } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+  ]);
 
   return NextResponse.json({
     user: session,
     children,
-    saveRecords,
+    passbookTransactions: passbookTransactions.map((t) => ({
+      id: t.id,
+      childId: t.childId,
+      type: t.type === "DEPOSIT" ? "deposit" : "withdrawal",
+      item: t.item,
+      amount: t.amount,
+      balance: t.balance,
+      date: t.date,
+      createdAt: t.createdAt.toISOString(),
+    })),
+    missionCompletions: missionCompletions.map((m) => ({
+      id: m.id,
+      childId: m.childId,
+      missionId: m.missionId,
+      date: m.date,
+    })),
+    diaryDeposits: diaryDeposits.map((d) => ({
+      id: d.id,
+      childId: d.childId,
+      reportDate: d.reportDate,
+    })),
     announcements,
     dailyReports,
     attendances,

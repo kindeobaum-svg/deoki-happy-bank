@@ -1,6 +1,3 @@
-import { addDepositEntry, type LocalPassbookEntry } from "@/lib/localPassbook";
-import { todayStr } from "@/lib/attendance";
-
 export const MISSION_SUCCESS_MESSAGE = "참 잘했어요!";
 
 export type Mission = {
@@ -91,58 +88,24 @@ export const MISSIONS: Mission[] = [
   },
 ];
 
-const COMPLETION_KEY = "haengbok-mission-completions";
-
-type MissionCompletion = {
-  childId: string;
-  missionId: string;
-  date: string;
-};
-
-function loadCompletions(): MissionCompletion[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(COMPLETION_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as MissionCompletion[];
-  } catch {
-    return [];
-  }
-}
-
-function saveCompletions(completions: MissionCompletion[]) {
-  localStorage.setItem(COMPLETION_KEY, JSON.stringify(completions));
-  window.dispatchEvent(new Event("mission-updated"));
-}
-
-export function getTodayCompletedMissionIds(childId: string): string[] {
-  const today = todayStr();
-  return loadCompletions()
+export function getTodayCompletedMissionIds(
+  childId: string,
+  completions: { childId: string; missionId: string; date: string }[],
+  today: string,
+): string[] {
+  return completions
     .filter((c) => c.childId === childId && c.date === today)
     .map((c) => c.missionId);
 }
 
-export function isMissionCompletedToday(childId: string, missionId: string): boolean {
-  return getTodayCompletedMissionIds(childId).includes(missionId);
-}
-
-export function completeMission(
+export async function completeMission(
   childId: string,
-  childName: string,
-  mission: Mission,
-): { entry: LocalPassbookEntry | null; alreadyDone: boolean } {
-  if (isMissionCompletedToday(childId, mission.id)) {
-    return { entry: null, alreadyDone: true };
-  }
-
-  const { entry } = addDepositEntry(childId, childName, mission.name, mission.amount);
-  if (!entry) {
-    return { entry: null, alreadyDone: true };
-  }
-  saveCompletions([
-    ...loadCompletions(),
-    { childId, missionId: mission.id, date: todayStr() },
-  ]);
-
-  return { entry, alreadyDone: false };
+  missionId: string,
+): Promise<{ alreadyDone: boolean; error?: string }> {
+  const res = await fetch(`/api/children/${childId}/missions/${missionId}/complete`, {
+    method: "POST",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { alreadyDone: false, error: data.error ?? "미션 완료에 실패했습니다." };
+  return { alreadyDone: data.alreadyDone ?? false };
 }

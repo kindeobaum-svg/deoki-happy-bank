@@ -7,31 +7,12 @@ import { ParentHero } from "@/components/parent/ParentHero";
 import { RoleQuickNav } from "@/components/RoleQuickNav";
 import { PASSBOOK_NAME, PASSBOOK_TAGLINE } from "@/lib/branding";
 import { useApp } from "@/hooks/useAppStore";
-import { useLocalPassbook } from "@/hooks/useLocalPassbook";
-import { buildPassbookEntries } from "@/lib/passbook";
-import type { LocalPassbookEntry } from "@/lib/localPassbook";
-
-function recordsToForestEntries(
-  childId: string,
-  childName: string,
-  records: { id: string; childId: string; amount: number; message: string; createdAt: string }[],
-): LocalPassbookEntry[] {
-  const entries = buildPassbookEntries(records);
-  return entries.map((entry) => ({
-    id: entry.id,
-    childId,
-    childName,
-    date: entry.date,
-    item: entry.message,
-    amount: entry.amount,
-    cumulative: entry.balance,
-    type: "deposit" as const,
-  }));
-}
+import { usePassbook } from "@/hooks/useLocalPassbook";
+import { getChildPassbookEntries } from "@/lib/localPassbook";
 
 function PassbookContent() {
-  const { state, selectedChild, selectChild } = useApp();
-  const { entries: localEntries, hydrated } = useLocalPassbook();
+  const { state, selectedChild, selectChild, loading } = useApp();
+  const { entries, hydrated } = usePassbook();
   const searchParams = useSearchParams();
   const childIdParam = searchParams.get("child");
   const isParent = state.user?.role === "PARENT";
@@ -51,7 +32,11 @@ function PassbookContent() {
     );
   }
 
-  const records = state.saveRecords.filter((r) => r.childId === child.id);
+  const childEntries = getChildPassbookEntries(
+    child.id,
+    state.passbookTransactions,
+    child.name,
+  );
 
   if (isParent) {
     return (
@@ -98,9 +83,9 @@ function PassbookContent() {
           </section>
         )}
 
-        {hydrated ? (
+        {!loading && hydrated ? (
           <div className="animate-card-enter animate-card-enter-delay-1">
-            <LocalPassbookView child={child} entries={localEntries} />
+            <LocalPassbookView child={child} entries={childEntries} />
           </div>
         ) : (
           <div className="forest-empty-state">
@@ -142,10 +127,7 @@ function PassbookContent() {
       )}
 
       <div className="animate-card-enter animate-card-enter-delay-1">
-        <LocalPassbookView
-          child={child}
-          entries={recordsToForestEntries(child.id, child.name, records)}
-        />
+        <LocalPassbookView child={child} entries={childEntries} />
       </div>
     </div>
   );
