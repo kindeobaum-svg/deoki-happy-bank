@@ -9,7 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { clearAppClientStorage } from "@/lib/clientStorage";
 import { getDemoAccount } from "@/lib/demoAccess";
 import type {
   AppState,
@@ -81,7 +80,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       const user = meBody.user ?? null;
       if (!user) {
-        setState(EMPTY);
+        setState((prev) => (prev.user ? { ...EMPTY } : EMPTY));
         return;
       }
 
@@ -94,16 +93,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await dataRes.json();
       setState((prev) => ({
         user,
-        classes: data.classes ?? [],
-        children: (data.children ?? []).map(normalizeChild),
-        passbookTransactions: (data.passbookTransactions ?? []).map(normalizePassbookTransaction),
-        missionCompletions: data.missionCompletions ?? [],
-        diaryDeposits: data.diaryDeposits ?? [],
-        announcements: (data.announcements ?? []).map(normalizeAnnouncement),
-        dailyReports: data.dailyReports ?? [],
-        attendances: data.attendances ?? [],
-        praiseRecords: (data.praiseRecords ?? []).map(normalizePraise),
-        selectedChildId: prev.selectedChildId ?? data.selectedChildId,
+        classes: Array.isArray(data.classes) ? data.classes : prev.classes,
+        children: Array.isArray(data.children)
+          ? data.children.map(normalizeChild)
+          : prev.children,
+        passbookTransactions: Array.isArray(data.passbookTransactions)
+          ? data.passbookTransactions.map(normalizePassbookTransaction)
+          : prev.passbookTransactions,
+        missionCompletions: Array.isArray(data.missionCompletions)
+          ? data.missionCompletions
+          : prev.missionCompletions,
+        diaryDeposits: Array.isArray(data.diaryDeposits) ? data.diaryDeposits : prev.diaryDeposits,
+        announcements: Array.isArray(data.announcements)
+          ? data.announcements.map(normalizeAnnouncement)
+          : prev.announcements,
+        dailyReports: Array.isArray(data.dailyReports) ? data.dailyReports : prev.dailyReports,
+        attendances: Array.isArray(data.attendances) ? data.attendances : prev.attendances,
+        praiseRecords: Array.isArray(data.praiseRecords)
+          ? data.praiseRecords.map(normalizePraise)
+          : prev.praiseRecords,
+        selectedChildId: data.selectedChildId ?? prev.selectedChildId,
       }));
     } catch {
       setState((prev) => (prev.user ? prev : EMPTY));
@@ -144,8 +153,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    clearAppClientStorage();
-    setState(EMPTY);
+    setState((prev) => ({ ...prev, user: null }));
   }, []);
 
   const accumulate = useCallback(

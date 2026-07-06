@@ -1,10 +1,6 @@
-/** 앱 클라이언트 저장소 키 — 로그아웃 시 UI 전용 데이터만 삭제 (반/원아/통장은 DB 저장) */
+/** 로그아웃 시 클라이언트 저장소 초기화 비활성 — 반/원아/통장은 DB 전용 */
 export const APP_LOCAL_STORAGE_KEYS = [] as const;
 
 export function clearAppClientStorage() {
-  if (typeof window === "undefined") return;
-  for (const key of APP_LOCAL_STORAGE_KEYS) {
-    localStorage.removeItem(key);
-  }
-  sessionStorage.clear();
+  // no-op: DB 데이터는 건드리지 않음
 }

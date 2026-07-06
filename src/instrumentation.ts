@@ -1,8 +1,4 @@
+/** 서버 startup 시 DB 초기화/데모 복원 없음 — 데이터는 Turso 또는 로컬 SQLite만 사용 */
 export async function register() {
-  if (process.env.NEXT_RUNTIME !== "nodejs" || !process.env.VERCEL) return;
-  const { getDatabaseMode } = await import("@/lib/db");
-  if (getDatabaseMode() === "turso") return;
-
-  const { warmDemoDatabase } = await import("@/lib/demoDb");
-  warmDemoDatabase();
+  // intentionally empty
 }
