@@ -21,6 +21,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  await ensureDbReady();
   const session = await getSession();
   if (!session || !canManageClasses(session.role)) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
