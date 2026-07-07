@@ -3,12 +3,14 @@ import type { Role } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { createClassRoom, listClassRooms } from "@/lib/classService";
 import { prisma } from "@/lib/db";
+import { ensureDbReady } from "@/lib/ensureDbReady";
 
 function canManageClasses(role: Role) {
   return role === "TEACHER" || role === "DIRECTOR";
 }
 
 export async function GET() {
+  await ensureDbReady();
   const session = await getSession();
   if (!session || !canManageClasses(session.role)) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
