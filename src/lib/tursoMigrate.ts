@@ -113,6 +113,14 @@ export async function applyTursoMigrations(): Promise<void> {
   if (!turso) return;
 
   const client = createClient({ url: turso.url, authToken: turso.authToken });
+
+  try {
+    await client.execute("SELECT 1");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Turso connection failed (${turso.url}): ${message}`);
+  }
+
   const migrationFolders = listMigrationFolders();
 
   await ensureMigrationsTable(client);
