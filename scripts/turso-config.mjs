@@ -3,6 +3,10 @@ function normalizeToken(token) {
   return token.trim().replace(/^["']|["']$/g, "").replace(/\s/g, "");
 }
 
+function isValidTursoJwt(token) {
+  return token.startsWith("eyJ") && token.split(".").length === 3;
+}
+
 function extractAuthToken(raw) {
   let token = normalizeToken(raw);
   if (token.startsWith("Bearer ")) token = token.slice(7).trim();
@@ -24,43 +28,54 @@ function extractAuthToken(raw) {
   return token;
 }
 
-function getAuthTokenFromDatabaseUrl() {
-  const databaseUrl = process.env.DATABASE_URL ?? "";
+function resolveAuthToken(raw) {
+  if (!raw) return null;
+  const extracted = extractAuthToken(raw);
+  return isValidTursoJwt(extracted) ? extracted : null;
+}
+
+function stripQuery(url) {
+  const i = url.indexOf("?");
+  return i === -1 ? url : url.slice(0, i);
+}
+
+function parseLibsqlDatabaseUrl(databaseUrl) {
   if (!databaseUrl.startsWith("libsql:")) return null;
   try {
     const parsed = new URL(databaseUrl);
-    const authToken = parsed.searchParams.get("authToken");
-    return authToken ? extractAuthToken(authToken) : null;
+    const authToken = resolveAuthToken(parsed.searchParams.get("authToken"));
+    parsed.search = "";
+    return { url: parsed.toString(), authToken };
   } catch {
     return null;
   }
 }
 
 export function getTursoConfig() {
-  const directUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
+  const directUrl = stripQuery((process.env.TURSO_DATABASE_URL ?? "").trim());
   const directToken = process.env.TURSO_AUTH_TOKEN?.trim();
-  if (directUrl.startsWith("libsql:") && directToken) {
-    const url = directUrl.includes("?") ? directUrl.slice(0, directUrl.indexOf("?")) : directUrl;
-    let authToken = extractAuthToken(directToken);
-    if (!authToken.startsWith("eyJ")) {
-      const fromDb = getAuthTokenFromDatabaseUrl();
-      if (fromDb) authToken = fromDb;
+  const fromDatabaseUrl = parseLibsqlDatabaseUrl(process.env.DATABASE_URL ?? "");
+
+  let url = null;
+  let authToken = null;
+
+  if (directUrl.startsWith("libsql:")) {
+    url = directUrl;
+    authToken = resolveAuthToken(directToken);
+    if (!authToken && fromDatabaseUrl?.authToken) {
+      authToken = fromDatabaseUrl.authToken;
     }
-    return { url, authToken };
   }
 
-  const databaseUrl = process.env.DATABASE_URL ?? "";
-  if (databaseUrl.startsWith("libsql:")) {
-    try {
-      const parsed = new URL(databaseUrl);
-      const authToken = parsed.searchParams.get("authToken");
-      if (authToken) {
-        parsed.search = "";
-        return { url: parsed.toString(), authToken: extractAuthToken(authToken) };
-      }
-    } catch {
-      // fall through
-    }
+  if (!url && fromDatabaseUrl) {
+    url = fromDatabaseUrl.url;
+    authToken = fromDatabaseUrl.authToken;
+  } else if (!authToken && fromDatabaseUrl?.authToken) {
+    authToken = fromDatabaseUrl.authToken;
+  }
+
+  if (url && authToken) {
+    return { url, authToken };
   }
 
   return null;

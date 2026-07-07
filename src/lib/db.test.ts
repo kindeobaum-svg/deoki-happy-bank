@@ -12,7 +12,7 @@ describe("getDatabaseMode turso detection", () => {
     vi.stubEnv("TURSO_AUTH_TOKEN", "");
     vi.stubEnv(
       "DATABASE_URL",
-      "libsql://test-db.turso.io?authToken=test-token-value",
+      "libsql://test-db.turso.io?authToken=eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3MDAwMDAwMDB9.sig",
     );
 
     const { getDatabaseMode } = await import("@/lib/db");
@@ -22,8 +22,18 @@ describe("getDatabaseMode turso detection", () => {
   it("uses turso when TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are set on Vercel", async () => {
     vi.stubEnv("VERCEL", "1");
     vi.stubEnv("TURSO_DATABASE_URL", "libsql://test-db.turso.io");
-    vi.stubEnv("TURSO_AUTH_TOKEN", "token");
+    vi.stubEnv("TURSO_AUTH_TOKEN", "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3MDAwMDAwMDB9.sig");
     vi.stubEnv("DATABASE_URL", "");
+
+    const { getDatabaseMode } = await import("@/lib/db");
+    expect(getDatabaseMode()).toBe("turso");
+  });
+
+  it("uses turso mode when Turso env is declared but JWT is missing on Vercel", async () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("TURSO_DATABASE_URL", "libsql://test-db.turso.io");
+    vi.stubEnv("TURSO_AUTH_TOKEN", "libsql://test-db.turso.io");
+    vi.stubEnv("DATABASE_URL", "libsql://test-db.turso.io");
 
     const { getDatabaseMode } = await import("@/lib/db");
     expect(getDatabaseMode()).toBe("turso");

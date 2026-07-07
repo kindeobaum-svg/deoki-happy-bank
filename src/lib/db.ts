@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaLibSQL as PrismaLibSQLNode } from "@prisma/adapter-libsql";
 import { PrismaLibSQL as PrismaLibSQLWeb } from "@prisma/adapter-libsql/web";
 import { getVercelSqliteUrl } from "@/lib/demoDb";
-import { getTursoConfig, type TursoConfig } from "@/lib/tursoConfig";
+import { getTursoConfig, isTursoEnvDeclared, type TursoConfig } from "@/lib/tursoConfig";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
@@ -33,7 +33,9 @@ function resolveSqliteUrl(): string {
 }
 
 function shouldUseTurso(): boolean {
-  return getTursoConfig() !== null;
+  if (getTursoConfig() !== null) return true;
+  // Vercel에 Turso env가 선언됐지만 JWT가 잘못된 경우 — vercel-sqlite 폴백 금지
+  return process.env.VERCEL === "1" && isTursoEnvDeclared();
 }
 
 function createTursoAdapter(turso: TursoConfig) {
@@ -47,19 +49,26 @@ function createTursoAdapter(turso: TursoConfig) {
 }
 
 function createPrismaClient(): PrismaClient {
-  const turso = shouldUseTurso() ? getTursoConfig() : null;
+  if (process.env.VERCEL && isNextBuildPhase()) {
+    return new PrismaClient({
+      datasources: { db: { url: VERCEL_BUILD_PLACEHOLDER_DB } },
+      log: ["error"],
+    });
+  }
+
+  const tursoDeclared = shouldUseTurso();
+  const turso = tursoDeclared ? getTursoConfig() : null;
+
+  if (tursoDeclared && !turso) {
+    throw new Error(
+      "Turso env misconfigured: set TURSO_AUTH_TOKEN to a JWT (eyJ...) or DATABASE_URL with ?authToken=eyJ...",
+    );
+  }
 
   if (turso) {
     return new PrismaClient({
       adapter: createTursoAdapter(turso),
       log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-    });
-  }
-
-  if (process.env.VERCEL && isNextBuildPhase()) {
-    return new PrismaClient({
-      datasources: { db: { url: VERCEL_BUILD_PLACEHOLDER_DB } },
-      log: ["error"],
     });
   }
 
