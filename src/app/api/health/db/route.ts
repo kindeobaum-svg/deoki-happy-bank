@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDatabaseMode, prisma } from "@/lib/db";
+import { bootstrapTursoIfNeeded } from "@/lib/bootstrapTurso";
 import { ensureClassRoomSchema } from "@/lib/ensureClassRoomSchema";
 import { getTursoConfig } from "@/lib/tursoConfig";
 
@@ -9,6 +10,7 @@ export async function GET() {
   const turso = getTursoConfig();
 
   try {
+    await bootstrapTursoIfNeeded();
     if (mode !== "turso") {
       await ensureClassRoomSchema();
     }

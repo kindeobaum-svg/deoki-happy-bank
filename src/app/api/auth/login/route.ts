@@ -4,6 +4,7 @@ import type { Role } from "@prisma/client";
 import { prisma, getDatabaseMode } from "@/lib/db";
 import { COOKIE_NAME, createSessionToken, sessionCookieOptions } from "@/lib/auth";
 import { ensureVercelDemoSeed } from "@/lib/ensureVercelDemoSeed";
+import { bootstrapTursoIfNeeded } from "@/lib/bootstrapTurso";
 import { loadParentSessionFromDb } from "@/lib/parentSession";
 
 export async function POST(request: Request) {
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     }
 
     await ensureVercelDemoSeed();
+    await bootstrapTursoIfNeeded();
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
