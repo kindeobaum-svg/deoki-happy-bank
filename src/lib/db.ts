@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaLibSQL as PrismaLibSQLNode } from "@prisma/adapter-libsql";
 import { PrismaLibSQL as PrismaLibSQLWeb } from "@prisma/adapter-libsql/web";
 import { getVercelSqliteUrl } from "@/lib/demoDb";
-import { getTursoConfig, toTursoHttpUrl, type TursoConfig } from "@/lib/tursoConfig";
+import { getTursoConfig, type TursoConfig } from "@/lib/tursoConfig";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
@@ -37,10 +37,8 @@ function shouldUseTurso(): boolean {
 }
 
 function createTursoAdapter(turso: TursoConfig) {
-  const config = {
-    url: process.env.VERCEL ? toTursoHttpUrl(turso.url) : turso.url,
-    authToken: turso.authToken,
-  };
+  // Prisma 공식: libsql:// URL (web adapter가 HTTP로 변환)
+  const config = { url: turso.url, authToken: turso.authToken };
   // Vercel serverless: HTTP-only web adapter (Turso docs)
   if (process.env.VERCEL) {
     return new PrismaLibSQLWeb(config);

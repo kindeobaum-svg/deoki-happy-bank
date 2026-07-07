@@ -1,6 +1,6 @@
 /** Build/runtime 공통 Turso env 파싱 (tursoConfig.ts와 동일 규칙) */
 function normalizeToken(token) {
-  return token.trim().replace(/^["']|["']$/g, "");
+  return token.trim().replace(/^["']|["']$/g, "").replace(/\s/g, "");
 }
 
 export function getTursoConfig() {
