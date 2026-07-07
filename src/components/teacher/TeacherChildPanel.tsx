@@ -151,7 +151,12 @@ export function TeacherChildPanel({
                               onPhotoChange={handlePhotoChange}
                               compact
                             />
-                            <InviteParentButton childId={child.id} childName={child.name} />
+                            <InviteParentButton
+                              childId={child.id}
+                              childName={child.name}
+                              accountNumber={child.accountNumber}
+                              className={child.className}
+                            />
                           </>
                         )}
                       </div>

@@ -7,9 +7,16 @@ import { InviteCodeCopyButton } from "@/components/InviteCodeCopyButton";
 type InviteParentButtonProps = {
   childId: string;
   childName: string;
+  accountNumber: string;
+  className: string;
 };
 
-export function InviteParentButton({ childId, childName }: InviteParentButtonProps) {
+export function InviteParentButton({
+  childId,
+  childName,
+  accountNumber,
+  className,
+}: InviteParentButtonProps) {
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -21,7 +28,13 @@ export function InviteParentButton({ childId, childName }: InviteParentButtonPro
       const res = await fetch("/api/invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetRole: "PARENT", childId }),
+        body: JSON.stringify({
+          targetRole: "PARENT",
+          childId,
+          accountNumber,
+          childName,
+          className,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {

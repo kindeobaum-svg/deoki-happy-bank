@@ -8,8 +8,8 @@ describe("getDatabaseMode turso detection", () => {
 
   it("uses turso when DATABASE_URL is libsql with authToken on Vercel", async () => {
     vi.stubEnv("VERCEL", "1");
-    vi.stubEnv("TURSO_DATABASE_URL", "libsql://test-db.turso.io");
-    vi.stubEnv("TURSO_AUTH_TOKEN", "token");
+    vi.stubEnv("TURSO_DATABASE_URL", "");
+    vi.stubEnv("TURSO_AUTH_TOKEN", "");
     vi.stubEnv(
       "DATABASE_URL",
       "libsql://test-db.turso.io?authToken=test-token-value",
@@ -19,11 +19,21 @@ describe("getDatabaseMode turso detection", () => {
     expect(getDatabaseMode()).toBe("turso");
   });
 
-  it("falls back to vercel-sqlite when Turso URL is not set on Vercel", async () => {
+  it("uses turso when TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are set on Vercel", async () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("TURSO_DATABASE_URL", "libsql://test-db.turso.io");
+    vi.stubEnv("TURSO_AUTH_TOKEN", "token");
+    vi.stubEnv("DATABASE_URL", "");
+
+    const { getDatabaseMode } = await import("@/lib/db");
+    expect(getDatabaseMode()).toBe("turso");
+  });
+
+  it("falls back to vercel-sqlite when no Turso config on Vercel", async () => {
     vi.stubEnv("VERCEL", "1");
     vi.stubEnv("TURSO_DATABASE_URL", "");
     vi.stubEnv("TURSO_AUTH_TOKEN", "");
-    vi.stubEnv("DATABASE_URL", "libsql://test-db.turso.io?authToken=test-token-value");
+    vi.stubEnv("DATABASE_URL", "file:./dev.db");
 
     const { getDatabaseMode } = await import("@/lib/db");
     expect(getDatabaseMode()).toBe("vercel-sqlite");
