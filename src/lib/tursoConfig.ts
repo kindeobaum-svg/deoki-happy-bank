@@ -82,6 +82,10 @@ export function isTursoConfigured(): boolean {
   return getTursoConfig() !== null;
 }
 
+export function isValidTursoJwt(token: string): boolean {
+  return token.startsWith("eyJ") && token.split(".").length === 3;
+}
+
 /** libsql:// → https:// for @libsql/client/web HTTP pipeline */
 export function toTursoHttpUrl(url: string): string {
   if (url.startsWith("libsql://")) {

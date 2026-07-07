@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getDatabaseMode, prisma } from "@/lib/db";
 import { bootstrapTursoIfNeeded } from "@/lib/bootstrapTurso";
 import { ensureClassRoomSchema } from "@/lib/ensureClassRoomSchema";
-import { getTursoConfig, type TursoConfig } from "@/lib/tursoConfig";
+import { getTursoConfig, isValidTursoJwt, type TursoConfig } from "@/lib/tursoConfig";
 
 async function probeTursoHttp(turso: TursoConfig) {
   const host = new URL(turso.url).host;
