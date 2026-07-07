@@ -43,3 +43,11 @@ export function getTursoConfig(): TursoConfig | null {
 export function isTursoConfigured(): boolean {
   return getTursoConfig() !== null;
 }
+
+/** libsql:// → https:// for @libsql/client/web HTTP pipeline */
+export function toTursoHttpUrl(url: string): string {
+  if (url.startsWith("libsql://")) {
+    return `https://${url.slice("libsql://".length)}`;
+  }
+  return url;
+}

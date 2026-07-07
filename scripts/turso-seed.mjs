@@ -3,7 +3,7 @@
  */
 import { execSync } from "node:child_process";
 import { createClient } from "@libsql/client/web";
-import { getTursoConfig, tursoProcessEnv } from "./turso-config.mjs";
+import { getTursoConfig, toTursoHttpUrl, tursoProcessEnv } from "./turso-config.mjs";
 
 const turso = getTursoConfig();
 if (!turso) {
@@ -11,7 +11,10 @@ if (!turso) {
   process.exit(0);
 }
 
-const client = createClient({ url: turso.url, authToken: turso.authToken });
+const client = createClient({
+  url: toTursoHttpUrl(turso.url),
+  authToken: turso.authToken,
+});
 
 try {
   await client.execute("SELECT 1");

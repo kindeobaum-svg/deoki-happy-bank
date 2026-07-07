@@ -28,6 +28,14 @@ export function getTursoConfig() {
   return null;
 }
 
+/** libsql:// → https:// for @libsql/client/web */
+export function toTursoHttpUrl(url) {
+  if (url.startsWith("libsql://")) {
+    return `https://${url.slice("libsql://".length)}`;
+  }
+  return url;
+}
+
 export function tursoProcessEnv(turso) {
   return {
     ...process.env,

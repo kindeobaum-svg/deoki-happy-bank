@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { createClient } from "@libsql/client/web";
-import { getTursoConfig } from "./turso-config.mjs";
+import { getTursoConfig, toTursoHttpUrl } from "./turso-config.mjs";
 
 function listMigrationFolders() {
   const dir = path.join(process.cwd(), "prisma/migrations");
@@ -126,7 +126,10 @@ async function main() {
     process.exit(1);
   }
 
-  const client = createClient({ url: turso.url, authToken: turso.authToken });
+  const client = createClient({
+    url: toTursoHttpUrl(turso.url),
+    authToken: turso.authToken,
+  });
   const migrationFolders = listMigrationFolders();
 
   await ensureMigrationsTable(client);
