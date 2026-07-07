@@ -3,18 +3,27 @@ import fs from "node:fs";
 import path from "node:path";
 import { createClient, type Client } from "@libsql/client";
 import { getTursoConfig } from "@/lib/tursoConfig";
+import { EMBEDDED_TURSO_MIGRATIONS } from "@/lib/tursoEmbeddedMigrations";
 
-function listMigrationFolders() {
+type MigrationEntry = { name: string; sql: string };
+
+function listMigrationFolders(): MigrationEntry[] {
   const dir = path.join(process.cwd(), "prisma/migrations");
-  if (!fs.existsSync(dir)) return [];
+  if (!fs.existsSync(dir)) return EMBEDDED_TURSO_MIGRATIONS;
 
-  return fs
+  const fromDisk = fs
     .readdirSync(dir)
     .filter((name) => {
       if (name === "migration_lock.toml") return false;
       return fs.statSync(path.join(dir, name)).isDirectory();
     })
-    .sort();
+    .sort()
+    .map((folder) => ({
+      name: folder,
+      sql: fs.readFileSync(path.join(dir, folder, "migration.sql"), "utf8"),
+    }));
+
+  return fromDisk.length > 0 ? fromDisk : EMBEDDED_TURSO_MIGRATIONS;
 }
 
 function checksum(content: string) {
@@ -62,7 +71,7 @@ async function recordMigration(client: Client, migrationName: string, migrationC
   });
 }
 
-async function bootstrapExistingDatabase(client: Client, migrationFolders: string[]) {
+async function bootstrapExistingDatabase(client: Client, migrationFolders: MigrationEntry[]) {
   const applied = await getAppliedMigrations(client);
   if (applied.size > 0) return;
 
@@ -73,33 +82,29 @@ async function bootstrapExistingDatabase(client: Client, migrationFolders: strin
 
   const hasClassRoom = await tableExists(client, "ClassRoom");
   for (const folder of migrationFolders) {
-    const isClassRoomMigration = folder.includes("class_rooms");
+    const isClassRoomMigration = folder.name.includes("class_rooms");
     if (isClassRoomMigration && !hasClassRoom) break;
 
-    const sqlPath = path.join(process.cwd(), "prisma/migrations", folder, "migration.sql");
-    const sql = fs.readFileSync(sqlPath, "utf8");
-    await recordMigration(client, folder, checksum(sql));
+    await recordMigration(client, folder.name, checksum(folder.sql));
   }
 }
 
-async function applyMigration(client: Client, folder: string) {
-  const sqlPath = path.join(process.cwd(), "prisma/migrations", folder, "migration.sql");
-  const sql = fs.readFileSync(sqlPath, "utf8");
-  const migrationChecksum = checksum(sql);
+async function applyMigration(client: Client, folder: MigrationEntry) {
+  const migrationChecksum = checksum(folder.sql);
 
-  console.log(`[tursoMigrate] applying ${folder}`);
+  console.log(`[tursoMigrate] applying ${folder.name}`);
   try {
-    await client.executeMultiple(sql);
+    await client.executeMultiple(folder.sql);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/already exists|duplicate column|UNIQUE constraint failed/i.test(message)) {
-      console.warn(`[tursoMigrate] ${folder} partially applied — continuing`);
+      console.warn(`[tursoMigrate] ${folder.name} partially applied — continuing`);
     } else {
       throw error;
     }
   }
 
-  await recordMigration(client, folder, migrationChecksum);
+  await recordMigration(client, folder.name, migrationChecksum);
 }
 
 /** Turso DB에 Prisma 마이그레이션 적용 (빌드 시 실패해도 런타임에서 복구) */
@@ -115,7 +120,7 @@ export async function applyTursoMigrations(): Promise<void> {
 
   const applied = await getAppliedMigrations(client);
   for (const folder of migrationFolders) {
-    if (applied.has(folder)) continue;
+    if (applied.has(folder.name)) continue;
     await applyMigration(client, folder);
   }
 }
