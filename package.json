@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/vercel-build.mjs",
-    "build:local": "prisma generate && node scripts/ensure-demo-db.mjs && next build",
+    "build:local": "node scripts/vercel-build.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
