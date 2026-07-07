@@ -196,7 +196,11 @@ const refreshClasses = useCallback(async () => {
 
   const logout = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    setState((prev) => ({ ...prev, user: null }));
+    setState((prev) => ({
+      ...prev,
+      user: null,
+      ...(canLoadClasses(prev.user?.role) ? { classes: [] } : {}),
+    }));
   }, []);
 
   const accumulate = useCallback(
