@@ -2,7 +2,24 @@ import { NextResponse } from "next/server";
 import { getDatabaseMode, prisma } from "@/lib/db";
 import { bootstrapTursoIfNeeded } from "@/lib/bootstrapTurso";
 import { ensureClassRoomSchema } from "@/lib/ensureClassRoomSchema";
-import { getTursoConfig } from "@/lib/tursoConfig";
+import { getTursoConfig, type TursoConfig } from "@/lib/tursoConfig";
+
+async function probeTursoHttp(turso: TursoConfig) {
+  const host = new URL(turso.url).host;
+  const url = `https://${host}/v2/pipeline`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${turso.authToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      requests: [{ type: "execute", stmt: { sql: "SELECT 1" } }, { type: "close" }],
+    }),
+  });
+  const body = await res.text();
+  return { httpStatus: res.status, bodyPreview: body.slice(0, 120) };
+}
 
 function getAuthSource(): "TURSO_*" | "DATABASE_URL" | "none" {
   const directUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
@@ -47,10 +64,20 @@ export async function GET() {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "DB query failed";
+    let tursoProbe: { httpStatus: number; bodyPreview: string } | undefined;
+    if (turso) {
+      try {
+        tursoProbe = await probeTursoHttp(turso);
+      } catch {
+        tursoProbe = undefined;
+      }
+    }
     const hint =
-      message.includes("400") || message.includes("401")
-        ? "TURSO_AUTH_TOKEN을 Turso 대시보드에서 재발급 후 Vercel env 업데이트 + Redeploy 필요"
-        : undefined;
+      tursoProbe?.httpStatus === 401 || message.includes("401")
+        ? "TURSO_AUTH_TOKEN이 만료되었거나 잘못되었습니다. Turso에서 새 토큰 발급 후 Vercel env 업데이트 + Redeploy"
+        : tursoProbe?.httpStatus === 400 || message.includes("400")
+          ? "TURSO_DATABASE_URL과 TURSO_AUTH_TOKEN이 동일 DB를 가리키는지 확인하세요"
+          : undefined;
 
     return NextResponse.json(
       {
@@ -60,6 +87,7 @@ export async function GET() {
         tursoHost: turso ? new URL(turso.url).host : null,
         authSource,
         tokenConfigured: Boolean(turso?.authToken),
+        tursoProbe,
         error: message,
         hint,
       },
