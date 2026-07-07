@@ -13,10 +13,16 @@ function normalizeToken(token: string): string {
 }
 
 /**
- * Turso 연결 정보 — Prisma adapter-libsql 공식 방식 (libsql:// URL 그대로 사용)
- * DATABASE_URL ?authToken= 우선, 없으면 TURSO_DATABASE_URL + TURSO_AUTH_TOKEN
+ * Turso 연결 — Prisma/Vercel 공식: TURSO_DATABASE_URL + TURSO_AUTH_TOKEN 우선
+ * (DATABASE_URL 내 구 authToken과 불일치 시 HTTP 400 방지)
  */
 export function getTursoConfig(): TursoConfig | null {
+  const directUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
+  const directToken = process.env.TURSO_AUTH_TOKEN;
+  if (directUrl.startsWith("libsql:") && directToken) {
+    return { url: stripQuery(directUrl), authToken: normalizeToken(directToken) };
+  }
+
   const databaseUrl = process.env.DATABASE_URL ?? "";
   if (databaseUrl.startsWith("libsql:")) {
     try {
@@ -29,12 +35,6 @@ export function getTursoConfig(): TursoConfig | null {
     } catch {
       // fall through
     }
-  }
-
-  const directUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
-  const directToken = process.env.TURSO_AUTH_TOKEN;
-  if (directUrl.startsWith("libsql:") && directToken) {
-    return { url: stripQuery(directUrl), authToken: normalizeToken(directToken) };
   }
 
   return null;

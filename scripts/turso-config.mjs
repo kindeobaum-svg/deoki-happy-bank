@@ -4,6 +4,13 @@ function normalizeToken(token) {
 }
 
 export function getTursoConfig() {
+  const directUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
+  const directToken = process.env.TURSO_AUTH_TOKEN?.trim();
+  if (directUrl.startsWith("libsql:") && directToken) {
+    const url = directUrl.includes("?") ? directUrl.slice(0, directUrl.indexOf("?")) : directUrl;
+    return { url, authToken: normalizeToken(directToken) };
+  }
+
   const databaseUrl = process.env.DATABASE_URL ?? "";
   if (databaseUrl.startsWith("libsql:")) {
     try {
@@ -16,13 +23,6 @@ export function getTursoConfig() {
     } catch {
       // fall through
     }
-  }
-
-  const directUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
-  const directToken = process.env.TURSO_AUTH_TOKEN?.trim();
-  if (directUrl.startsWith("libsql:") && directToken) {
-    const url = directUrl.includes("?") ? directUrl.slice(0, directUrl.indexOf("?")) : directUrl;
-    return { url, authToken: normalizeToken(directToken) };
   }
 
   return null;
