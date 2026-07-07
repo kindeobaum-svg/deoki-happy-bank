@@ -1,7 +1,8 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaLibSQL } from "@prisma/adapter-libsql";
+import { PrismaLibSQL as PrismaLibSQLNode } from "@prisma/adapter-libsql";
+import { PrismaLibSQL as PrismaLibSQLWeb } from "@prisma/adapter-libsql/web";
 import { getVercelSqliteUrl } from "@/lib/demoDb";
-import { getTursoConfig } from "@/lib/tursoConfig";
+import { getTursoConfig, type TursoConfig } from "@/lib/tursoConfig";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
@@ -35,16 +36,21 @@ function shouldUseTurso(): boolean {
   return getTursoConfig() !== null;
 }
 
+function createTursoAdapter(turso: TursoConfig) {
+  const config = { url: turso.url, authToken: turso.authToken };
+  // Vercel serverless: HTTP-only web adapter (Turso docs)
+  if (process.env.VERCEL) {
+    return new PrismaLibSQLWeb(config);
+  }
+  return new PrismaLibSQLNode(config);
+}
+
 function createPrismaClient(): PrismaClient {
   const turso = shouldUseTurso() ? getTursoConfig() : null;
 
   if (turso) {
-    const adapter = new PrismaLibSQL({
-      url: turso.url,
-      authToken: turso.authToken,
-    });
     return new PrismaClient({
-      adapter,
+      adapter: createTursoAdapter(turso),
       log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
     });
   }

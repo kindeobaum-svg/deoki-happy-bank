@@ -9,11 +9,7 @@ function stripQuery(url: string): string {
 }
 
 function normalizeToken(token: string): string {
-  try {
-    return decodeURIComponent(token.trim());
-  } catch {
-    return token.trim();
-  }
+  return token.trim().replace(/^["']|["']$/g, "");
 }
 
 /**

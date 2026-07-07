@@ -5,7 +5,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { createClient } from "@libsql/client";
+import { createClient } from "@libsql/client/web";
 import { getTursoConfig } from "./turso-config.mjs";
 
 function listMigrationFolders() {

@@ -2,7 +2,7 @@
  * Turso DB 시드 — 빌드 시 1회 (User 테이블이 비어 있을 때만)
  */
 import { execSync } from "node:child_process";
-import { createClient } from "@libsql/client";
+import { createClient } from "@libsql/client/web";
 import { getTursoConfig, tursoProcessEnv } from "./turso-config.mjs";
 
 const turso = getTursoConfig();
