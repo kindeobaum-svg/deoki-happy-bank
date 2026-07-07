@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { InviteTargetRole } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { ensureDbReady } from "@/lib/ensureDbReady";
 import { findChildRecord } from "@/lib/childLookup";
 import {
   canCreateInvite,
@@ -24,7 +23,6 @@ async function resolveInviteCreatorId(sessionId: string, sessionEmail: string) {
 }
 
 export async function POST(request: Request) {
-  await ensureDbReady();
   const session = await getSession();
   if (!session || (session.role !== "TEACHER" && session.role !== "DIRECTOR")) {
     return NextResponse.json({ error: "초대코드를 만들 권한이 없습니다." }, { status: 403 });

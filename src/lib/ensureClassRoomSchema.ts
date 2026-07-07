@@ -1,5 +1,4 @@
-import { prisma } from "@/lib/db";
-import { getDatabaseMode } from "@/lib/db";
+import { prisma, getDatabaseMode } from "@/lib/db";
 
 const CLASS_ROOM_TABLE = `
 CREATE TABLE IF NOT EXISTS "ClassRoom" (

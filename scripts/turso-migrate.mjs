@@ -6,28 +6,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { createClient } from "@libsql/client";
-
-function getTursoConfig() {
-  const directUrl = process.env.TURSO_DATABASE_URL ?? "";
-  const directToken = process.env.TURSO_AUTH_TOKEN;
-  if (directUrl.startsWith("libsql:") && directToken) {
-    const url = directUrl.includes("?") ? directUrl.slice(0, directUrl.indexOf("?")) : directUrl;
-    return { url, authToken: directToken };
-  }
-
-  const databaseUrl = process.env.DATABASE_URL ?? "";
-  if (!databaseUrl.startsWith("libsql:")) return null;
-
-  try {
-    const parsed = new URL(databaseUrl);
-    const authToken = parsed.searchParams.get("authToken");
-    if (!authToken) return null;
-    parsed.search = "";
-    return { url: parsed.toString(), authToken };
-  } catch {
-    return null;
-  }
-}
+import { getTursoConfig } from "./turso-config.mjs";
 
 function listMigrationFolders() {
   const dir = path.join(process.cwd(), "prisma/migrations");

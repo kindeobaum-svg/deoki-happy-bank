@@ -1,16 +1,15 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSQL } from "@prisma/adapter-libsql";
 import { getVercelSqliteUrl } from "@/lib/demoDb";
-import { getTursoConfig, toLibsqlClientUrl } from "@/lib/tursoConfig";
+import { getTursoConfig } from "@/lib/tursoConfig";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 const VERCEL_BUILD_PLACEHOLDER_DB = "file:/tmp/vercel-build-placeholder.db";
 
-function isVercelBuildPhase(): boolean {
-  if (process.env.NEXT_PHASE === "phase-production-build") return true;
-  const lifecycle = process.env.npm_lifecycle_event ?? "";
-  return lifecycle === "build" || lifecycle === "build:local";
+/** next build SSG 단계에서만 placeholder — npm run build 중 turso-seed는 제외 */
+function isNextBuildPhase(): boolean {
+  return process.env.NEXT_PHASE === "phase-production-build";
 }
 
 function resolveSqliteUrl(): string {
@@ -22,7 +21,7 @@ function resolveSqliteUrl(): string {
     if (configured?.startsWith("file:")) return configured;
 
     throw new Error(
-      "Vercel demo database unavailable. Bundle prisma/demo.db or set Turso env (DATABASE_URL with authToken, or TURSO_*).",
+      "Vercel demo database unavailable. Set Turso env (DATABASE_URL with authToken, or TURSO_*).",
     );
   }
 
@@ -41,7 +40,7 @@ function createPrismaClient(): PrismaClient {
 
   if (turso) {
     const adapter = new PrismaLibSQL({
-      url: toLibsqlClientUrl(turso.url),
+      url: turso.url,
       authToken: turso.authToken,
     });
     return new PrismaClient({
@@ -50,7 +49,7 @@ function createPrismaClient(): PrismaClient {
     });
   }
 
-  if (process.env.VERCEL && isVercelBuildPhase()) {
+  if (process.env.VERCEL && isNextBuildPhase()) {
     return new PrismaClient({
       datasources: { db: { url: VERCEL_BUILD_PLACEHOLDER_DB } },
       log: ["error"],
@@ -71,7 +70,7 @@ export function getDatabaseMode(): "turso" | "vercel-sqlite" | "sqlite" {
 }
 
 function getPrisma(): PrismaClient {
-  if (process.env.VERCEL && isVercelBuildPhase()) {
+  if (process.env.VERCEL && isNextBuildPhase()) {
     return createPrismaClient();
   }
 

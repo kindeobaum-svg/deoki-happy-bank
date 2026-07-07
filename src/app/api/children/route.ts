@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { Role } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { ensureDbReady } from "@/lib/ensureDbReady";
 import { ensureClassRoomForChild } from "@/lib/classService";
 import { pickChildAvatar } from "@/lib/childAvatars";
 import { generateUniqueChildInviteCode } from "@/lib/childInviteCode";
@@ -16,7 +15,6 @@ async function generateUniqueAccountNumber(): Promise<string> {
 }
 
 export async function POST(request: Request) {
-  await ensureDbReady();
   const session = await getSession();
   if (!session || !canManageChildren(session.role)) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
