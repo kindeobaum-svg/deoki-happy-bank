@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { createClient, type Client } from "@libsql/client";
-import { getTursoConfig } from "@/lib/tursoConfig";
+import { getTursoConfig, toLibsqlClientUrl } from "@/lib/tursoConfig";
 import { EMBEDDED_TURSO_MIGRATIONS } from "@/lib/tursoEmbeddedMigrations";
 
 type MigrationEntry = { name: string; sql: string };
@@ -112,7 +112,7 @@ export async function applyTursoMigrations(): Promise<void> {
   const turso = getTursoConfig();
   if (!turso) return;
 
-  const client = createClient({ url: turso.url, authToken: turso.authToken });
+  const client = createClient({ url: toLibsqlClientUrl(turso.url), authToken: turso.authToken });
 
   try {
     await client.execute("SELECT 1");

@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSQL } from "@prisma/adapter-libsql";
 import { getVercelSqliteUrl } from "@/lib/demoDb";
-import { getTursoConfig } from "@/lib/tursoConfig";
+import { getTursoConfig, toLibsqlClientUrl } from "@/lib/tursoConfig";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
@@ -41,7 +41,7 @@ function createPrismaClient(): PrismaClient {
 
   if (turso) {
     const adapter = new PrismaLibSQL({
-      url: turso.url,
+      url: toLibsqlClientUrl(turso.url),
       authToken: turso.authToken,
     });
     return new PrismaClient({

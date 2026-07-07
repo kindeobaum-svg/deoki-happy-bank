@@ -3,6 +3,14 @@ export type TursoConfig = {
   authToken: string;
 };
 
+/** libsql:// → https:// for @libsql/client HTTP API */
+export function toLibsqlClientUrl(url: string): string {
+  if (url.startsWith("libsql://")) {
+    return `https://${url.slice("libsql://".length)}`;
+  }
+  return url;
+}
+
 /** DATABASE_URL ?authToken= 우선 — TURSO_AUTH_TOKEN 불일치 시 HTTP 400 방지 */
 export function getTursoConfig(): TursoConfig | null {
   const databaseUrl = process.env.DATABASE_URL ?? "";
