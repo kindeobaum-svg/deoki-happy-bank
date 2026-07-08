@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { ensureDatabaseReady } from "@/lib/ensureDatabaseReady";
 import { prisma } from "@/lib/db";
 import { findValidInvite, formatInviteCode } from "@/lib/inviteCode";
 
 export async function POST(request: Request) {
+  await ensureDatabaseReady();
   const body = await request.json();
   const code = String(body.code ?? "");
 

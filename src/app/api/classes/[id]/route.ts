@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Role } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { deleteClassRoom, updateClassRoom } from "@/lib/classService";
+import { ensureDatabaseReady } from "@/lib/ensureDatabaseReady";
 import { prisma } from "@/lib/db";
 
 function canManageClasses(role: Role) {
@@ -11,6 +12,7 @@ function canManageClasses(role: Role) {
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
+  await ensureDatabaseReady();
   const session = await getSession();
   if (!session || !canManageClasses(session.role)) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
@@ -31,6 +33,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
+  await ensureDatabaseReady();
   const session = await getSession();
   if (!session || !canManageClasses(session.role)) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
