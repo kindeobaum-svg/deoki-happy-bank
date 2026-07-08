@@ -1,10 +1,11 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
-import { getTursoConfig, tursoProcessEnv } from "./turso-config.mjs";
+import { getTursoConfig, isTursoEnvDeclared, tursoProcessEnv } from "./turso-config.mjs";
 
 execSync("npx prisma generate", { stdio: "inherit" });
 
 const turso = getTursoConfig();
+const tursoDeclared = isTursoEnvDeclared();
 const demoDbPath = "prisma/demo.db";
 const demoDbEnv = { ...process.env, DATABASE_URL: "file:./demo.db" };
 
@@ -28,6 +29,11 @@ if (turso) {
       error instanceof Error ? error.message : error,
     );
   }
+} else if (tursoDeclared) {
+  console.warn(
+    "Turso env declared but JWT missing/invalid — skipping demo.db bundle. " +
+      "Set TURSO_AUTH_TOKEN to a JWT (eyJ...) or DATABASE_URL with ?authToken=eyJ...",
+  );
 } else {
   console.log("No Turso env — building bundled SQLite demo database (prisma/demo.db)...");
   if (fs.existsSync(demoDbPath)) {
