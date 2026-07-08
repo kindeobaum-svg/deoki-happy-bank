@@ -64,6 +64,16 @@ describe("getTursoConfig", () => {
     expect(isTursoEnvDeclared()).toBe(true);
   });
 
+  it("finds JWT from any env var when TURSO_* only has bare libsql URLs", async () => {
+    vi.stubEnv("TURSO_DATABASE_URL", DB);
+    vi.stubEnv("TURSO_AUTH_TOKEN", DB);
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("LIBSQL_CONNECTION_STRING", `${DB}?authToken=${JWT}`);
+
+    const { getTursoConfig } = await import("@/lib/tursoConfig");
+    expect(getTursoConfig()).toEqual({ url: DB, authToken: JWT });
+  });
+
   it("uses DATABASE_URL alone when TURSO_* is not set", async () => {
     vi.stubEnv("TURSO_DATABASE_URL", "");
     vi.stubEnv("TURSO_AUTH_TOKEN", "");
