@@ -1,3 +1,5 @@
+import { expandConfig } from "@libsql/core/config";
+
 export type TursoConfig = {
   url: string;
   authToken: string;
@@ -40,23 +42,49 @@ function resolveAuthToken(raw: string | null | undefined): string | null {
   return isValidTursoJwt(extracted) ? extracted : null;
 }
 
-function parseLibsqlDatabaseUrl(databaseUrl: string): { url: string; authToken: string | null } | null {
-  if (!databaseUrl.startsWith("libsql:")) return null;
+function libsqlUrlFromExpanded(expanded: ReturnType<typeof expandConfig>): string {
+  const host = expanded.authority?.host ?? "";
+  const port = expanded.authority?.port;
+  const authority = port !== undefined ? `${host}:${port}` : host;
+  return `libsql://${authority}${expanded.path ?? ""}`;
+}
+
+/** libsql 연결 문자열(URL + ?authToken=) 파싱 — @libsql/core와 동일 규칙 */
+function parseLibsqlConnection(connection: string): { url: string; authToken: string | null } | null {
+  const trimmed = normalizeToken(connection);
+  if (!trimmed.startsWith("libsql:")) return null;
+
   try {
-    const parsed = new URL(databaseUrl);
-    const authToken = resolveAuthToken(parsed.searchParams.get("authToken"));
-    parsed.search = "";
-    return { url: parsed.toString(), authToken };
+    const expanded = expandConfig({ url: trimmed }, true);
+    const authToken = expanded.authToken ? resolveAuthToken(expanded.authToken) : null;
+    return { url: libsqlUrlFromExpanded(expanded), authToken };
   } catch {
     return null;
   }
 }
 
+function parseLibsqlDatabaseUrl(databaseUrl: string): { url: string; authToken: string | null } | null {
+  if (!databaseUrl.startsWith("libsql:")) return null;
+  return parseLibsqlConnection(databaseUrl);
+}
+
+function normalizeTursoFields(): { rawDbUrl: string; rawAuth: string } {
+  let rawDbUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
+  let rawAuth = (process.env.TURSO_AUTH_TOKEN ?? "").trim();
+
+  // Vercel/Turso 연동 시 URL·JWT 필드가 뒤바뀐 경우 자동 교정
+  if (rawDbUrl.startsWith("eyJ") && rawAuth.startsWith("libsql:")) {
+    [rawDbUrl, rawAuth] = [rawAuth, rawDbUrl];
+  }
+
+  return { rawDbUrl, rawAuth };
+}
+
 /** TURSO_* 또는 DATABASE_URL(libsql) 중 하나라도 설정됨 */
 export function isTursoEnvDeclared(): boolean {
-  const directUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
+  const { rawDbUrl } = normalizeTursoFields();
   const databaseUrl = process.env.DATABASE_URL ?? "";
-  return directUrl.startsWith("libsql:") || databaseUrl.startsWith("libsql:");
+  return rawDbUrl.startsWith("libsql:") || databaseUrl.startsWith("libsql:");
 }
 
 export function isValidTursoJwt(token: string): boolean {
@@ -64,34 +92,35 @@ export function isValidTursoJwt(token: string): boolean {
 }
 
 /**
- * Turso 연결 — Prisma/Vercel 공식: TURSO_DATABASE_URL + TURSO_AUTH_TOKEN 우선.
- * TURSO_AUTH_TOKEN이 libsql URL만 있으면 DATABASE_URL?authToken= JWT로 폴백.
+ * Turso 연결 — TURSO_DATABASE_URL + TURSO_AUTH_TOKEN 우선.
+ * TURSO_DATABASE_URL에 ?authToken= 이 있거나 TURSO_AUTH_TOKEN에 libsql URL이 있어도 JWT 추출.
  */
 export function getTursoConfig(): TursoConfig | null {
-  const directUrl = stripQuery((process.env.TURSO_DATABASE_URL ?? "").trim());
-  const directToken = process.env.TURSO_AUTH_TOKEN?.trim();
-  const fromDatabaseUrl = parseLibsqlDatabaseUrl(process.env.DATABASE_URL ?? "");
+  const { rawDbUrl, rawAuth } = normalizeTursoFields();
+  const rawDatabaseUrl = (process.env.DATABASE_URL ?? "").trim();
 
-  let url: string | null = null;
-  let authToken: string | null = null;
+  const fromTursoDbUrl = rawDbUrl.startsWith("libsql:") ? parseLibsqlConnection(rawDbUrl) : null;
+  const fromAuthField = rawAuth.startsWith("libsql:") ? parseLibsqlConnection(rawAuth) : null;
+  const fromDatabaseUrl = rawDatabaseUrl.startsWith("libsql:")
+    ? parseLibsqlDatabaseUrl(rawDatabaseUrl)
+    : null;
 
-  if (directUrl.startsWith("libsql:")) {
-    url = directUrl;
-    authToken = resolveAuthToken(directToken);
-    if (!authToken && fromDatabaseUrl?.authToken) {
-      authToken = fromDatabaseUrl.authToken;
-    }
-  }
+  const url =
+    fromTursoDbUrl?.url ??
+    (rawDbUrl.startsWith("libsql:") ? stripQuery(rawDbUrl) : null) ??
+    fromAuthField?.url ??
+    fromDatabaseUrl?.url ??
+    null;
 
-  if (!url && fromDatabaseUrl) {
-    url = fromDatabaseUrl.url;
-    authToken = fromDatabaseUrl.authToken;
-  } else if (!authToken && fromDatabaseUrl?.authToken) {
-    authToken = fromDatabaseUrl.authToken;
-  }
+  const authToken =
+    resolveAuthToken(rawAuth) ??
+    fromTursoDbUrl?.authToken ??
+    fromAuthField?.authToken ??
+    fromDatabaseUrl?.authToken ??
+    null;
 
   if (url && authToken) {
-    return { url, authToken };
+    return { url: stripQuery(url), authToken };
   }
 
   return null;

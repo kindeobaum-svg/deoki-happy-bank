@@ -1,4 +1,6 @@
 /** Build/runtime 공통 Turso env 파싱 (tursoConfig.ts와 동일 규칙) */
+import { expandConfig } from "@libsql/core/config";
+
 function normalizeToken(token) {
   return token.trim().replace(/^["']|["']$/g, "").replace(/\s/g, "");
 }
@@ -39,49 +41,74 @@ function stripQuery(url) {
   return i === -1 ? url : url.slice(0, i);
 }
 
-function parseLibsqlDatabaseUrl(databaseUrl) {
-  if (!databaseUrl.startsWith("libsql:")) return null;
+function libsqlUrlFromExpanded(expanded) {
+  const host = expanded.authority?.host ?? "";
+  const port = expanded.authority?.port;
+  const authority = port !== undefined ? `${host}:${port}` : host;
+  return `libsql://${authority}${expanded.path ?? ""}`;
+}
+
+function parseLibsqlConnection(connection) {
+  const trimmed = normalizeToken(connection);
+  if (!trimmed.startsWith("libsql:")) return null;
+
   try {
-    const parsed = new URL(databaseUrl);
-    const authToken = resolveAuthToken(parsed.searchParams.get("authToken"));
-    parsed.search = "";
-    return { url: parsed.toString(), authToken };
+    const expanded = expandConfig({ url: trimmed }, true);
+    const authToken = expanded.authToken ? resolveAuthToken(expanded.authToken) : null;
+    return { url: libsqlUrlFromExpanded(expanded), authToken };
   } catch {
     return null;
   }
 }
 
+function parseLibsqlDatabaseUrl(databaseUrl) {
+  if (!databaseUrl.startsWith("libsql:")) return null;
+  return parseLibsqlConnection(databaseUrl);
+}
+
+function normalizeTursoFields() {
+  let rawDbUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
+  let rawAuth = (process.env.TURSO_AUTH_TOKEN ?? "").trim();
+
+  if (rawDbUrl.startsWith("eyJ") && rawAuth.startsWith("libsql:")) {
+    [rawDbUrl, rawAuth] = [rawAuth, rawDbUrl];
+  }
+
+  return { rawDbUrl, rawAuth };
+}
+
 export function isTursoEnvDeclared() {
-  const directUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
+  const { rawDbUrl } = normalizeTursoFields();
   const databaseUrl = process.env.DATABASE_URL ?? "";
-  return directUrl.startsWith("libsql:") || databaseUrl.startsWith("libsql:");
+  return rawDbUrl.startsWith("libsql:") || databaseUrl.startsWith("libsql:");
 }
 
 export function getTursoConfig() {
-  const directUrl = stripQuery((process.env.TURSO_DATABASE_URL ?? "").trim());
-  const directToken = process.env.TURSO_AUTH_TOKEN?.trim();
-  const fromDatabaseUrl = parseLibsqlDatabaseUrl(process.env.DATABASE_URL ?? "");
+  const { rawDbUrl, rawAuth } = normalizeTursoFields();
+  const rawDatabaseUrl = (process.env.DATABASE_URL ?? "").trim();
 
-  let url = null;
-  let authToken = null;
+  const fromTursoDbUrl = rawDbUrl.startsWith("libsql:") ? parseLibsqlConnection(rawDbUrl) : null;
+  const fromAuthField = rawAuth.startsWith("libsql:") ? parseLibsqlConnection(rawAuth) : null;
+  const fromDatabaseUrl = rawDatabaseUrl.startsWith("libsql:")
+    ? parseLibsqlDatabaseUrl(rawDatabaseUrl)
+    : null;
 
-  if (directUrl.startsWith("libsql:")) {
-    url = directUrl;
-    authToken = resolveAuthToken(directToken);
-    if (!authToken && fromDatabaseUrl?.authToken) {
-      authToken = fromDatabaseUrl.authToken;
-    }
-  }
+  const url =
+    fromTursoDbUrl?.url ??
+    (rawDbUrl.startsWith("libsql:") ? stripQuery(rawDbUrl) : null) ??
+    fromAuthField?.url ??
+    fromDatabaseUrl?.url ??
+    null;
 
-  if (!url && fromDatabaseUrl) {
-    url = fromDatabaseUrl.url;
-    authToken = fromDatabaseUrl.authToken;
-  } else if (!authToken && fromDatabaseUrl?.authToken) {
-    authToken = fromDatabaseUrl.authToken;
-  }
+  const authToken =
+    resolveAuthToken(rawAuth) ??
+    fromTursoDbUrl?.authToken ??
+    fromAuthField?.authToken ??
+    fromDatabaseUrl?.authToken ??
+    null;
 
   if (url && authToken) {
-    return { url, authToken };
+    return { url: stripQuery(url), authToken };
   }
 
   return null;
