@@ -33,8 +33,7 @@ function resolveSqliteUrl(): string {
 }
 
 function shouldUseTurso(): boolean {
-  const configured = process.env.DATABASE_URL ?? "";
-  if (configured.startsWith("file:")) return false;
+  // Turso 설정이 유효하면 DATABASE_URL=file: 여도 Turso 사용 (Prisma CLI용 file:와 분리)
   return getTursoConfig() !== null;
 }
 
@@ -77,10 +76,24 @@ export function getDatabaseMode(): "turso" | "vercel-sqlite" | "sqlite" {
   return "sqlite";
 }
 
+let lastPrismaMode: ReturnType<typeof getDatabaseMode> | null = null;
+
+/** Turso 설정 해석 후 모드가 바뀌면 Prisma 클라이언트 재생성 */
+export function resetPrismaClientIfModeChanged(): void {
+  const mode = getDatabaseMode();
+  if (lastPrismaMode !== null && lastPrismaMode !== mode && globalForPrisma.prisma) {
+    void globalForPrisma.prisma.$disconnect();
+    globalForPrisma.prisma = undefined;
+  }
+  lastPrismaMode = mode;
+}
+
 function getPrisma(): PrismaClient {
   if (process.env.VERCEL && isNextBuildPhase()) {
     return createPrismaClient();
   }
+
+  resetPrismaClientIfModeChanged();
 
   if (!globalForPrisma.prisma) {
     globalForPrisma.prisma = createPrismaClient();

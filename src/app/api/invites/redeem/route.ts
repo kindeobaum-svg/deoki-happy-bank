@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { COOKIE_NAME, createSessionToken, sessionCookieOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { bootstrapTursoIfNeeded } from "@/lib/bootstrapTurso";
+import { ensureDatabaseReady } from "@/lib/ensureDatabaseReady";
 import { findValidInvite } from "@/lib/inviteCode";
 import { loadParentSessionFromDb } from "@/lib/parentSession";
 
 export async function POST(request: Request) {
-  await bootstrapTursoIfNeeded();
+  await ensureDatabaseReady();
   const body = await request.json();
   const code = String(body.code ?? "");
   const name = String(body.name ?? "").trim();

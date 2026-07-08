@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { ensureDatabaseReady } from "@/lib/ensureDatabaseReady";
 import { loadParentSessionFromDb } from "@/lib/parentSession";
 
 /** 학부모 DB 연결(parent user id ↔ child id) 조회 — 초대코드 검증 없음 */
 export async function GET() {
+  await ensureDatabaseReady();
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ linked: false, user: null });

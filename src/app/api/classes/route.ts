@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Role } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { createClassRoom, listClassRooms } from "@/lib/classService";
+import { ensureDatabaseReady } from "@/lib/ensureDatabaseReady";
 import { prisma } from "@/lib/db";
 
 function canManageClasses(role: Role) {
@@ -9,6 +10,7 @@ function canManageClasses(role: Role) {
 }
 
 export async function GET() {
+  await ensureDatabaseReady();
   const session = await getSession();
   if (!session || !canManageClasses(session.role)) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
@@ -19,6 +21,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  await ensureDatabaseReady();
   const session = await getSession();
   if (!session || !canManageClasses(session.role)) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });

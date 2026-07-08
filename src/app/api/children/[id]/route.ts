@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Role } from "@prisma/client";
 import { getSession } from "@/lib/auth";
+import { ensureDatabaseReady } from "@/lib/ensureDatabaseReady";
 import { prisma } from "@/lib/db";
 import { pickChildAvatar } from "@/lib/childAvatars";
 
@@ -11,6 +12,7 @@ function canManageChildren(role: Role) {
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
+  await ensureDatabaseReady();
   const session = await getSession();
   if (!session || !canManageChildren(session.role)) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
@@ -52,6 +54,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
+  await ensureDatabaseReady();
   const session = await getSession();
   if (!session || !canManageChildren(session.role)) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });

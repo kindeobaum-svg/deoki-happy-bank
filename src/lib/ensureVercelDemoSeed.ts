@@ -11,8 +11,8 @@ export async function ensureVercelDemoSeed(): Promise<void> {
     seedPromise = (async () => {
       const userCount = await prisma.user.count();
       if (userCount > 0) return;
-      console.log("[ensureVercelDemoSeed] empty demo DB — running seed");
-      await seedDatabase({ force: true });
+      console.log("[ensureVercelDemoSeed] empty demo DB — running initial seed");
+      await seedDatabase({ force: false });
     })().catch((error) => {
       seedPromise = null;
       throw error;
