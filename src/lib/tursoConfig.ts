@@ -150,9 +150,35 @@ function scanEnvForTursoConfig(): TursoConfig | null {
   return null;
 }
 
+function parseJsonConnection(raw: string): TursoConfig | null {
+  const trimmed = normalizeToken(raw);
+  if (!trimmed.startsWith("{")) return null;
+  try {
+    const obj = JSON.parse(trimmed) as Record<string, unknown>;
+    const urlCandidate = [obj.url, obj.databaseUrl, obj.TURSO_DATABASE_URL, obj.database_url].find(
+      (v) => typeof v === "string" && (v as string).startsWith("libsql:"),
+    ) as string | undefined;
+    const tokenCandidate = [obj.authToken, obj.token, obj.TURSO_AUTH_TOKEN, obj.auth_token].find(
+      (v) => typeof v === "string",
+    ) as string | undefined;
+    const authToken = tokenCandidate ? resolveAuthToken(tokenCandidate) : null;
+    if (urlCandidate && authToken) {
+      return { url: stripQuery(urlCandidate), authToken };
+    }
+  } catch {
+    // not JSON
+  }
+  return null;
+}
+
 function resolveTursoConfigFromEnv(): TursoConfig | null {
   const { rawDbUrl, rawAuth } = normalizeTursoFields();
   const rawDatabaseUrl = (process.env.DATABASE_URL ?? "").trim();
+
+  for (const raw of [rawDbUrl, rawAuth, rawDatabaseUrl]) {
+    const fromJson = parseJsonConnection(raw);
+    if (fromJson) return fromJson;
+  }
 
   const fromTursoDbUrl = rawDbUrl.startsWith("libsql:") ? parseLibsqlConnection(rawDbUrl) : null;
   const fromAuthField = rawAuth.startsWith("libsql:") ? parseLibsqlConnection(rawAuth) : null;
