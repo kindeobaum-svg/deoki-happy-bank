@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { getDatabaseMode, prisma } from "@/lib/db";
 import { bootstrapTursoIfNeeded } from "@/lib/bootstrapTurso";
 import { ensureClassRoomSchema } from "@/lib/ensureClassRoomSchema";
-import { getTursoConfig, isTursoEnvDeclared, isValidTursoJwt, type TursoConfig } from "@/lib/tursoConfig";
+import {
+  ensureTursoConfigResolved,
+  getTursoConfig,
+  isTursoEnvDeclared,
+  isValidTursoJwt,
+  type TursoConfig,
+} from "@/lib/tursoConfig";
 
 async function probeTursoHttp(turso: TursoConfig) {
   const host = new URL(turso.url).host;
@@ -34,6 +40,10 @@ function getAuthSource(): "TURSO_*" | "DATABASE_URL" | "none" {
 
 /** 운영 DB 연결 상태 확인 (비밀값 미노출) */
 export async function GET() {
+  if (isTursoEnvDeclared()) {
+    await ensureTursoConfigResolved();
+  }
+
   const mode = getDatabaseMode();
   const turso = getTursoConfig();
   const authSource = getAuthSource();
@@ -48,6 +58,7 @@ export async function GET() {
     })();
     const tokenLooksLikeUrl = rawAuth.startsWith("libsql:");
     const urlHasEmbeddedToken = rawDbUrl.includes("authToken=");
+    const tursoEnvKeys = Object.keys(process.env).filter((k) => /turso|libsql/i.test(k));
     return NextResponse.json(
       {
         ok: false,
@@ -59,12 +70,13 @@ export async function GET() {
         authSource,
         tokenConfigured: Boolean(rawAuth),
         tokenFormat: tokenLooksLikeUrl ? "libsql_url_in_token_field" : "invalid",
+        tursoEnvKeys,
         error: urlHasEmbeddedToken
-          ? "Turso JWT를 TURSO_DATABASE_URL에서 추출하지 못했습니다. 코드 업데이트 후 Redeploy가 필요할 수 있습니다."
+          ? "Turso JWT를 TURSO_DATABASE_URL에서 추출하지 못했습니다."
           : tokenLooksLikeUrl
             ? "TURSO_AUTH_TOKEN에 libsql URL만 있고 JWT를 찾을 수 없습니다."
             : "Turso JWT가 없습니다.",
-        hint: "TURSO_DATABASE_URL에 ?authToken=eyJ... 포함 또는 TURSO_AUTH_TOKEN에 JWT 설정",
+        hint: "코드가 모든 Turso/libsql env를 스캔합니다. JWT가 다른 변수명에 있으면 자동 인식됩니다.",
       },
       { status: 503 },
     );

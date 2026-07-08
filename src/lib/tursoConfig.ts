@@ -5,13 +5,22 @@ export type TursoConfig = {
   authToken: string;
 };
 
+let runtimeCache: TursoConfig | null = null;
+let runtimeResolveAttempted = false;
+
 function stripQuery(url: string): string {
   const i = url.indexOf("?");
   return i === -1 ? url : url.slice(0, i);
 }
 
 function normalizeToken(token: string): string {
-  return token.trim().replace(/^["']|["']$/g, "").replace(/\s/g, "");
+  let value = token.trim().replace(/^["']|["']$/g, "").replace(/\s/g, "");
+  try {
+    if (value.includes("%")) value = decodeURIComponent(value);
+  } catch {
+    // keep original
+  }
+  return value;
 }
 
 /** Vercel env에 libsql:// URL이 토큰 칸에 들어간 경우 JWT만 추출 */
@@ -19,12 +28,14 @@ function extractAuthToken(raw: string): string {
   let token = normalizeToken(raw);
   if (token.startsWith("Bearer ")) token = token.slice(7).trim();
 
-  if (token.startsWith("libsql:") || token.includes("authToken=")) {
+  if (token.startsWith("libsql:") || token.includes("authToken=") || token.includes("token=")) {
     try {
       const href = token.startsWith("libsql:") ? token.replace(/^libsql:/, "https:") : token;
       const parsed = token.includes("://") ? new URL(href) : new URL(`https://local?${token}`);
-      const fromQuery = parsed.searchParams.get("authToken");
-      if (fromQuery) return normalizeToken(fromQuery);
+      for (const key of ["authToken", "token", "jwt"]) {
+        const fromQuery = parsed.searchParams.get(key);
+        if (fromQuery) return normalizeToken(fromQuery);
+      }
     } catch {
       // fall through
     }
@@ -34,6 +45,10 @@ function extractAuthToken(raw: string): string {
   if (jwt) return jwt[0]!;
 
   return token;
+}
+
+export function isValidTursoJwt(token: string): boolean {
+  return token.startsWith("eyJ") && token.split(".").length === 3;
 }
 
 function resolveAuthToken(raw: string | null | undefined): string | null {
@@ -72,7 +87,6 @@ function normalizeTursoFields(): { rawDbUrl: string; rawAuth: string } {
   let rawDbUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
   let rawAuth = (process.env.TURSO_AUTH_TOKEN ?? "").trim();
 
-  // Vercel/Turso 연동 시 URL·JWT 필드가 뒤바뀐 경우 자동 교정
   if (rawDbUrl.startsWith("eyJ") && rawAuth.startsWith("libsql:")) {
     [rawDbUrl, rawAuth] = [rawAuth, rawDbUrl];
   }
@@ -80,22 +94,63 @@ function normalizeTursoFields(): { rawDbUrl: string; rawAuth: string } {
   return { rawDbUrl, rawAuth };
 }
 
-/** TURSO_* 또는 DATABASE_URL(libsql) 중 하나라도 설정됨 */
-export function isTursoEnvDeclared(): boolean {
-  const { rawDbUrl } = normalizeTursoFields();
-  const databaseUrl = process.env.DATABASE_URL ?? "";
-  return rawDbUrl.startsWith("libsql:") || databaseUrl.startsWith("libsql:");
+function libsqlUrlFromHost(host: string): string {
+  return `libsql://${host}`;
 }
 
-export function isValidTursoJwt(token: string): boolean {
-  return token.startsWith("eyJ") && token.split(".").length === 3;
+function parseTursoHostname(host: string): { databaseName: string; organizationSlug: string } | null {
+  const base = host.replace(/\.aws-[^.]+\.turso\.io$/i, ".turso.io");
+  if (!base.endsWith(".turso.io")) return null;
+  const stem = base.slice(0, -".turso.io".length);
+
+  const orgEnv = process.env.TURSO_ORG?.trim() || process.env.TURSO_ORGANIZATION?.trim();
+  if (orgEnv && stem.endsWith(`-${orgEnv}`)) {
+    return {
+      databaseName: stem.slice(0, -(orgEnv.length + 1)),
+      organizationSlug: orgEnv,
+    };
+  }
+
+  const parts = stem.split("-");
+  if (parts.length >= 3) {
+    return {
+      databaseName: parts.slice(0, -2).join("-"),
+      organizationSlug: parts.slice(-2).join("-"),
+    };
+  }
+  if (parts.length === 2) {
+    return { databaseName: parts[0]!, organizationSlug: parts[1]! };
+  }
+  return null;
 }
 
-/**
- * Turso 연결 — TURSO_DATABASE_URL + TURSO_AUTH_TOKEN 우선.
- * TURSO_DATABASE_URL에 ?authToken= 이 있거나 TURSO_AUTH_TOKEN에 libsql URL이 있어도 JWT 추출.
- */
-export function getTursoConfig(): TursoConfig | null {
+/** Vercel/Turso 연동이 비표준 env 이름으로 JWT를 넣는 경우 turso/libsql 관련 키만 스캔 */
+function scanEnvForTursoConfig(): TursoConfig | null {
+  let foundUrl: string | null = null;
+  let foundToken: string | null = null;
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (!value?.trim()) continue;
+    if (!/turso|libsql|database/i.test(key)) continue;
+
+    const trimmed = value.trim();
+    const jwt = resolveAuthToken(trimmed);
+    if (jwt) foundToken ??= jwt;
+
+    if (trimmed.startsWith("libsql:")) {
+      const parsed = parseLibsqlConnection(trimmed);
+      if (parsed?.url) foundUrl ??= parsed.url;
+      if (parsed?.authToken) foundToken ??= parsed.authToken;
+    }
+  }
+
+  if (foundUrl && foundToken) {
+    return { url: stripQuery(foundUrl), authToken: foundToken };
+  }
+  return null;
+}
+
+function resolveTursoConfigFromEnv(): TursoConfig | null {
   const { rawDbUrl, rawAuth } = normalizeTursoFields();
   const rawDatabaseUrl = (process.env.DATABASE_URL ?? "").trim();
 
@@ -123,7 +178,89 @@ export function getTursoConfig(): TursoConfig | null {
     return { url: stripQuery(url), authToken };
   }
 
-  return null;
+  return scanEnvForTursoConfig();
+}
+
+async function mintTursoTokenViaPlatform(): Promise<TursoConfig | null> {
+  const apiToken =
+    process.env.TURSO_API_TOKEN?.trim() ||
+    process.env.TURSO_PLATFORM_API_TOKEN?.trim() ||
+    process.env.TURSO_PLATFORM_TOKEN?.trim();
+  if (!apiToken) return null;
+
+  const { rawDbUrl } = normalizeTursoFields();
+  if (!rawDbUrl.startsWith("libsql:")) return null;
+
+  let host: string;
+  try {
+    host = new URL(rawDbUrl.replace(/^libsql:/, "https:").split("?")[0]!).hostname;
+  } catch {
+    return null;
+  }
+
+  const parsed = parseTursoHostname(host);
+  const org =
+    process.env.TURSO_ORG?.trim() ||
+    process.env.TURSO_ORGANIZATION?.trim() ||
+    parsed?.organizationSlug;
+  const db =
+    process.env.TURSO_DATABASE?.trim() ||
+    process.env.TURSO_DB_NAME?.trim() ||
+    parsed?.databaseName;
+  if (!org || !db) return null;
+
+  const res = await fetch(
+    `https://api.turso.tech/v1/organizations/${encodeURIComponent(org)}/databases/${encodeURIComponent(db)}/auth/tokens?expiration=1h&authorization=full-access`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiToken}` },
+    },
+  );
+  if (!res.ok) return null;
+
+  const body = (await res.json()) as { jwt?: string };
+  if (!body.jwt || !isValidTursoJwt(body.jwt)) return null;
+
+  return { url: libsqlUrlFromHost(host), authToken: body.jwt };
+}
+
+export function setResolvedTursoConfig(config: TursoConfig | null): void {
+  runtimeCache = config;
+}
+
+/** 서버 cold start 시 Turso JWT 해석 (instrumentation / health) */
+export async function ensureTursoConfigResolved(): Promise<TursoConfig | null> {
+  const fromEnv = resolveTursoConfigFromEnv();
+  if (fromEnv) {
+    runtimeCache = fromEnv;
+    return fromEnv;
+  }
+  if (runtimeResolveAttempted) return runtimeCache;
+  runtimeResolveAttempted = true;
+
+  const minted = await mintTursoTokenViaPlatform();
+  runtimeCache = minted;
+  return minted;
+}
+
+/** TURSO_* 또는 DATABASE_URL(libsql) 중 하나라도 설정됨 */
+export function isTursoEnvDeclared(): boolean {
+  const { rawDbUrl } = normalizeTursoFields();
+  const databaseUrl = process.env.DATABASE_URL ?? "";
+  if (rawDbUrl.startsWith("libsql:") || databaseUrl.startsWith("libsql:")) return true;
+
+  for (const value of Object.values(process.env)) {
+    if (value?.trim().startsWith("libsql:")) return true;
+  }
+  return false;
+}
+
+/**
+ * Turso 연결 — TURSO_DATABASE_URL + TURSO_AUTH_TOKEN 우선.
+ * JWT는 연결 문자열, 다른 env 이름, Platform API mint 순으로 탐색.
+ */
+export function getTursoConfig(): TursoConfig | null {
+  return runtimeCache ?? resolveTursoConfigFromEnv();
 }
 
 export function isTursoConfigured(): boolean {

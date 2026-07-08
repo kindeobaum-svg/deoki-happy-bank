@@ -4,6 +4,7 @@
  */
 import { getDatabaseMode, prisma } from "@/lib/db";
 import { applyTursoMigrations } from "@/lib/tursoBootstrap";
+import { ensureTursoConfigResolved } from "@/lib/tursoConfig";
 import { seedDatabase } from "../../prisma/seed";
 
 let bootstrapPromise: Promise<void> | null = null;
@@ -13,6 +14,7 @@ export async function bootstrapTursoIfNeeded(): Promise<void> {
 
   if (!bootstrapPromise) {
     bootstrapPromise = (async () => {
+      await ensureTursoConfigResolved();
       try {
         await prisma.user.count();
       } catch {
