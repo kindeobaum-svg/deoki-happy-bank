@@ -40,23 +40,31 @@ export async function GET() {
   const tursoDeclared = isTursoEnvDeclared();
 
   if (tursoDeclared && !turso) {
-    const directToken = process.env.TURSO_AUTH_TOKEN?.trim() ?? "";
-    const tokenLooksLikeUrl = directToken.startsWith("libsql:");
+    const { rawDbUrl, rawAuth } = (() => {
+      let db = (process.env.TURSO_DATABASE_URL ?? "").trim();
+      let auth = (process.env.TURSO_AUTH_TOKEN ?? "").trim();
+      if (db.startsWith("eyJ") && auth.startsWith("libsql:")) [db, auth] = [auth, db];
+      return { rawDbUrl: db, rawAuth: auth };
+    })();
+    const tokenLooksLikeUrl = rawAuth.startsWith("libsql:");
+    const urlHasEmbeddedToken = rawDbUrl.includes("authToken=");
     return NextResponse.json(
       {
         ok: false,
         mode,
         tursoConfigured: true,
-        tursoHost: (process.env.TURSO_DATABASE_URL ?? "").includes("://")
-          ? new URL(process.env.TURSO_DATABASE_URL!.replace(/^libsql:/, "https:")).host
+        tursoHost: rawDbUrl.includes("://")
+          ? new URL(rawDbUrl.replace(/^libsql:/, "https:").split("?")[0]!).host
           : null,
         authSource,
-        tokenConfigured: Boolean(directToken),
+        tokenConfigured: Boolean(rawAuth),
         tokenFormat: tokenLooksLikeUrl ? "libsql_url_in_token_field" : "invalid",
-        error: tokenLooksLikeUrl
-          ? "TURSO_AUTH_TOKEN에 libsql:// URL이 들어가 있습니다. Turso JWT(eyJ로 시작)만 넣어야 합니다."
-          : "Turso JWT가 없습니다. TURSO_AUTH_TOKEN 또는 DATABASE_URL?authToken= 에 유효한 토큰을 설정하세요.",
-        hint: "turso db tokens create deoki-happy-bank → JWT를 TURSO_AUTH_TOKEN에 설정 후 Redeploy",
+        error: urlHasEmbeddedToken
+          ? "Turso JWT를 TURSO_DATABASE_URL에서 추출하지 못했습니다. 코드 업데이트 후 Redeploy가 필요할 수 있습니다."
+          : tokenLooksLikeUrl
+            ? "TURSO_AUTH_TOKEN에 libsql URL만 있고 JWT를 찾을 수 없습니다."
+            : "Turso JWT가 없습니다.",
+        hint: "TURSO_DATABASE_URL에 ?authToken=eyJ... 포함 또는 TURSO_AUTH_TOKEN에 JWT 설정",
       },
       { status: 503 },
     );
