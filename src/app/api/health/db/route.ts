@@ -60,43 +60,6 @@ export async function GET() {
     const urlHasEmbeddedToken = rawDbUrl.includes("authToken=");
     const tursoEnvKeys = Object.keys(process.env).filter((k) => /turso|libsql/i.test(k));
 
-    if (mode === "vercel-sqlite") {
-      try {
-        await ensureClassRoomSchema();
-        const [classRoomCount, childCount, inviteCount] = await Promise.all([
-          prisma.classRoom.count(),
-          prisma.child.count(),
-          prisma.inviteCode.count(),
-        ]);
-        return NextResponse.json({
-          ok: true,
-          mode,
-          tursoConfigured: false,
-          fallback: "demo.db",
-          tursoHost: rawDbUrl.includes("://")
-            ? new URL(rawDbUrl.replace(/^libsql:/, "https:").split("?")[0]!).host
-            : null,
-          authSource,
-          tokenFormat: tokenLooksLikeUrl ? "libsql_url_in_token_field" : "invalid",
-          tursoEnvKeys,
-          counts: { classRoom: classRoomCount, child: childCount, inviteCode: inviteCount },
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "DB query failed";
-        return NextResponse.json(
-          {
-            ok: false,
-            mode,
-            tursoConfigured: false,
-            fallback: "demo.db",
-            tursoEnvKeys,
-            error: message,
-          },
-          { status: 503 },
-        );
-      }
-    }
-
     return NextResponse.json(
       {
         ok: false,

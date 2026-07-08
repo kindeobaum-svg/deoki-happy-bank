@@ -1,7 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSQL as PrismaLibSQLNode } from "@prisma/adapter-libsql";
 import { PrismaLibSQL as PrismaLibSQLWeb } from "@prisma/adapter-libsql/web";
-import { getVercelSqliteUrl } from "@/lib/demoDb";
 import { getTursoConfig, toTursoHttpUrl, type TursoConfig } from "@/lib/tursoConfig";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
@@ -13,29 +12,29 @@ function isNextBuildPhase(): boolean {
   return process.env.NEXT_PHASE === "phase-production-build";
 }
 
-function resolveSqliteUrl(): string {
-  if (process.env.VERCEL) {
-    const vercelUrl = getVercelSqliteUrl();
-    if (vercelUrl) return vercelUrl;
+function isVercelRuntime(): boolean {
+  return Boolean(process.env.VERCEL) && !isNextBuildPhase();
+}
 
-    const configured = process.env.DATABASE_URL;
-    if (configured?.startsWith("file:")) return configured;
-
-    throw new Error(
-      "Vercel demo database unavailable. Set Turso env (DATABASE_URL with authToken, or TURSO_*).",
-    );
-  }
-
+function resolveLocalSqliteUrl(): string {
   const configured = process.env.DATABASE_URL;
   if (configured?.startsWith("file:")) return configured;
-
   return "file:./dev.db";
 }
 
 function shouldUseTurso(): boolean {
+  if (isNextBuildPhase()) return false;
   const configured = process.env.DATABASE_URL ?? "";
   if (configured.startsWith("file:")) return false;
   return getTursoConfig() !== null;
+}
+
+function assertTursoOnVercel(): void {
+  if (!isVercelRuntime()) return;
+  if (getTursoConfig()) return;
+  throw new Error(
+    "Turso database is required on Vercel. Configure TURSO_DATABASE_URL and TURSO_AUTH_TOKEN (JWT). Demo DB fallback is disabled.",
+  );
 }
 
 function createTursoAdapter(turso: TursoConfig) {
@@ -55,8 +54,16 @@ function createPrismaClient(): PrismaClient {
     });
   }
 
-  const turso = getTursoConfig();
+  if (isVercelRuntime()) {
+    assertTursoOnVercel();
+    const turso = getTursoConfig()!;
+    return new PrismaClient({
+      adapter: createTursoAdapter(turso),
+      log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    });
+  }
 
+  const turso = getTursoConfig();
   if (turso) {
     return new PrismaClient({
       adapter: createTursoAdapter(turso),
@@ -64,16 +71,15 @@ function createPrismaClient(): PrismaClient {
     });
   }
 
-  const sqliteUrl = resolveSqliteUrl();
+  const sqliteUrl = resolveLocalSqliteUrl();
   return new PrismaClient({
     datasources: { db: { url: sqliteUrl } },
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 }
 
-export function getDatabaseMode(): "turso" | "vercel-sqlite" | "sqlite" {
+export function getDatabaseMode(): "turso" | "sqlite" {
   if (shouldUseTurso()) return "turso";
-  if (process.env.VERCEL) return "vercel-sqlite";
   return "sqlite";
 }
 
@@ -95,7 +101,3 @@ export const prisma = new Proxy({} as PrismaClient, {
     return typeof value === "function" ? value.bind(client) : value;
   },
 });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = getPrisma();
-}

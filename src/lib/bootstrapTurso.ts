@@ -1,32 +1,48 @@
 /**
- * Turso 최초 부트스트랩 — 빌드 시 migrate/seed 실패 시 로그인 1회에만 실행
- * (API 라우트마다 ensureTursoReady 호출하지 않음)
+ * DB 준비 — 마이그레이션 적용 후, 사용자가 없을 때만 시드 (기존 데이터 절대 삭제하지 않음)
  */
 import { getDatabaseMode, prisma } from "@/lib/db";
+import { ensureClassRoomSchema } from "@/lib/ensureClassRoomSchema";
 import { applyTursoMigrations } from "@/lib/tursoBootstrap";
 import { ensureTursoConfigResolved } from "@/lib/tursoConfig";
 import { seedDatabase } from "../../prisma/seed";
 
-let bootstrapPromise: Promise<void> | null = null;
+let readyPromise: Promise<void> | null = null;
 
-export async function bootstrapTursoIfNeeded(): Promise<void> {
-  if (getDatabaseMode() !== "turso") return;
+async function seedIfEmpty(): Promise<void> {
+  let userCount = 0;
+  try {
+    userCount = await prisma.user.count();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/does not exist/i.test(message)) throw error;
+  }
+  if (userCount > 0) return;
+  console.log("[ensureDatabaseReady] empty database — seeding demo accounts");
+  await seedDatabase();
+}
 
-  if (!bootstrapPromise) {
-    bootstrapPromise = (async () => {
-      await ensureTursoConfigResolved();
-      try {
-        await prisma.user.count();
-      } catch {
-        console.log("[bootstrapTurso] applying migrations + seed");
+export async function ensureDatabaseReady(): Promise<void> {
+  if (!readyPromise) {
+    readyPromise = (async () => {
+      const mode = getDatabaseMode();
+
+      if (mode === "turso") {
+        await ensureTursoConfigResolved();
         await applyTursoMigrations();
-        await seedDatabase({ force: true });
+      } else {
+        await ensureClassRoomSchema();
       }
+
+      await seedIfEmpty();
     })().catch((error) => {
-      bootstrapPromise = null;
+      readyPromise = null;
       throw error;
     });
   }
 
-  await bootstrapPromise;
+  await readyPromise;
 }
+
+/** @deprecated use ensureDatabaseReady */
+export const bootstrapTursoIfNeeded = ensureDatabaseReady;
