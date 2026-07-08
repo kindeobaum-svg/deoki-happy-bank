@@ -33,6 +33,8 @@ function resolveSqliteUrl(): string {
 }
 
 function shouldUseTurso(): boolean {
+  const configured = process.env.DATABASE_URL ?? "";
+  if (configured.startsWith("file:")) return false;
   if (getTursoConfig() !== null) return true;
   // Vercel에 Turso env가 선언됐지만 JWT가 잘못된 경우 — vercel-sqlite 폴백 금지
   return process.env.VERCEL === "1" && isTursoEnvDeclared();

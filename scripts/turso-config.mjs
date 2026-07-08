@@ -51,6 +51,12 @@ function parseLibsqlDatabaseUrl(databaseUrl) {
   }
 }
 
+export function isTursoEnvDeclared() {
+  const directUrl = (process.env.TURSO_DATABASE_URL ?? "").trim();
+  const databaseUrl = process.env.DATABASE_URL ?? "";
+  return directUrl.startsWith("libsql:") || databaseUrl.startsWith("libsql:");
+}
+
 export function getTursoConfig() {
   const directUrl = stripQuery((process.env.TURSO_DATABASE_URL ?? "").trim());
   const directToken = process.env.TURSO_AUTH_TOKEN?.trim();
