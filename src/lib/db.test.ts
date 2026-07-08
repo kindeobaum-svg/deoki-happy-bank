@@ -2,6 +2,8 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 
 describe("getDatabaseMode turso detection", () => {
   afterEach(() => {
+    const globalForPrisma = globalThis as unknown as { prisma?: unknown };
+    delete globalForPrisma.prisma;
     vi.unstubAllEnvs();
     vi.resetModules();
   });
@@ -29,24 +31,24 @@ describe("getDatabaseMode turso detection", () => {
     expect(getDatabaseMode()).toBe("turso");
   });
 
-  it("uses vercel-sqlite when Turso env is declared but JWT is missing on Vercel", async () => {
+  it("returns sqlite when Turso env is declared but JWT is missing on Vercel", async () => {
     vi.stubEnv("VERCEL", "1");
     vi.stubEnv("TURSO_DATABASE_URL", "libsql://test-db.turso.io");
     vi.stubEnv("TURSO_AUTH_TOKEN", "libsql://test-db.turso.io");
     vi.stubEnv("DATABASE_URL", "libsql://test-db.turso.io");
 
     const { getDatabaseMode } = await import("@/lib/db");
-    expect(getDatabaseMode()).toBe("vercel-sqlite");
+    expect(getDatabaseMode()).toBe("sqlite");
   });
 
-  it("falls back to vercel-sqlite when no Turso config on Vercel", async () => {
+  it("returns sqlite when no Turso config on Vercel", async () => {
     vi.stubEnv("VERCEL", "1");
     vi.stubEnv("TURSO_DATABASE_URL", "");
     vi.stubEnv("TURSO_AUTH_TOKEN", "");
     vi.stubEnv("DATABASE_URL", "file:./dev.db");
 
     const { getDatabaseMode } = await import("@/lib/db");
-    expect(getDatabaseMode()).toBe("vercel-sqlite");
+    expect(getDatabaseMode()).toBe("sqlite");
   });
 
   it("uses sqlite locally without turso config", async () => {
@@ -59,14 +61,14 @@ describe("getDatabaseMode turso detection", () => {
     expect(getDatabaseMode()).toBe("sqlite");
   });
 
-  it("uses vercel-sqlite when DATABASE_URL is file: on Vercel even if Turso env is declared", async () => {
+  it("returns sqlite when DATABASE_URL is file: on Vercel even if Turso env is declared", async () => {
     vi.stubEnv("VERCEL", "1");
     vi.stubEnv("TURSO_DATABASE_URL", "libsql://test-db.turso.io");
     vi.stubEnv("TURSO_AUTH_TOKEN", "libsql://test-db.turso.io");
     vi.stubEnv("DATABASE_URL", "file:./demo.db");
 
     const { getDatabaseMode } = await import("@/lib/db");
-    expect(getDatabaseMode()).toBe("vercel-sqlite");
+    expect(getDatabaseMode()).toBe("sqlite");
   });
 
   it("allows Vercel build phase without Turso env (placeholder DB)", async () => {
@@ -77,7 +79,18 @@ describe("getDatabaseMode turso detection", () => {
     vi.stubEnv("TURSO_AUTH_TOKEN", "");
 
     const { getDatabaseMode, prisma } = await import("@/lib/db");
-    expect(getDatabaseMode()).toBe("vercel-sqlite");
+    expect(getDatabaseMode()).toBe("sqlite");
     expect(prisma).toBeDefined();
+  });
+
+  it("throws on Vercel runtime when Turso is not configured", async () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("NEXT_PHASE", "");
+    vi.stubEnv("TURSO_DATABASE_URL", "");
+    vi.stubEnv("TURSO_AUTH_TOKEN", "");
+    vi.stubEnv("DATABASE_URL", "");
+
+    const { prisma } = await import("@/lib/db");
+    expect(() => prisma.user).toThrow(/Turso database is required/);
   });
 });

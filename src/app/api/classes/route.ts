@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Role } from "@prisma/client";
 import { getSession } from "@/lib/auth";
+import { ensureDatabaseReady } from "@/lib/bootstrapTurso";
 import { createClassRoom, listClassRooms } from "@/lib/classService";
 import { prisma } from "@/lib/db";
 
@@ -14,6 +15,7 @@ export async function GET() {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
   }
 
+  await ensureDatabaseReady();
   const classes = await listClassRooms(prisma);
   return NextResponse.json({ classes });
 }
@@ -28,6 +30,7 @@ export async function POST(request: Request) {
   const name = String(body.name ?? "").trim();
 
   try {
+    await ensureDatabaseReady();
     const classRoom = await createClassRoom(prisma, name);
     return NextResponse.json({ class: classRoom });
   } catch (error) {
