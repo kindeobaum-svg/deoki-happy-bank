@@ -9,6 +9,18 @@ const tursoDeclared = isTursoEnvDeclared();
 const demoDbPath = "prisma/demo.db";
 const demoDbEnv = { ...process.env, DATABASE_URL: "file:./demo.db" };
 
+function bundleDemoDb() {
+  console.log("Building bundled SQLite demo database (prisma/demo.db)...");
+  if (fs.existsSync(demoDbPath)) {
+    fs.unlinkSync(demoDbPath);
+  }
+  execSync("npx prisma migrate deploy", { stdio: "inherit", env: demoDbEnv });
+  execSync("SEED_FORCE=1 npm run db:seed", {
+    stdio: "inherit",
+    env: { ...demoDbEnv, SEED_FORCE: "1" },
+  });
+}
+
 if (turso) {
   console.log("Turso production DB detected — migrate + seed");
   const tursoEnv = tursoProcessEnv(turso);
@@ -31,19 +43,12 @@ if (turso) {
   }
 } else if (tursoDeclared) {
   console.warn(
-    "Turso env declared but JWT missing/invalid — skipping demo.db bundle. " +
-      "Set TURSO_AUTH_TOKEN to a JWT (eyJ...) or DATABASE_URL with ?authToken=eyJ...",
+    "Turso env declared but JWT not resolved — bundling demo.db fallback for Vercel runtime.",
   );
+  bundleDemoDb();
 } else {
   console.log("No Turso env — building bundled SQLite demo database (prisma/demo.db)...");
-  if (fs.existsSync(demoDbPath)) {
-    fs.unlinkSync(demoDbPath);
-  }
-  execSync("npx prisma migrate deploy", { stdio: "inherit", env: demoDbEnv });
-  execSync("SEED_FORCE=1 npm run db:seed", {
-    stdio: "inherit",
-    env: { ...demoDbEnv, SEED_FORCE: "1" },
-  });
+  bundleDemoDb();
 }
 
 execSync("npx next build", { stdio: "inherit" });

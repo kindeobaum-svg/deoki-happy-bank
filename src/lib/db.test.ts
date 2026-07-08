@@ -29,14 +29,14 @@ describe("getDatabaseMode turso detection", () => {
     expect(getDatabaseMode()).toBe("turso");
   });
 
-  it("uses turso mode when Turso env is declared but JWT is missing on Vercel", async () => {
+  it("uses vercel-sqlite when Turso env is declared but JWT is missing on Vercel", async () => {
     vi.stubEnv("VERCEL", "1");
     vi.stubEnv("TURSO_DATABASE_URL", "libsql://test-db.turso.io");
     vi.stubEnv("TURSO_AUTH_TOKEN", "libsql://test-db.turso.io");
     vi.stubEnv("DATABASE_URL", "libsql://test-db.turso.io");
 
     const { getDatabaseMode } = await import("@/lib/db");
-    expect(getDatabaseMode()).toBe("turso");
+    expect(getDatabaseMode()).toBe("vercel-sqlite");
   });
 
   it("falls back to vercel-sqlite when no Turso config on Vercel", async () => {
